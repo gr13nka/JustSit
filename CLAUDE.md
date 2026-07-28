@@ -230,17 +230,16 @@ already, which is also why `src/ui/time.ts` holds the pure time formatting rathe
 than `src/session/` — a pure function must not sit in a file that imports
 `expo-audio`.
 
-**Editing `src/store/index.ts` while the app is running wipes the device's
-garden.** Fast Refresh re-evaluates the module, so `create(persist(...))` runs
-again and builds a fresh store from `initialSettings` — and the persist
-middleware writes *that* to AsyncStorage before the read of the real blob comes
-back. You return to an empty garden and the onboarding redirect. This has
-already destroyed one seeded garden mid-session.
+**An empty garden and the onboarding screen is what `__reset()` looks like.**
+The dev panel's Reset clears `settings` back to `initialSettings`, and
+`onboardedAt: null` is what redirects to onboarding — so a wiped garden after
+pressing it is the button working, not hydration failing. Check that before
+going looking for a persistence bug.
 
-It is a dev-only hazard — in a real launch the module is evaluated once, which
-`src/store/__tests__/hydration.test.ts` pins down by booting the store cold
-against a version-1 blob. Still: **stop Metro, or at least don't be mid-sitting,
-before touching that file.** Reseed with the `__DEV__` panel afterwards.
+The upgrade path itself is pinned by `src/store/__tests__/hydration.test.ts`,
+which boots the store cold against a real version-1 blob and asserts the garden
+comes back with its slots, its settings, and no onboarding redirect. If that
+suite is green, hydration is not your problem.
 
 ## Content notes
 
