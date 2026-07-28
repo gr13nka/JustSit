@@ -16,7 +16,7 @@ npm test           # 81 unit tests over the pure logic
 npm run typecheck
 ```
 
-### Expo Go vs a development build
+### Expo Go vs a standalone build
 
 Sitting, bells, the garden, tips and progression all work in Expo Go.
 
@@ -30,11 +30,21 @@ no-op:
 - the safety-net notification when a sitting ends while the app is backgrounded
   (the in-app bell still rings whenever the app is in the foreground)
 
-Both work normally in a development build:
+Both work normally in a real build. With an Android phone plugged in and USB
+debugging accepted:
 
 ```sh
-npx expo run:android    # needs the Android SDK installed
+./build-android.sh      # typecheck, tests, release APK, install, launch
 ```
+
+That installs a self-contained app — the JS bundle is embedded, so it runs with
+the laptop unplugged and never looks for Metro. Expo signs the release with its
+fixed debug keystore, so rebuilding installs over the old app and leaves your
+garden intact. It is not signed for the Play Store.
+
+The installed app is a different Android package from Expo Go, with its own
+storage: sittings recorded in Expo Go stay in Expo Go, and there is no way to
+carry them across.
 
 ## How it works
 
