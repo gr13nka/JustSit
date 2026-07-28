@@ -19,6 +19,8 @@
       }
     },
     "android": {
+      "package": "com.justsit.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#F7F1E5",
         "foregroundImage": "./assets/android-icon-foreground.png",
