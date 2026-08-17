@@ -5,10 +5,20 @@ import { type } from '../theme/typography';
 
 type Variant = keyof typeof type;
 
+/**
+ * The tokens type may be set in. The pen brights are absent on purpose — they
+ * belong to the drawings — and `penGreen` is here for the one case that earns
+ * it: a number large enough to carry it, counting something that grew.
+ *
+ * `paper` is absent too. Type on an ink fill is the fill's business, which is
+ * why the primary button colours its own label.
+ */
+type TextColor = 'ink' | 'inkSoft' | 'inkFaint' | 'penGreen' | 'danger';
+
 export type TextProps = RNTextProps & {
   variant?: Variant;
   /** Override the variant's colour with a token name. Never a raw hex. */
-  color?: keyof typeof palette;
+  color?: TextColor;
 };
 
 /**

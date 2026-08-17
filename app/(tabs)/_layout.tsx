@@ -1,9 +1,34 @@
 import { Redirect, Tabs } from 'expo-router';
+import { ColorValue, StyleSheet, View } from 'react-native';
 
 import { color, hairline, radius, space } from '../../src/theme/tokens';
-import { font } from '../../src/theme/typography';
 import { useSettings } from '../../src/store';
 import { GardenIcon, YouIcon } from '../../src/ui/icons';
+import { TabScribble } from '../../src/ui/TabScribble';
+import { Text } from '../../src/ui/Text';
+
+/**
+ * A tab label with the scribble underneath it when it is the one you are on.
+ * The underline does the work an accent colour used to do.
+ */
+function TabLabel({
+  focused,
+  color: tint,
+  children,
+}: {
+  focused: boolean;
+  color: ColorValue;
+  children: string;
+}) {
+  return (
+    <View style={styles.label}>
+      <Text variant="caption" style={[styles.labelText, { color: tint }]}>
+        {children}
+      </Text>
+      <TabScribble tint={tint} focused={focused} />
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   const settings = useSettings();
@@ -16,20 +41,16 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: color.terracotta,
+        tabBarActiveTintColor: color.ink,
         tabBarInactiveTintColor: color.inkSoft,
         tabBarStyle: {
           backgroundColor: color.paperDeep,
           borderTopWidth: hairline,
-          borderTopColor: color.line,
-          height: 88,
+          borderTopColor: color.inkFaint,
+          // Eight points taller than the bar used to be: the label now carries
+          // its underline, and the two need to sit above the home indicator.
+          height: 96,
           paddingTop: space.sm,
-        },
-        tabBarLabelStyle: {
-          fontFamily: font.mono,
-          fontSize: 10,
-          letterSpacing: 1,
-          marginTop: space.xs,
         },
         tabBarItemStyle: {
           borderRadius: radius.card,
@@ -39,7 +60,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Garden',
-          tabBarIcon: ({ color: c }) => <GardenIcon color={c} />,
+          tabBarIcon: ({ color: tint }) => <GardenIcon color={tint} />,
+          tabBarLabel: (props) => <TabLabel {...props}>Garden</TabLabel>,
         }}
       />
       {/*
@@ -51,9 +73,22 @@ export default function TabsLayout() {
         name="you"
         options={{
           title: 'You',
-          tabBarIcon: ({ color: c }) => <YouIcon color={c} />,
+          tabBarIcon: ({ color: tint }) => <YouIcon color={tint} />,
+          tabBarLabel: (props) => <TabLabel {...props}>You</TabLabel>,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  label: {
+    alignItems: 'center',
+    marginTop: space.xs,
+    /** Off the word, but not so far that it stops belonging to it. */
+    gap: 2,
+  },
+  labelText: {
+    letterSpacing: 0.5,
+  },
+});

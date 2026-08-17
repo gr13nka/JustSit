@@ -12,7 +12,7 @@ completed sittings.
 
 ```sh
 npm start          # then scan the QR code with Expo Go
-npm test           # 81 unit tests over the pure logic
+npm test           # the unit suite over the pure logic
 npm run typecheck
 ```
 
@@ -62,8 +62,8 @@ carry them across.
 
 ```
 app/                 screens (expo-router)
-  (tabs)/            Garden · Sit · You
-  session/           tip → run → complete → advance   (outside the tab bar)
+  (tabs)/            Garden · You
+  session/           start → tip → run → complete → advance   (outside the tab bar)
   onboarding.tsx
 src/
   theme/tokens.ts    ← every colour in the app
@@ -74,30 +74,33 @@ src/
   ui/                shared components
 ```
 
-Two rules worth keeping:
+The visual language is Karakuli — warm paper, one round-nib pen, colour that is
+earned — at its most austere setting. The rules live in CLAUDE.md's "Design
+discipline" section, which is the authoritative copy; the two worth knowing
+before touching anything:
 
-- **No hex literal outside `src/theme/tokens.ts`.** Terracotta means "you can
-  touch this"; sage means "this grew". Nothing else uses either.
-- **Serif is for the teaching card only.** Everything structural is IBM Plex
-  Mono; the tip body is Newsreader. That one switch is doing real emotional
-  work, and it stops working if it leaks.
+- **No hex literal outside `src/theme/tokens.ts`.** The accent is ink —
+  touchability is marked by shape, never by a colour — and the only colour in
+  the app is the garden's green (plus a fixed pen-bright bloom per species).
+- **Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read
+  for information; Shantell Sans is a voice for one-line felt moments and never
+  carries a paragraph.
 
-## Replacing the placeholder art
+## The art
 
-Two things are stand-ins, both isolated so swapping them touches nothing else.
-
-**Plants** — currently line drawings in `src/ui/Plant.tsx`. Drop transparent
-PNGs (@3x) into `assets/plants/`, list their keys in `src/domain/plants.ts`, and
-rewrite `Plant.tsx` to render an `<Image>`. Identity and rendering are kept in
-separate files precisely so this is a one-file change.
+**Plants** are hand-drawn pen doodles in `src/ui/Plant.tsx` and may be the
+final art. If painted PNGs ever replace them: drop transparent @3x files into
+`assets/plants/`, list their keys in `src/domain/plants.ts`, and rewrite
+`Plant.tsx` to render an `<Image>`. Identity and rendering are kept in separate
+files precisely so this is a one-file change.
 
 Adding species later is always safe: a session stores the plant key it resolved
 at completion, so plants that already grew never change.
 
 Note PNGs can't be tinted in code — each plant carries the colours you drew it
-in. Worth keeping them in a range that sits well on `#F7F1E5`.
+in. Worth keeping them in a range that sits well on the paper, `#F7F3E9`.
 
-**Bells** — synthesised placeholders. Regenerate with
+**Bells are still placeholders** — synthesised bowl tones. Regenerate with
 `node scripts/generate-placeholder-bells.mjs`, or just replace
 `assets/audio/bell-in.wav` and `bell-out.wav` with real recordings.
 

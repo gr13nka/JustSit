@@ -81,18 +81,28 @@ export function DevPanel() {
       <View style={styles.row}>
         <DevButton label="Next stage" onPress={bumpStage} />
         <DevButton label="Arm offer" onPress={armAdvanceOffer} />
-        <DevButton label="Reset" onPress={__reset} />
+        {/* Reset empties the garden and sends the app back to onboarding. It is
+            the only irreversible button in the app, so it says so. */}
+        <DevButton label="Reset" onPress={__reset} destructive />
       </View>
     </View>
   );
 }
 
-function DevButton({ label, onPress }: { label: string; onPress: () => void }) {
+function DevButton({
+  label,
+  onPress,
+  destructive = false,
+}: {
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-      <Text variant="caption" color="inkSoft">
+      <Text variant="caption" color={destructive ? 'danger' : 'inkSoft'}>
         {label}
       </Text>
     </Pressable>
@@ -102,7 +112,7 @@ function DevButton({ label, onPress }: { label: string; onPress: () => void }) {
 const styles = StyleSheet.create({
   panel: {
     borderWidth: hairline,
-    borderColor: color.line,
+    borderColor: color.inkFaint,
     borderRadius: radius.card,
     borderStyle: 'dashed',
     padding: space.md,
@@ -117,7 +127,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: space.sm,
     borderWidth: hairline,
-    borderColor: color.line,
+    borderColor: color.inkFaint,
     borderRadius: radius.card,
   },
   pressed: {

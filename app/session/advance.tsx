@@ -2,9 +2,10 @@ import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { stageAt } from '../../src/domain/stages';
-import { color, hairline, space } from '../../src/theme/tokens';
+import { space } from '../../src/theme/tokens';
 import { noteAdvanceOffered, setStage, useProgress } from '../../src/store';
 import { Button } from '../../src/ui/Button';
+import { Rule } from '../../src/ui/Rule';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
 
@@ -37,7 +38,7 @@ export default function AdvanceScreen() {
       <View style={styles.body}>
         <Text variant="label">Stage {next.number} · {next.name}</Text>
 
-        <View style={styles.rule} />
+        <Rule />
 
         <Text variant="teaching">{next.felt}</Text>
 
@@ -58,12 +59,6 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     justifyContent: 'center',
-  },
-  rule: {
-    width: 48,
-    borderBottomWidth: hairline,
-    borderBottomColor: color.line,
-    marginVertical: space.lg,
   },
   question: {
     marginTop: space.xl,

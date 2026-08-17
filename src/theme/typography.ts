@@ -5,17 +5,19 @@ import { color } from './tokens';
 /**
  * Two faces, with a hard boundary between them.
  *
- * MONO carries everything structural — timer digits, nav, labels, stats, buttons.
- * SERIF carries the teaching card body and nothing else. A paragraph of Wallace
- * set in mono reads like a terminal; in serif it reads like a book being handed
- * to you. That switch is doing real emotional work, so it must not leak.
+ * M PLUS Rounded 1c carries everything a user reads: timer, nav, labels, stats,
+ * buttons, and the teaching card. Its soft terminals keep even the clinical
+ * copy from sounding severe, which is the whole reason it is here.
+ *
+ * Shantell Sans is a voice, not a reading face. It is for short felt lines —
+ * the app name, a caption under the cat, an onboarding tagline — one line at a
+ * time. A paragraph set in it stops being warm and starts being hard to read.
  */
 export const font = {
-  mono: 'IBMPlexMono_400Regular',
-  monoMedium: 'IBMPlexMono_500Medium',
-  monoSemiBold: 'IBMPlexMono_600SemiBold',
-  serif: 'Newsreader_400Regular',
-  serifItalic: 'Newsreader_400Regular_Italic',
+  sans: 'MPLUSRounded1c_400Regular',
+  sansMed: 'MPLUSRounded1c_500Medium',
+  sansBold: 'MPLUSRounded1c_700Bold',
+  hand: 'ShantellSans_400Regular',
 } as const;
 
 /**
@@ -23,71 +25,81 @@ export const font = {
  * fontSize/fontFamily inline, so the voice of the app stays in one file.
  */
 export const type = {
-  /** App name on the welcome screen. Wide, quiet, architectural. */
+  /** App name on the welcome screen — a scrawled logo, not a heading. */
   display: {
-    fontFamily: font.monoMedium,
-    fontSize: 26,
-    letterSpacing: 6,
+    fontFamily: font.hand,
+    fontSize: 32,
     color: color.ink,
   },
 
   /** Screen headers — "Your garden", "Session". */
   title: {
-    fontFamily: font.monoMedium,
-    fontSize: 16,
-    letterSpacing: 0.4,
+    fontFamily: font.sansBold,
+    fontSize: 18,
+    lineHeight: 23,
     color: color.ink,
   },
 
   /** The countdown. The largest thing in the app, and deliberately plain. */
   timer: {
-    fontFamily: font.mono,
+    fontFamily: font.sans,
     fontSize: 56,
-    letterSpacing: 2,
+    letterSpacing: 0,
     color: color.ink,
   },
 
   /** Big numbers on stat cards. */
   stat: {
-    fontFamily: font.mono,
-    fontSize: 30,
+    fontFamily: font.sansBold,
+    fontSize: 26,
+    lineHeight: 33,
     color: color.ink,
   },
 
   /** Small uppercase labels — "CURRENT STREAK", "STAGE ONE". */
   label: {
-    fontFamily: font.monoMedium,
-    fontSize: 11,
-    letterSpacing: 2,
+    fontFamily: font.sansMed,
+    fontSize: 13,
+    lineHeight: 17,
+    letterSpacing: 1,
     textTransform: 'uppercase',
     color: color.inkSoft,
   },
 
   body: {
-    fontFamily: font.mono,
-    fontSize: 14,
-    lineHeight: 22,
+    fontFamily: font.sansMed,
+    fontSize: 15,
+    lineHeight: 23,
     color: color.ink,
   },
 
   caption: {
-    fontFamily: font.mono,
-    fontSize: 12,
+    fontFamily: font.sansMed,
+    fontSize: 13,
     lineHeight: 18,
     color: color.inkSoft,
   },
 
   button: {
-    fontFamily: font.monoMedium,
+    fontFamily: font.sansBold,
     fontSize: 15,
-    letterSpacing: 0.6,
+    letterSpacing: 0.2,
+    color: color.ink,
   },
 
-  /** Teaching card body. The only serif in the app. */
+  /** Teaching card body — the long-form 400 weight, set airier than body. */
   teaching: {
-    fontFamily: font.serif,
-    fontSize: 20,
-    lineHeight: 32,
+    fontFamily: font.sans,
+    fontSize: 18,
+    lineHeight: 28,
+    color: color.ink,
+  },
+
+  /** A single felt line — a caption beside Батон, the onboarding tagline. */
+  hand: {
+    fontFamily: font.hand,
+    fontSize: 18,
+    lineHeight: 25,
     color: color.ink,
   },
 } satisfies Record<string, TextStyle>;

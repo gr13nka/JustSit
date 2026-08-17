@@ -48,8 +48,14 @@ export default function StartScreen() {
         <Text variant="caption" style={styles.motto}>
           Stay. Breathe. Be.
         </Text>
+        {/*
+          The app's only wobbly button. This is the one place a hand commits to
+          something — every other action is a consequence of this one — and the
+          variant stops meaning anything if a second screen borrows it.
+        */}
         <Button
           label="Start"
+          variant="wobbly"
           onPress={() =>
             router.push({
               pathname: '/session/tip',
@@ -81,8 +87,12 @@ const styles = StyleSheet.create({
   clock: {
     marginTop: space.lg,
   },
+  /**
+   * A touch of air, but less than the mono face wanted: rounded letters at this
+   * size come apart at anything wider.
+   */
   motto: {
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   start: {
     marginTop: space.md,

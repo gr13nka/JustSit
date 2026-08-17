@@ -4,8 +4,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { nextTip, sessionsAtStage } from '../../src/domain/progression';
 import { stageAt } from '../../src/domain/stages';
-import { color, hairline, space } from '../../src/theme/tokens';
+import { space } from '../../src/theme/tokens';
 import { markTipSeen, useProgress, useSessions } from '../../src/store';
+import { Rule } from '../../src/ui/Rule';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
 
@@ -58,7 +59,7 @@ export default function TipScreen() {
             {stage.practice}
           </Text>
 
-          <View style={styles.rule} />
+          <Rule />
 
           <Text variant="teaching">{tip.body}</Text>
         </View>
@@ -81,12 +82,6 @@ const styles = StyleSheet.create({
   practice: {
     marginTop: space.xs,
   },
-  rule: {
-    width: 48,
-    borderBottomWidth: hairline,
-    borderBottomColor: color.line,
-    marginVertical: space.lg,
-  },
   sheet: {
     flex: 1,
   },
@@ -94,7 +89,8 @@ const styles = StyleSheet.create({
     paddingBottom: space.lg,
     alignItems: 'center',
   },
+  /** Spaced enough to read as an instruction rather than a word left behind. */
   hint: {
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
 });

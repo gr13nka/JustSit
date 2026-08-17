@@ -7,17 +7,29 @@
 set -euo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-user_home=$(getent passwd "$(id -u)" | cut -d: -f6)
-android_sdk_root=${ANDROID_SDK_ROOT:-"$user_home/.local/opt/android-sdk"}
-adb_bin="$android_sdk_root/platform-tools/adb"
+# $HOME rather than getent: getent is glibc-only and this script also runs on macOS.
+user_home=${HOME:?HOME is not set}
+
+# First SDK that exists wins: the explicit variables, then the path our Linux
+# setup script installs to, then Android Studio's default location on macOS.
+android_sdk_root=''
+for sdk_candidate in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" \
+  "$user_home/.local/opt/android-sdk" "$user_home/Library/Android/sdk"; do
+  if [ -n "$sdk_candidate" ] && [ -x "$sdk_candidate/platform-tools/adb" ]; then
+    android_sdk_root=$sdk_candidate
+    break
+  fi
+done
+
 package_name='com.justsit.app'
 apk_file='android/app/build/outputs/apk/release/app-release.apk'
 
-if [ ! -x "$adb_bin" ]; then
-  echo "ERROR: Android SDK not found at $android_sdk_root." >&2
+if [ -z "$android_sdk_root" ]; then
+  echo "ERROR: No Android SDK with platform-tools found." >&2
   echo "Install it with ../JediNotebook/setup-android-build-tools.sh, or set ANDROID_SDK_ROOT." >&2
   exit 1
 fi
+adb_bin="$android_sdk_root/platform-tools/adb"
 
 for required_command in node npm npx java; do
   if ! command -v "$required_command" >/dev/null 2>&1; then

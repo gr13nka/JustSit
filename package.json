@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
-    "@expo-google-fonts/newsreader": "^0.4.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "expo": "~57.0.8",
@@ -26,6 +24,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@expo-google-fonts/m-plus-rounded-1c": "^0.4.4",
+    "@expo-google-fonts/shantell-sans": "^0.4.1",
     "@react-native/jest-preset": "^0.86.2",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",

@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F7F1E5"
+      "backgroundColor": "#F7F3E9"
     },
     "ios": {
       "supportsTablet": true,
@@ -22,7 +22,7 @@
       "package": "com.justsit.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#F7F1E5",
+        "backgroundColor": "#F7F3E9",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

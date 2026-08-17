@@ -25,7 +25,7 @@ codebase even if it works.
 
 ```sh
 npm start          # Metro dev server
-npm test           # 112 unit tests (Jest)
+npm test           # the unit suite (Jest)
 npm run typecheck  # tsc --noEmit
 npm test -- src/domain/__tests__/plots.test.ts   # a single file
 npm test -- -t "cycles in order"                 # a single test by name
@@ -152,15 +152,44 @@ thresholds decide only when it is *reasonable to ask*.
 
 ## Design discipline
 
-**Colour has exactly one job.** Terracotta = you can touch this. Sage = something
-grew. Nothing else uses either; everything structural is paper and ink.
+The visual language is **Karakuli**, the author's personal hand-drawn design
+system (warm paper, one soft round-nib pen, colour that is earned), applied at
+its most austere setting: accent = ink, no washes, calm energy. Its rules are
+encoded below; when in doubt, less colour and more ink.
+
+**Colour is earned, and almost only the garden earns it.** The accent is ink:
+touchability is marked by shape — an ink fill, a 1.5px ink border, organic
+corners — never by a colour. Green means *something grew* (plant strokes, the
+big numbers on stat cards); the pen brights (`penBlue/penOrange/penPink`) have
+exactly two licences — a plant's bloom (the reward-garden colour moment), and
+the first-run hero's night sky (`SittingFigure`, an onboarding hero's
+first-impression licence). If a pen colour shows up in ordinary chrome, that's
+a bug.
 **No hex literal may appear outside `src/theme/tokens.ts`.**
 
-**Two typefaces, hard boundary.** IBM Plex Mono carries everything structural —
-timer, labels, nav, stats, buttons. Newsreader (serif) carries the teaching card
-body and *nothing else*. A paragraph of Wallace in mono reads like a terminal; in
-serif it reads like a book being handed to you. That switch does real emotional
-work and stops working if it leaks.
+**Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read for
+information — timer, labels, nav, stats, buttons (500), headings (700), and the
+teaching card body (400, the long-form reading weight). Shantell Sans is a
+voice, not a reading face: the hand-scrawled app name and one-line felt captions
+(`variant="hand"`), never a paragraph. If a sentence runs past a line, it goes
+back to the body face.
+
+**Hand-drawn touches are rationed.** Exactly five kinds exist: the wobbly
+`Rule`, organic corner asymmetry (`organicCorners` — always seeded, never
+random), the active tab's scribble underline, hand-drawn arrows (`ArrowRight`),
+and the single `wobbly` button (Start, and only Start). A sixth — hand-drawn
+check marks — is sanctioned by the style but not yet drawn; nothing beyond
+those is. Every drawn path is stroke-only cubic béziers with round caps and
+baked-in wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect
+arcs. The single sanctioned filled shape is the empty slot's dot
+(`Plant.tsx`'s `EmptySlot`). The pen contract lives in `src/ui/pen.ts`:
+doodles draw at 2.8 on a 48-unit canvas, heroes at 7 on 200, and hand-drawn UI
+marks (`Rule`, `TabScribble`) at hairline–2 on their own tight canvases — so
+one hand appears to have drawn the whole app.
+
+**Батон, the sleeping loaf cat, holds the quiet places** — the reminder step of
+onboarding and the empty garden — and nowhere else. He never cheers; the app's
+no-congratulation voice outranks mascot charm.
 
 Use `<Text variant="...">` from `src/ui/Text.tsx` rather than declaring
 `fontFamily`/`fontSize` inline, so the app's voice stays in `typography.ts`.
@@ -175,9 +204,11 @@ safe-area top inset stays: hiding the bar does not remove the notch.
 **The ring breathes; it is not a progress bar.** `TimerRing` pulses on a 10s
 cycle while a sitting runs, because the clock shows whole minutes and without it
 nothing on screen moves for a minute at a time — a running sitting would be
-indistinguishable from a frozen app. The hairline elapsed arc behind it is
-deliberately the quietest mark on the screen, and is in `color.line` rather than
-sage: sage means *something grew*, and elapsed time has not grown anything.
+indistinguishable from a frozen app. The ring is a wobbly near-circle, not a
+perfect one, and its geometry is normalised against its own measured extent so
+the wobble can't clip at the SVG edge. The elapsed arc behind it is deliberately
+the quietest mark on the screen, and is `inkFaint` rather than green: green
+means *something grew*, and elapsed time has not grown anything.
 
 **At most one primary button per screen.** Any second action is `variant="quiet"`.
 
@@ -198,10 +229,15 @@ raises a full-screen overlay. `src/session/notifications.ts` detects Expo Go via
 Consequence: in Expo Go the daily reminder and the backgrounded-session
 notification silently no-op. Both work in a development build.
 
-**Import Google Fonts by subpath** — `@expo-google-fonts/newsreader/400Regular`,
-not `@expo-google-fonts/newsreader`. The package root `require`s every weight, so
-importing from it bundles all 14 faces (~1.6MB) to use one. This took the bundle
-from 28 font files to 5.
+**Fonts ship as Latin subsets in `assets/fonts/`, not from npm.** M PLUS
+Rounded 1c carries CJK coverage — the full face is ~3.3MB *per weight*, so three
+weights would put ~10MB of font binary behind the splash to set English text.
+`scripts/subset-fonts.sh` (needs `uv`; fetches `pyftsubset` ephemerally) subsets
+the TTFs from the `@expo-google-fonts` packages, which stay in devDependencies
+only as the regeneration source. Re-run it after bumping them; add `U+0400-04FF`
+to its ranges if the app ever grows Cyrillic text. The earlier lesson still
+stands underneath: never import an `@expo-google-fonts` package by its root —
+the root `require`s every weight.
 
 **Do not add `babel.config.js`.** SDK 57 applies `babel-preset-expo` by default.
 Adding the config file the docs show makes Metro demand `babel-preset-expo` as a
@@ -256,21 +292,19 @@ depth we haven't earned.
 Voice: plain and faintly clinical, like Wallace. Not mystical. No exclamation
 marks, no congratulation, no pep talk.
 
-## Placeholder art
+## Art status
 
-Two things are stand-ins, each isolated so swapping it touches one file.
+**Plants** (`src/ui/Plant.tsx`) are Karakuli pen doodles — twelve species, each
+with a fixed bloom colour that is a property of the species, never of the
+session — and are candidates to be the final art rather than stand-ins. If
+hand-painted PNGs ever replace them, identity (`src/domain/plants.ts`) is kept
+separate from rendering precisely so that stays a one-file change; note PNGs
+cannot be tinted in code, so each would carry its own colours. `SittingFigure`
+and `Baton` follow the same pen contract and come from the Karakuli kit's hand.
 
-**Plants** — line-art SVG in `src/ui/Plant.tsx`. Real art will be transparent
-PNGs at @3x in `assets/plants/`. Identity (`src/domain/plants.ts`) is kept
-separate from rendering (`src/ui/Plant.tsx`) precisely so this is a one-file
-change. Note PNGs **cannot be tinted in code** — each plant carries the colours
-it was drawn in, which is why `sage` is a UI-only accent and never a plant colour.
-
-**Bells** — synthesised inharmonic bowl tones. Regenerate with
-`node scripts/generate-placeholder-bells.mjs`, or replace
+**Bells are still placeholder** — synthesised inharmonic bowl tones. Regenerate
+with `node scripts/generate-placeholder-bells.mjs`, or replace
 `assets/audio/bell-*.wav` with real recordings.
-
-`src/ui/SittingFigure.tsx`, the onboarding illustration, is also placeholder.
 
 ## Verifying on a device
 

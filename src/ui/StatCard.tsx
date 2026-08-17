@@ -1,13 +1,14 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { color, radius, space } from '../theme/tokens';
+import { color, space } from '../theme/tokens';
+import { Card } from './Card';
 import { Text } from './Text';
 
 /**
- * A stat card from the mockup: a quiet label, a number, and its unit.
+ * A quiet label, a number, and its unit.
  *
- * The number is ink, never terracotta — nothing here is tappable, and colour in
- * this app means either "touch this" or "this grew".
+ * The number is ink unless it counts growth. Colour here means one thing only —
+ * something grew — so a stat that merely reports is not entitled to it.
  */
 export function StatCard({
   label,
@@ -18,29 +19,26 @@ export function StatCard({
   label: string;
   value: string | number;
   unit: string;
-  /** Sage, for numbers that count growth rather than merely reporting it. */
+  /** Pen-green, for numbers that count growth rather than merely reporting it. */
   accent?: boolean;
 }) {
   return (
-    <View style={styles.card}>
+    <Card style={styles.card}>
       <Text variant="label">{label}</Text>
       <Text variant="stat" style={accent ? styles.accent : undefined}>
         {value}
       </Text>
       <Text variant="caption">{unit}</Text>
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: color.paperDeep,
-    borderRadius: radius.card,
-    padding: space.md,
     gap: space.xs,
   },
   accent: {
-    color: color.sage,
+    color: color.penGreen,
   },
 });

@@ -61,7 +61,7 @@ export function PlantGrid({
               accessibilityRole="button"
               accessibilityLabel="Empty plot. Begin a sitting here."
               onPress={() => onPressEmpty(slot)}
-              style={style}>
+              style={({ pressed }) => [style, pressed && styles.pressed]}>
               <EmptySlot size={art} />
             </Pressable>
           );
@@ -78,5 +78,9 @@ const styles = StyleSheet.create({
   cell: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  /** Ink settling, the same as everywhere else — no scale, no shadow. */
+  pressed: {
+    opacity: 0.6,
   },
 });

@@ -55,8 +55,7 @@ export default function RunScreen() {
       <View style={styles.middle}>
         <TimerRing
           plant={PREVIEW_PLANT}
-          elapsed={durationMs > 0 ? 1 - remainingMs / durationMs : 0}
-          breathing
+          spent={durationMs > 0 ? 1 - remainingMs / durationMs : 0}
         />
         <View style={styles.clock}>
           <Clock ms={remainingMs} />

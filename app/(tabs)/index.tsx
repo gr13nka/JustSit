@@ -5,10 +5,14 @@ import { currentPlot, PLOT_SIZE } from '../../src/domain/plots';
 import { currentStreak } from '../../src/domain/stats';
 import { space } from '../../src/theme/tokens';
 import { useSessions } from '../../src/store';
+import { Baton } from '../../src/ui/Baton';
 import { PlantGrid } from '../../src/ui/PlantGrid';
 import { Screen } from '../../src/ui/Screen';
 import { StatCard } from '../../src/ui/StatCard';
 import { Text } from '../../src/ui/Text';
+
+/** Small enough to read as a mark on the page, not as an illustration. */
+const BATON_SIZE = 110;
 
 export default function GardenScreen() {
   const sessions = useSessions();
@@ -40,6 +44,16 @@ export default function GardenScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}>
+        {/*
+          Nothing has grown yet, so the cat has the page. He is here instead of
+          copy: a garden of empty dots needs no explaining, and an apology for
+          it would be the first thing this app said to anyone.
+        */}
+        {sessions.length === 0 && (
+          <View style={styles.empty}>
+            <Baton size={BATON_SIZE} />
+          </View>
+        )}
         <PlantGrid plot={plot} onPressEmpty={sitIn} />
       </ScrollView>
 
@@ -71,6 +85,10 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingBottom: space.lg,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingBottom: space.md,
   },
   stats: {
     flexDirection: 'row',

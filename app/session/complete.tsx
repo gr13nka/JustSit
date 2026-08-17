@@ -32,9 +32,7 @@ export default function CompleteScreen() {
     <Screen center edges={['top', 'bottom']}>
       <View style={styles.middle}>
         {session && <Plant plant={session.plant} size={120} />}
-        <Text variant="title" style={styles.line}>
-          Something grew.
-        </Text>
+        <Text variant="title">Something grew.</Text>
       </View>
 
       <Button label="Done" onPress={done} style={styles.done} />
@@ -48,9 +46,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.xl,
-  },
-  line: {
-    letterSpacing: 1,
   },
   done: {
     alignSelf: 'stretch',
