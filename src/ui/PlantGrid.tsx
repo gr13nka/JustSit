@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
+import { hash32 } from '../domain/hash';
 import { ART_SHARE, Plot, PLOT_SIZE, slotOffset } from '../domain/plots';
+import { BURST_SPREAD_MS, Sprout } from './motion';
 import { EmptySlot, Plant } from './Plant';
 
 /** Six across, so 108 lands on eighteen rows exactly and a plant reads as art. */
@@ -14,13 +16,33 @@ const COLUMNS = 6;
  * promise as much as a record, and a grid that only showed what you had already
  * done would lose half of what makes it worth opening.
  */
+/**
+ * Where in the burst one slot's plant starts growing.
+ *
+ * Seeded rather than random, for the same reason the dot's offset is: this
+ * garden should scatter the same way every time it is shown. A field that
+ * re-rolled its timings on every visit would be a different drawing each time,
+ * and nothing in this app is generated at runtime.
+ */
+function burstDelay(slot: number): number {
+  return hash32(`burst-${slot}`) % BURST_SPREAD_MS;
+}
+
 export function PlantGrid({
   plot,
   onPressEmpty,
+  burst,
 }: {
   plot: Plot;
   /** Given the absolute slot of the dot touched. */
   onPressEmpty: (slot: number) => void;
+  /**
+   * The shared 0..1 clock from `useBurst`, if this plot should sprout when it
+   * is shown. Only what has grown takes part: the empty dots are the ground the
+   * garden is drawn on, and a hundred of them animating would be static rather
+   * than a burst.
+   */
+  burst?: Animated.Value;
 }) {
   const [width, setWidth] = useState(0);
 
@@ -48,9 +70,18 @@ export function PlantGrid({
           // A plant is a record of something that happened; there is nothing to
           // do to it. Only the empty dots ahead of you are worth touching.
           if (session) {
+            // The scatter and the sprout both want `transform`, so they get a
+            // view each: the cell holds its offset and never animates, and the
+            // animation never has to carry the offset.
             return (
               <View key={i} style={style}>
-                <Plant plant={session.plant} size={art} />
+                {burst ? (
+                  <Sprout progress={burst} delayMs={burstDelay(slot)}>
+                    <Plant plant={session.plant} size={art} />
+                  </Sprout>
+                ) : (
+                  <Plant plant={session.plant} size={art} />
+                )}
               </View>
             );
           }

@@ -1,6 +1,6 @@
 import Svg, { Path } from 'react-native-svg';
 
-import { color } from '../theme/tokens';
+import { useColor } from '../theme/useColor';
 import { PEN_HERO } from './pen';
 
 /**
@@ -13,6 +13,8 @@ import { PEN_HERO } from './pen';
  * read.
  */
 export function SittingFigure({ size = 220 }: { size?: number }) {
+  const color = useColor();
+
   return (
     <Svg width={size} height={size} viewBox="0 0 200 200">
       {/* a crescent, drawn in one pass out and back */}

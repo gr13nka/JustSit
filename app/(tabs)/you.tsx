@@ -8,7 +8,9 @@ import { allPlots } from '../../src/domain/plots';
 import { stageAt } from '../../src/domain/stages';
 import { daysSat, totalSatMs } from '../../src/domain/stats';
 import { requestPermission, setDailyReminder } from '../../src/session/notifications';
-import { color, space } from '../../src/theme/tokens';
+import { hairline, radius, space } from '../../src/theme/tokens';
+import { THEME_ORDER, THEMES, ThemeId } from '../../src/theme/themes';
+import { useColor } from '../../src/theme/useColor';
 import { updateSettings, useProgress, useSessions, useSettings } from '../../src/store';
 import { Card } from '../../src/ui/Card';
 import { DevPanel } from '../../src/ui/DevPanel';
@@ -16,6 +18,7 @@ import { ArrowRight } from '../../src/ui/icons';
 import { Rule } from '../../src/ui/Rule';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
+import { useOrganicCorners } from '../../src/ui/useOrganicCorners';
 import { formatDate, formatTotal, fromHhMm, toHhMm } from '../../src/ui/time';
 
 /**
@@ -25,6 +28,7 @@ import { formatDate, formatTotal, fromHhMm, toHhMm } from '../../src/ui/time';
 const ARROW_SIZE = 18;
 
 export default function YouScreen() {
+  const color = useColor();
   const progress = useProgress();
   const settings = useSettings();
   const sessions = useSessions();
@@ -124,6 +128,20 @@ export default function YouScreen() {
           )}
         </Card>
 
+        <Card style={styles.card}>
+          <Text variant="label">Theme</Text>
+          <View style={styles.themes}>
+            {THEME_ORDER.map((id) => (
+              <ThemeSwatch
+                key={id}
+                id={id}
+                selected={settings.theme === id}
+                onPress={() => updateSettings({ theme: id })}
+              />
+            ))}
+          </View>
+        </Card>
+
         {archive.length > 0 && (
           <Card style={styles.card}>
             <Text variant="label">Finished plots</Text>
@@ -152,13 +170,64 @@ export default function YouScreen() {
   );
 }
 
+/**
+ * One theme, shown as the paper it would paint the app in with its accent down
+ * the side. A name alone would not answer the only question being asked, which
+ * is what the thing looks like.
+ *
+ * Selection is a border that is always drawn and merely colourless when the
+ * theme is not the current one, so choosing never shifts the row by a pixel —
+ * the trick the duration dial used before it became a slider.
+ */
+function ThemeSwatch({
+  id,
+  selected,
+  onPress,
+}: {
+  id: ThemeId;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const color = useColor();
+  const theme = THEMES[id];
+  const corners = useOrganicCorners(radius.sm, THEME_ORDER.indexOf(id));
+
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${theme.name} theme`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.theme, pressed && styles.pressed]}>
+      <View
+        style={[
+          styles.swatch,
+          corners,
+          {
+            backgroundColor: theme.color.paper,
+            borderColor: selected ? color.accent : 'transparent',
+          },
+        ]}>
+        <View style={[styles.swatchAccent, { backgroundColor: theme.color.accent }]} />
+      </View>
+      <Text variant="caption" color={selected ? 'ink' : 'inkSoft'}>
+        {theme.name}
+      </Text>
+    </Pressable>
+  );
+}
+
+const SWATCH_WIDTH = 60;
+const SWATCH_HEIGHT = 42;
+
 const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingVertical: space.md,
   },
   scroll: {
-    paddingBottom: space.lg,
+    // Clears the floating nav, which this list now runs underneath.
+    paddingBottom: space.xxxl + space.lg,
     gap: space.md,
   },
   card: {
@@ -204,5 +273,28 @@ const styles = StyleSheet.create({
   archiveRow: {
     marginTop: space.sm,
     gap: 2,
+  },
+  themes: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: space.sm,
+  },
+  theme: {
+    alignItems: 'center',
+    gap: space.xs,
+  },
+  swatch: {
+    width: SWATCH_WIDTH,
+    height: SWATCH_HEIGHT,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    // Drawn in nothing when unselected rather than not drawn at all, so
+    // choosing a theme never moves the row.
+    borderWidth: hairline,
+  },
+  /** The accent, standing where it stands in the app: down one edge, not filling. */
+  swatchAccent: {
+    width: 14,
+    height: '100%',
   },
 });

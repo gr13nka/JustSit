@@ -1,7 +1,5 @@
 import { TextStyle } from 'react-native';
 
-import { color } from './tokens';
-
 /**
  * Two faces, with a hard boundary between them.
  *
@@ -29,7 +27,6 @@ export const type = {
   display: {
     fontFamily: font.hand,
     fontSize: 32,
-    color: color.ink,
   },
 
   /** Screen headers — "Your garden", "Session". */
@@ -37,7 +34,6 @@ export const type = {
     fontFamily: font.sansBold,
     fontSize: 18,
     lineHeight: 23,
-    color: color.ink,
   },
 
   /** The countdown. The largest thing in the app, and deliberately plain. */
@@ -45,7 +41,6 @@ export const type = {
     fontFamily: font.sans,
     fontSize: 56,
     letterSpacing: 0,
-    color: color.ink,
   },
 
   /** Big numbers on stat cards. */
@@ -53,7 +48,6 @@ export const type = {
     fontFamily: font.sansBold,
     fontSize: 26,
     lineHeight: 33,
-    color: color.ink,
   },
 
   /** Small uppercase labels — "CURRENT STREAK", "STAGE ONE". */
@@ -63,28 +57,24 @@ export const type = {
     lineHeight: 17,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: color.inkSoft,
   },
 
   body: {
     fontFamily: font.sansMed,
     fontSize: 15,
     lineHeight: 23,
-    color: color.ink,
   },
 
   caption: {
     fontFamily: font.sansMed,
     fontSize: 13,
     lineHeight: 18,
-    color: color.inkSoft,
   },
 
   button: {
     fontFamily: font.sansBold,
     fontSize: 15,
     letterSpacing: 0.2,
-    color: color.ink,
   },
 
   /** Teaching card body — the long-form 400 weight, set airier than body. */
@@ -92,7 +82,6 @@ export const type = {
     fontFamily: font.sans,
     fontSize: 18,
     lineHeight: 28,
-    color: color.ink,
   },
 
   /** A single felt line — a caption beside Батон, the onboarding tagline. */
@@ -100,6 +89,26 @@ export const type = {
     fontFamily: font.hand,
     fontSize: 18,
     lineHeight: 25,
-    color: color.ink,
   },
 } satisfies Record<string, TextStyle>;
+
+/**
+ * Which token each variant is set in.
+ *
+ * Colour lives beside the scale rather than inside it: a variant is frozen at
+ * import and the palette is not, so `Text` looks the value up per render. The
+ * pairing is still a typographic decision — "a caption is quieter than body" —
+ * and belongs in this file rather than scattered across screens.
+ */
+export const variantColor = {
+  display: 'ink',
+  title: 'ink',
+  timer: 'ink',
+  stat: 'ink',
+  label: 'inkSoft',
+  body: 'ink',
+  caption: 'inkSoft',
+  button: 'ink',
+  teaching: 'ink',
+  hand: 'ink',
+} as const satisfies Record<keyof typeof type, string>;

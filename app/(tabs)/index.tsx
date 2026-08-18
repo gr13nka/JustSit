@@ -1,4 +1,5 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { currentPlot, PLOT_SIZE } from '../../src/domain/plots';
@@ -6,9 +7,11 @@ import { currentStreak } from '../../src/domain/stats';
 import { space } from '../../src/theme/tokens';
 import { useSessions } from '../../src/store';
 import { Baton } from '../../src/ui/Baton';
+import { LeafIcon, SunIcon } from '../../src/ui/icons';
+import { Indicator } from '../../src/ui/Indicator';
+import { useBurst } from '../../src/ui/motion';
 import { PlantGrid } from '../../src/ui/PlantGrid';
 import { Screen } from '../../src/ui/Screen';
-import { StatCard } from '../../src/ui/StatCard';
 import { Text } from '../../src/ui/Text';
 
 /** Small enough to read as a mark on the page, not as an illustration. */
@@ -18,6 +21,19 @@ export default function GardenScreen() {
   const sessions = useSessions();
   const plot = currentPlot(sessions);
   const streak = currentStreak(sessions);
+
+  const { progress, restart } = useBurst();
+
+  /**
+   * The garden bursts every time you arrive at it, not once per launch. The tab
+   * stays mounted while you are on the other one, so a mount effect would play
+   * this exactly once in the life of the app.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      restart();
+    }, [restart])
+  );
 
   /**
    * The dot travels with the sitting rather than being written down here.
@@ -29,6 +45,16 @@ export default function GardenScreen() {
 
   return (
     <Screen edges={['top']}>
+      {/*
+        The two figures, pinned to the corners. They used to be a pair of cards
+        below the plot, which made the smallest fact on the screen the biggest
+        thing on it.
+      */}
+      <View style={styles.figures}>
+        <Indicator icon={SunIcon} value={streak} label="Current streak, in days" />
+        <Indicator icon={LeafIcon} value={sessions.length} label="Sittings so far" grew />
+      </View>
+
       <View style={styles.header}>
         <Text variant="title">Your garden</Text>
         <Text variant="caption" style={styles.plotLabel}>
@@ -37,9 +63,8 @@ export default function GardenScreen() {
       </View>
 
       {/*
-        Eighteen rows are taller than any phone, so the plot scrolls and the
-        figures below it stay put. They are a footnote to the garden; having to
-        scroll past 108 dots to reach them would make them feel like the point.
+        Eighteen rows are taller than any phone, so the plot scrolls. The nav
+        floats over the foot of it, so the last rows are padded clear of it.
       */}
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -54,45 +79,34 @@ export default function GardenScreen() {
             <Baton size={BATON_SIZE} />
           </View>
         )}
-        <PlantGrid plot={plot} onPressEmpty={sitIn} />
+        <PlantGrid plot={plot} onPressEmpty={sitIn} burst={progress} />
       </ScrollView>
-
-      <View style={styles.stats}>
-        <StatCard
-          label="Current streak"
-          value={streak}
-          unit={streak === 1 ? 'day' : 'days'}
-          accent
-        />
-        <StatCard
-          label="Total sessions"
-          value={sessions.length}
-          unit={sessions.length === 1 ? 'session' : 'sessions'}
-        />
-      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  figures: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: space.xs,
+  },
   header: {
     alignItems: 'center',
-    paddingVertical: space.md,
+    paddingTop: space.sm,
+    paddingBottom: space.md,
     gap: space.xs,
   },
   plotLabel: {
     letterSpacing: 0.5,
   },
   scroll: {
-    paddingBottom: space.lg,
+    // Clears the floating nav, which the plot now runs underneath.
+    paddingBottom: space.xxxl + space.lg,
   },
   empty: {
     alignItems: 'center',
     paddingBottom: space.md,
-  },
-  stats: {
-    flexDirection: 'row',
-    gap: space.md,
-    paddingTop: space.md,
   },
 });

@@ -1,3 +1,5 @@
+import { ThemeId } from '../theme/themes';
+
 /** A sitting that ran to completion. Abandoned sessions are never recorded. */
 export type Session = {
   id: string;
@@ -53,4 +55,9 @@ export type Settings = {
    * one thing a sitting is not for.
    */
   hideSeconds: boolean;
+  /**
+   * Which palette the app is wearing. The one piece of pure taste in here —
+   * it changes nothing about how the app behaves, only what it is drawn in.
+   */
+  theme: ThemeId;
 };

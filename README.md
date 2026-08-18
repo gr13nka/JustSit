@@ -55,6 +55,7 @@ carry them across.
 | **Curriculum** | Wallace's ten stages. The app offers to advance after ~20 sessions across 3+ weeks; **you** confirm whether the next stage describes your mind. Declining is respected for a fortnight. |
 | **Tips** | One card before each sitting, in order, drawn from your current stage. |
 | **Duration** | Your stage pre-selects a length; every option stays tappable. |
+| **Themes** | Three palettes — Ink, Butter, Prose — chosen in the You tab. Taste only: nothing about the practice changes. |
 | **Sound** | One bell in, one bell out. Nothing between. |
 | **Reminders** | One daily notification, off until you set a time. |
 
@@ -66,7 +67,8 @@ app/                 screens (expo-router)
   session/           start → tip → run → complete → advance   (outside the tab bar)
   onboarding.tsx
 src/
-  theme/tokens.ts    ← every colour in the app
+  theme/themes.ts    ← every colour in the app, in three palettes
+  theme/tokens.ts    space, radius, organic corners
   theme/typography.ts
   store/             the only module that touches persistence
   domain/            pure, tested: stages, tips, progression, plots, plants, stats
@@ -79,9 +81,11 @@ earned — at its most austere setting. The rules live in CLAUDE.md's "Design
 discipline" section, which is the authoritative copy; the two worth knowing
 before touching anything:
 
-- **No hex literal outside `src/theme/tokens.ts`.** The accent is ink —
-  touchability is marked by shape, never by a colour — and the only colour in
-  the app is the garden's green (plus a fixed pen-bright bloom per species).
+- **No hex literal outside `src/theme/themes.ts`,** and colour is read through
+  `useColor()` rather than imported — a `StyleSheet.create` is frozen at import
+  and cannot repaint. Touchability is marked by shape and by the app's single
+  accent (ink, or brick in the two loud themes); everything else colourful is
+  the garden's green, plus a fixed pen-bright bloom per species.
 - **Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read
   for information; Shantell Sans is a voice for one-line felt moments and never
   carries a paragraph.
@@ -98,7 +102,9 @@ Adding species later is always safe: a session stores the plant key it resolved
 at completion, so plants that already grew never change.
 
 Note PNGs can't be tinted in code — each plant carries the colours you drew it
-in. Worth keeping them in a range that sits well on the paper, `#F7F3E9`.
+in, and would stop following the theme the way the drawn plants do. Worth
+keeping them in a range that sits well on all three papers, the lightest of
+which is Prose's near-white and the warmest Butter's.
 
 **Bells are still placeholders** — synthesised bowl tones. Regenerate with
 `node scripts/generate-placeholder-bells.mjs`, or just replace

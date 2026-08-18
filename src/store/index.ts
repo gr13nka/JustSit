@@ -8,6 +8,7 @@ import {
   nextFreeSlot,
   plotIndexOfSlot,
 } from '../domain/plots';
+import { DEFAULT_THEME } from '../theme/themes';
 import {
   mergePersisted,
   migrate,
@@ -32,6 +33,10 @@ const initialSettings: Settings = {
   reminderAt: null,
   lastDurationMs: null,
   hideSeconds: true,
+  // A new field needs a default, not a migration: `mergePersisted` merges
+  // settings over these on every launch, so an existing garden comes back
+  // wearing the theme it was drawn in.
+  theme: DEFAULT_THEME,
 };
 
 type StoreState = {

@@ -23,6 +23,7 @@ const defaults: PersistedState = {
     reminderAt: null,
     lastDurationMs: null,
     hideSeconds: true,
+    theme: 'ink',
   },
 };
 
@@ -122,6 +123,9 @@ describe('mergePersisted', () => {
     expect(merged.settings.reminderAt).toBe('07:30');
     expect(merged.settings.onboardedAt).toBe(1_700_000_000_000);
     expect(merged.sessions).toHaveLength(1);
+    // A garden grown before there were themes comes back wearing the default
+    // one rather than `undefined`, which would resolve to no palette at all.
+    expect(merged.settings.theme).toBe('ink');
   });
 
   it('fills a progress field the stored blob has never heard of', () => {

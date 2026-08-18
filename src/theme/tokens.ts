@@ -1,43 +1,19 @@
 /**
- * The single source of colour, spacing and shape for the whole app.
- * No hex literal should appear anywhere else in the codebase.
- */
-
-/**
- * Ink is the accent. Nothing in the interface is coloured to say "touch me" —
- * touchability is carried by shape: fills, 1.5px ink borders, organic corners.
- * That leaves colour free to mean one thing only, and the only place it means
- * it is the garden.
+ * The single source of spacing and shape for the whole app.
  *
- * So: chrome is paper and ink; a plant that grew is pen-green; a bloom may take
- * one pen bright. If a screen looks flat, the fix is shape or space, not hue.
+ * Colour used to live here too, and moved to `themes.ts` when the app grew
+ * three of them: everything below is identical in every theme and can stay a
+ * plain import, while colour has to be read through `useColor()` because a
+ * value frozen at import cannot repaint. No hex literal should appear anywhere
+ * outside `themes.ts`.
+ *
+ * The structure colour serves has not changed, whichever theme is on. Nothing
+ * in the interface is coloured to say "touch me" — touchability is carried by
+ * shape: fills, 1.5px borders, organic corners. That leaves colour free to mean
+ * one thing only, and the only place it means it is the garden. Chrome is paper,
+ * ink and the one accent; a plant that grew is pen-green; a bloom may take one
+ * pen bright. If a screen looks flat, the fix is shape or space, not hue.
  */
-export const color = {
-  paper: '#F7F3E9',
-  paperDeep: '#EFE9DA',
-  ink: '#26241F',
-  inkSoft: '#6B665C',
-  /** Empty dots, elapsed arc, dividers, placeholders. Never text a user must read. */
-  inkFaint: '#A9A294',
-
-  /** Growth. Plant strokes and large "something grew" marks. Never small text. */
-  penGreen: '#2E7D46',
-
-  /**
-   * The brights, and the two places they are licensed. A bloom in the garden
-   * may be drawn in one of them — that is the app's multicolour moment — and the
-   * first-run hero is allowed a night sky before anything has grown at all.
-   * Illustration only: none of these may appear in UI chrome.
-   */
-  penBlue: '#2F3AC7',
-  penOrange: '#E07A1F',
-  penPink: '#D9569B',
-
-  /** Destructive actions only. Currently the dev panel and nothing else. */
-  danger: '#B3402F',
-} as const;
-
-export type ColorName = keyof typeof color;
 
 /** 4pt base. Prefer whitespace over dividers — this app should breathe. */
 export const space = {

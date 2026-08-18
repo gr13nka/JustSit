@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { color, radius, space } from '../theme/tokens';
+import { radius, space } from '../theme/tokens';
+import { useColor } from '../theme/useColor';
 import { useOrganicCorners } from './useOrganicCorners';
 
 /**
@@ -21,14 +22,18 @@ export function Card({
   cornerSeed?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const color = useColor();
   const corners = useOrganicCorners(radius.lg, cornerSeed);
 
-  return <View style={[styles.card, corners, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, { backgroundColor: color.paperDeep }, corners, style]}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: color.paperDeep,
     padding: space.lg,
   },
 });

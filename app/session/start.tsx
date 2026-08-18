@@ -1,15 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 
 import { stageAt } from '../../src/domain/stages';
 import { space } from '../../src/theme/tokens';
+import { useColor } from '../../src/theme/useColor';
 import { useProgress, useSettings } from '../../src/store';
 import { Button } from '../../src/ui/Button';
 import { Clock } from '../../src/ui/Clock';
 import { DurationDial } from '../../src/ui/DurationDial';
+import { ArrowLeft } from '../../src/ui/icons';
+import { usePressSettle } from '../../src/ui/motion';
 import { Screen } from '../../src/ui/Screen';
-import { Text } from '../../src/ui/Text';
 import { TimerRing } from '../../src/ui/TimerRing';
 
 /** The ring's plant before a sitting. The one that grows is chosen at the end. */
@@ -37,7 +39,7 @@ export default function StartScreen() {
   return (
     <Screen edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Button label="Back" variant="quiet" onPress={() => router.back()} />
+        <BackArrow onPress={() => router.back()} />
       </View>
 
       <View style={styles.middle}>
@@ -45,9 +47,6 @@ export default function StartScreen() {
         <View style={styles.clock}>
           <Clock ms={durationMs} />
         </View>
-        <Text variant="caption" style={styles.motto}>
-          Stay. Breathe. Be.
-        </Text>
         {/*
           The app's only wobbly button. This is the one place a hand commits to
           something — every other action is a consequence of this one — and the
@@ -71,12 +70,46 @@ export default function StartScreen() {
   );
 }
 
+/**
+ * The way back, drawn rather than written.
+ *
+ * "Back" was the only word on this screen doing a job an arrow does better, and
+ * the kit sanctions hand-drawn arrows for exactly this. The label survives in
+ * `accessibilityLabel`, where it is still the word.
+ */
+function BackArrow({ onPress }: { onPress: () => void }) {
+  const color = useColor();
+  const { onPressIn, onPressOut, settleStyle } = usePressSettle();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      hitSlop={space.md}
+      style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
+      <Animated.View style={settleStyle}>
+        <ArrowLeft color={color.inkSoft} size={BACK_SIZE} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+/** Big enough to read as a drawing, small enough not to be the first thing seen. */
+const BACK_SIZE = 26;
+
 const styles = StyleSheet.create({
   header: {
     alignItems: 'flex-start',
-    // Cancels the button's own padding so the word lines up with the screen's
-    // content edge, while the tap target stays the full size.
-    marginLeft: -space.xl,
+  },
+  back: {
+    paddingVertical: space.sm,
+  },
+  /** Ink settling, the same as everywhere else. */
+  pressed: {
+    opacity: 0.6,
   },
   middle: {
     flex: 1,
@@ -88,14 +121,13 @@ const styles = StyleSheet.create({
     marginTop: space.lg,
   },
   /**
-   * A touch of air, but less than the mono face wanted: rounded letters at this
-   * size come apart at anything wider.
+   * Held well clear of the dial below it. The two are the only controls on the
+   * screen and they do opposite things — one changes the sitting, the other
+   * commits to it — so they should not read as a pair of buttons in a row.
    */
-  motto: {
-    letterSpacing: 0.5,
-  },
   start: {
-    marginTop: space.md,
+    marginTop: space.lg,
+    marginBottom: space.xl,
     minWidth: 220,
   },
 });

@@ -10,7 +10,7 @@ import {
   ensureChannels,
 } from '../src/session/notifications';
 import { fontAssets } from '../src/theme/fontAssets';
-import { color } from '../src/theme/tokens';
+import { useColor } from '../src/theme/useColor';
 import { useHydrated } from '../src/store';
 
 SplashScreen.preventAutoHideAsync();
@@ -18,6 +18,8 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const hydrated = useHydrated();
+  // Above the early return below: a hook cannot be called conditionally.
+  const color = useColor();
 
   const ready = (fontsLoaded || fontError) && hydrated;
 

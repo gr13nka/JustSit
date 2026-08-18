@@ -1,12 +1,14 @@
 import { Stack } from 'expo-router';
 
-import { color } from '../../src/theme/tokens';
+import { useColor } from '../../src/theme/useColor';
 
 /**
  * The sitting lives outside the tab bar on purpose. Navigation visible during
  * meditation is an invitation to leave.
  */
 export default function SessionLayout() {
+  const color = useColor();
+
   return (
     <Stack
       screenOptions={{

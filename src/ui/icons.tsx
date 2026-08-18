@@ -3,7 +3,7 @@ import Svg, { G, Path } from 'react-native-svg';
 
 import { PEN_DOODLE } from './pen';
 
-type IconProps = {
+export type IconProps = {
   /** ColorValue rather than string — this is what expo-router hands tabBarIcon. */
   color: ColorValue;
   size?: number;
@@ -64,6 +64,63 @@ export function ArrowRight({ color, size }: IconProps) {
       <Path d="M6,27 C16,23 29,22 38,24" />
       <Path d="M32,16 C36,19 40,22 43,25" />
       <Path d="M43,25 C39,28 35,30 31,33" />
+    </Frame>
+  );
+}
+
+/**
+ * An arrow pointing back, for the one screen you can back out of.
+ *
+ * Drawn rather than mirrored from `ArrowRight`: flipping a path with a
+ * transform gives you the same hand's stroke running the wrong way, and the
+ * overshoot at the head — the part that makes it look drawn — ends up on the
+ * side a right-handed pen would not have left it on.
+ */
+export function ArrowLeft({ color, size }: IconProps) {
+  return (
+    <Frame tint={color} size={size}>
+      <Path d="M42,26 C32,22 19,21 10,23" />
+      <Path d="M16,15 C12,18 8,21 5,24" />
+      <Path d="M5,24 C9,27 13,29 17,32" />
+    </Frame>
+  );
+}
+
+/**
+ * A sun — one day — for the run of days.
+ *
+ * The kit's own sun draws its rays with straight line commands. Nothing in this
+ * app is drawn with a ruler, so each ray is redrawn here as a cubic with a
+ * slight bow in it.
+ */
+export function SunIcon({ color, size }: IconProps) {
+  return (
+    <Frame tint={color} size={size}>
+      <Path d="M24,17 C29,16 32,20 31,24 C33,28 29,32 24,31 C19,32 15,28 16,24 C15,19 19,17 24,17" />
+      <Path d="M24,15 C24.3,12.6 23.8,10.4 24,8" />
+      <Path d="M29,17 C30.9,14.8 32.4,13 34,11" />
+      <Path d="M33,24 C35.6,23.7 38.4,24.3 41,24" />
+      <Path d="M29,31 C30.5,33 31.8,35.1 33,37" />
+      <Path d="M24,33 C24.3,35.4 23.8,37.6 24,40" />
+      <Path d="M19,31 C17.7,32.6 16.4,34.3 15,36" />
+      <Path d="M16,24 C13.4,24.5 10.6,24.6 8,25" />
+      <Path d="M19,17 C17.4,15.3 15.8,13.6 14,12" />
+    </Frame>
+  );
+}
+
+/**
+ * A leaf — one thing that grew — for the count of sittings.
+ *
+ * Deliberately not the sprout: that one is the Garden tab's mark, already
+ * spoken for at the bottom of the same screen.
+ */
+export function LeafIcon({ color, size }: IconProps) {
+  return (
+    <Frame tint={color} size={size}>
+      <Path d="M24,8 C34,14 36,28 24,42 C12,28 14,14 24,8" />
+      <Path d="M24,11 C23,20 25,30 24,39" />
+      <Path d="M24,17 C27,16 30,17 31,19 M24,23 C20,22 17,23 16,25 M24,29 C27,28 30,29 31,31 M24,34 C21,33 18,34 17,36" />
     </Frame>
   );
 }

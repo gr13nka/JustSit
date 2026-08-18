@@ -1,7 +1,8 @@
 import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { color, hairline, space } from '../theme/tokens';
+import { hairline, space } from '../theme/tokens';
+import { useColor } from '../theme/useColor';
 
 const WIDTH = 48;
 const HEIGHT = 6;
@@ -25,6 +26,8 @@ const WOBBLE =
  * It sits wherever its parent puts it; only the space around it is negotiable.
  */
 export function Rule({ style }: { style?: StyleProp<ViewStyle> }) {
+  const color = useColor();
+
   return (
     <Svg
       width={WIDTH}

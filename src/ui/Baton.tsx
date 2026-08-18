@@ -1,6 +1,6 @@
 import Svg, { G, Path } from 'react-native-svg';
 
-import { color } from '../theme/tokens';
+import { useColor } from '../theme/useColor';
 import { PEN_HERO } from './pen';
 
 /** Everything that is Батон whatever he happens to be doing. */
@@ -48,6 +48,8 @@ export function Baton({
   pose?: BatonPose;
   size?: number;
 }) {
+  const color = useColor();
+
   return (
     <Svg width={size} height={size} viewBox="0 0 200 200">
       <G stroke={color.ink} {...PEN_HERO}>

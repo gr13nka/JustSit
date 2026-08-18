@@ -45,7 +45,8 @@ app/                 screens only (expo-router, file-based)
   session/           start → tip → run → complete → advance  (outside the tab bar)
   onboarding.tsx     welcome → reminder → stage one, shown once
 src/
-  theme/             tokens.ts (all colour), typography.ts (type scale)
+  theme/             themes.ts (all colour), tokens.ts (space/shape),
+                     typography.ts (type scale)
   store/             the ONLY module that touches persistence
   domain/            pure + tested: stages, progression, plots, plants, stats
   session/           useSession (clock), bells, notifications
@@ -64,6 +65,13 @@ exactly the logic that is painful to check by hand.
 `settings`) in Zustand, persisted to AsyncStorage as one JSON blob. Everything
 else is *derived* — plots, streaks, which tip is next, whether to offer a stage.
 Nothing derived is ever stored.
+
+**Colour is read, not imported.** `settings.theme` names one of three palettes
+in `src/theme/themes.ts`, and every component gets the live one from
+`useColor()`. A `StyleSheet.create` is frozen at import and cannot repaint, so
+colour props live in an inline style and only structure stays in the sheet.
+`src/theme/tokens.ts` keeps what is the same in every theme — space, radius,
+`hairline`, `organicCorners` — and is still a plain import.
 
 ### The store's public surface
 
@@ -146,6 +154,8 @@ Leaving early shows no message and no confirmation dialog.
 | Tips move forward in written order, then cycle | `domain/progression.nextTip` |
 | One bell in, one out, nothing between | `session/bells.ts` |
 | One daily reminder, off by default, no streak nagging | `session/notifications.ts` |
+| The two figures are corner indicators, not cards — no label, no unit | `ui/Indicator.tsx`, `app/(tabs)/index.tsx` |
+| Theme is taste, never behaviour: it changes values, never what the app does | `settings.theme`, `theme/themes.ts` |
 
 Wallace's criterion for advancing is the state of your mind, not attendance. The
 thresholds decide only when it is *reasonable to ask*.
@@ -154,18 +164,30 @@ thresholds decide only when it is *reasonable to ask*.
 
 The visual language is **Karakuli**, the author's personal hand-drawn design
 system (warm paper, one soft round-nib pen, colour that is earned), applied at
-its most austere setting: accent = ink, no washes, calm energy. Its rules are
-encoded below; when in doubt, less colour and more ink.
+a near-austere setting: no washes, calm energy, and one accent — ink by default,
+brick in the two loud themes. Its rules are encoded below; when in doubt, less
+colour and more ink.
 
-**Colour is earned, and almost only the garden earns it.** The accent is ink:
-touchability is marked by shape — an ink fill, a 1.5px ink border, organic
-corners — never by a colour. Green means *something grew* (plant strokes, the
-big numbers on stat cards); the pen brights (`penBlue/penOrange/penPink`) have
-exactly two licences — a plant's bloom (the reward-garden colour moment), and
-the first-run hero's night sky (`SittingFigure`, an onboarding hero's
-first-impression licence). If a pen colour shows up in ordinary chrome, that's
-a bug.
-**No hex literal may appear outside `src/theme/tokens.ts`.**
+**Colour is earned, and almost only the garden earns it.** Touchability is
+marked by shape — a fill, a 1.5px border, organic corners — and by the app's one
+`accent`, which is ink in the Ink theme and brick in the other two. The accent
+appears in exactly four places: the primary button's fill, the wobbly button's
+border, the breathing ring, and whichever slider marker is travelling. Green
+means *something grew* — plant strokes, and the garden's session count. The pen
+brights (`penBlue/penOrange/penPink`) have exactly two licences: a plant's bloom
+(the reward-garden colour moment), and the first-run hero's night sky
+(`SittingFigure`). If a pen bright shows up in ordinary chrome, that's a bug.
+**No hex literal may appear outside `src/theme/themes.ts`.**
+
+**Three themes, and they vary values, not structure.** Ink (cream paper, accent
+= ink) is the original and the default; Butter (butter paper, brick accent) and
+Prose (near-white editorial paper, brick accent) are the two loud ones. Karakuli
+allows an app exactly one accent; spending that licence three times was a
+deliberate call, because the ground a plant is drawn on changes how the drawing
+reads. What a theme may not do is add a colour that means something new. Butter
+re-mixes the garden pens — green goes olive on a light warm ground and orange
+disappears — and both brick themes drop `danger` to an oxblood, because a
+warning that is the same colour as every button is not a warning.
 
 **Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read for
 information — timer, labels, nav, stats, buttons (500), headings (700), and the
@@ -174,18 +196,20 @@ voice, not a reading face: the hand-scrawled app name and one-line felt captions
 (`variant="hand"`), never a paragraph. If a sentence runs past a line, it goes
 back to the body face.
 
-**Hand-drawn touches are rationed.** Exactly five kinds exist: the wobbly
+**Hand-drawn touches are rationed.** Exactly four kinds exist: the wobbly
 `Rule`, organic corner asymmetry (`organicCorners` — always seeded, never
-random), the active tab's scribble underline, hand-drawn arrows (`ArrowRight`),
-and the single `wobbly` button (Start, and only Start). A sixth — hand-drawn
-check marks — is sanctioned by the style but not yet drawn; nothing beyond
-those is. Every drawn path is stroke-only cubic béziers with round caps and
+random), hand-drawn arrows (`ArrowRight`, `ArrowLeft` — the way back out of a
+sitting), and the single `wobbly` button (Start, and only Start). The active
+tab's scribble underline was the fifth and is gone: the sliding selector's
+marker says "you are here" now, and an interface needs one way of saying it.
+Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
+beyond those is. Every drawn path is stroke-only cubic béziers with round caps and
 baked-in wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect
 arcs. The single sanctioned filled shape is the empty slot's dot
 (`Plant.tsx`'s `EmptySlot`). The pen contract lives in `src/ui/pen.ts`:
 doodles draw at 2.8 on a 48-unit canvas, heroes at 7 on 200, and hand-drawn UI
-marks (`Rule`, `TabScribble`) at hairline–2 on their own tight canvases — so
-one hand appears to have drawn the whole app.
+marks (`Rule`) at hairline–2 on their own tight canvas — so one hand appears to
+have drawn the whole app.
 
 **Батон, the sleeping loaf cat, holds the quiet places** — the reminder step of
 onboarding and the empty garden — and nowhere else. He never cheers; the app's
@@ -211,6 +235,28 @@ the quietest mark on the screen, and is `inkFaint` rather than green: green
 means *something grew*, and elapsed time has not grown anything.
 
 **At most one primary button per screen.** Any second action is `variant="quiet"`.
+
+**Motion lives in `src/ui/motion.tsx`, and none of it loops.** An *entrance*
+(`Sprout`, `Rise`) marks a first appearance; a *settle* (`usePressSettle`) is
+feedback for a touch. Everything animates transform and opacity only, so every
+driver is native. The breathing ring is the one exception and owns its own loop,
+because there the loop is the point.
+
+**The garden bursts on every visit, not once per launch.** `useBurst` runs one
+shared 0..1 clock and each `Sprout` reads its own window out of it, so 108 cells
+cost one driver. `app/(tabs)/index.tsx` restarts it from `useFocusEffect` — the
+tab stays mounted, so a mount effect would fire exactly once in the life of the
+app. Delays are seeded from the slot (`hash32('burst-' + slot)`), never random:
+a field that re-rolled its timings would be a different drawing each visit.
+
+**One sliding selector, used twice.** `src/ui/Slider.tsx` owns where the marker
+is and how it travels; the caller owns what each item draws and what the row
+sits in. The screen switcher (`SliderNav`) floats in a bar over the page; the
+duration picker sits in a card. Items are a fixed width by contract, which is
+what keeps the travel to a single `translateX` and therefore on the native
+driver — and means there is nothing to measure and no frame where the marker is
+in the wrong place. It is silent: the kit allows this one navigation a sound,
+but this app rings one bell in, one out, and nothing between.
 
 ## Toolchain traps already hit
 

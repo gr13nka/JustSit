@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { color, hairline } from '../theme/tokens';
+import { hairline } from '../theme/tokens';
+import { useColor } from '../theme/useColor';
 import { Plant } from './Plant';
 import { arcLength, ringPath } from './ring';
 
@@ -54,6 +55,7 @@ export function TimerRing({
 }) {
   // A hairline, not the hero pen: at 210pt across, a stroke drawn to the 200-unit
   // hero ratio would shout, and this ring is meant to sit still and be quiet.
+  const color = useColor();
   const strokeWidth = hairline;
   const centre = size / 2;
   const fitRadius = (size - strokeWidth) / 2;
@@ -126,7 +128,7 @@ export function TimerRing({
         <Svg width={size} height={size}>
           <Path
             d={ringPath(centre, fitRadius)}
-            stroke={color.ink}
+            stroke={color.accent}
             strokeWidth={strokeWidth}
             fill="none"
             strokeLinecap="round"

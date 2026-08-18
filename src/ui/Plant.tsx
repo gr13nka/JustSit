@@ -1,7 +1,8 @@
 import Svg, { Path } from 'react-native-svg';
 
 import { isKnownPlant, PlantKey } from '../domain/plants';
-import { color, ColorName } from '../theme/tokens';
+import { ColorName } from '../theme/themes';
+import { useColor } from '../theme/useColor';
 import { PEN_DOODLE } from './pen';
 
 /**
@@ -190,6 +191,7 @@ const FALLBACK: PlantKey = 'grass';
  * losing to a renamed species.
  */
 export function Plant({ plant, size = 24 }: { plant: string; size?: number }) {
+  const color = useColor();
   const key = isKnownPlant(plant) ? plant : FALLBACK;
   const { growth, bloom } = SPECIES[key];
 
@@ -222,6 +224,8 @@ const DOT =
  * not an instruction.
  */
 export function EmptySlot({ size = 24 }: { size?: number }) {
+  const color = useColor();
+
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
       <Path d={DOT} fill={color.inkFaint} />

@@ -7,7 +7,8 @@ import {
   SESSIONS_TO_OFFER,
 } from '../domain/progression';
 import { FINAL_STAGE } from '../domain/stages';
-import { color, hairline, radius, space } from '../theme/tokens';
+import { hairline, radius, space } from '../theme/tokens';
+import { useColor } from '../theme/useColor';
 import { __replaceState, __reset, getState, setStage } from '../store';
 import { Session } from '../store/types';
 import { Text } from './Text';
@@ -24,6 +25,8 @@ const TEN_MINUTES = 600_000;
  * weeks. Waiting for either by hand is not a realistic way to check they work.
  */
 export function DevPanel() {
+  const color = useColor();
+
   if (!__DEV__) return null;
 
   const seed = (n: number) => {
@@ -69,7 +72,7 @@ export function DevPanel() {
   };
 
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, { borderColor: color.inkFaint }]}>
       <Text variant="label" color="inkSoft">
         Dev only
       </Text>
@@ -98,10 +101,16 @@ function DevButton({
   onPress: () => void;
   destructive?: boolean;
 }) {
+  const color = useColor();
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.button,
+        { borderColor: color.inkFaint },
+        pressed && styles.pressed,
+      ]}>
       <Text variant="caption" color={destructive ? 'danger' : 'inkSoft'}>
         {label}
       </Text>
@@ -112,7 +121,6 @@ function DevButton({
 const styles = StyleSheet.create({
   panel: {
     borderWidth: hairline,
-    borderColor: color.inkFaint,
     borderRadius: radius.card,
     borderStyle: 'dashed',
     padding: space.md,
@@ -127,7 +135,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: space.sm,
     borderWidth: hairline,
-    borderColor: color.inkFaint,
     borderRadius: radius.card,
   },
   pressed: {
