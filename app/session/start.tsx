@@ -7,7 +7,6 @@ import { space } from '../../src/theme/tokens';
 import { useColor } from '../../src/theme/useColor';
 import { useProgress, useSettings } from '../../src/store';
 import { Button } from '../../src/ui/Button';
-import { Clock } from '../../src/ui/Clock';
 import { DurationDial } from '../../src/ui/DurationDial';
 import { ArrowLeft } from '../../src/ui/icons';
 import { usePressSettle } from '../../src/ui/motion';
@@ -42,28 +41,36 @@ export default function StartScreen() {
         <BackArrow onPress={() => router.back()} />
       </View>
 
+      {/*
+        The ring has the free height to itself and sits in the middle of it. It
+        used to share a centred group with the clock and the button, which on a
+        tall phone put all three near the top and left the foot of the screen
+        empty.
+      */}
       <View style={styles.middle}>
         <TimerRing plant={PREVIEW_PLANT} />
-        <View style={styles.clock}>
-          <Clock ms={durationMs} />
-        </View>
-        {/*
-          The app's only wobbly button. This is the one place a hand commits to
-          something — every other action is a consequence of this one — and the
-          variant stops meaning anything if a second screen borrows it.
-        */}
-        <Button
-          label="Start"
-          variant="wobbly"
-          onPress={() =>
-            router.push({
-              pathname: '/session/tip',
-              params: { durationMs: String(durationMs), slot: params.slot },
-            })
-          }
-          style={styles.start}
-        />
       </View>
+
+      {/*
+        The app's only wobbly button. This is the one place a hand commits to
+        something — every other action is a consequence of this one — and the
+        variant stops meaning anything if a second screen borrows it.
+
+        It sits above the dial rather than inside the centred block, so "how
+        long" and "go" are next to each other at the foot of the screen, where a
+        thumb is.
+      */}
+      <Button
+        label="Start"
+        variant="wobbly"
+        onPress={() =>
+          router.push({
+            pathname: '/session/tip',
+            params: { durationMs: String(durationMs), slot: params.slot },
+          })
+        }
+        style={styles.start}
+      />
 
       <DurationDial valueMs={durationMs} onChange={setDurationMs} />
     </Screen>
@@ -115,18 +122,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: space.md,
-  },
-  clock: {
-    marginTop: space.lg,
   },
   /**
-   * Held well clear of the dial below it. The two are the only controls on the
+   * Held clear of the dial below it. The two are the only controls on the
    * screen and they do opposite things — one changes the sitting, the other
    * commits to it — so they should not read as a pair of buttons in a row.
+   *
+   * The chosen length is no longer printed above this button. It was a large
+   * number saying exactly what the dial's own marker already says, and the
+   * marker says it in the place you change it.
    */
   start: {
-    marginTop: space.lg,
+    alignSelf: 'center',
     marginBottom: space.xl,
     minWidth: 220,
   },

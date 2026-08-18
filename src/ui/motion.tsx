@@ -18,10 +18,32 @@ import { Animated, Easing, StyleProp, ViewStyle } from 'react-native';
 export const BOUNCE = Easing.bezier(0.34, 1.56, 0.64, 1);
 
 /** How long one doodle takes to grow. */
-const SPROUT_MS = 300;
+const SPROUT_MS = 200;
 /** The window the whole field's delays are scattered across. */
-export const BURST_SPREAD_MS = 450;
+export const BURST_SPREAD_MS = 280;
 const BURST_MS = BURST_SPREAD_MS + SPROUT_MS;
+
+/**
+ * The shape of one sprout, frame by frame: `at` is how far through the growth
+ * this frame sits, and the rest is what the doodle looks like there.
+ *
+ * Written as frames rather than three parallel arrays because the character is
+ * in how the channels disagree at a given moment, and that is unreadable when
+ * they are spelled out separately.
+ *
+ * It is squash and stretch, which is why `scaleX` and `scaleY` are never at
+ * their extremes together: the doodle shoots past full height while still
+ * pinched narrow, then swings back under it as it widens, then settles. A pop
+ * where both go fat at once reads as a bubble rather than as something growing.
+ */
+const GROWTH = [
+  { at: 0, opacity: 0, scaleY: 0.05, scaleX: 0.7 },
+  { at: 0.55, opacity: 1, scaleY: 1.22, scaleX: 0.88 },
+  { at: 0.8, opacity: 1, scaleY: 0.96, scaleX: 1.05 },
+  { at: 1, opacity: 1, scaleY: 1, scaleX: 1 },
+] as const;
+
+type Channel = 'opacity' | 'scaleY' | 'scaleX';
 
 /**
  * One clock for a whole field of sprouting doodles.
@@ -54,10 +76,11 @@ export function useBurst() {
 }
 
 /**
- * One doodle growing up out of the ground: squat and faint, past full height,
- * then settling back. `delayMs` is where in the burst this one starts, and it
- * is the caller's business — a garden seeds it from the slot so the same plot
- * scatters the same way every time rather than re-rolling on each visit.
+ * One doodle growing up out of the ground, on the curve in `GROWTH` above.
+ *
+ * `delayMs` is where in the burst this one starts, and it is the caller's
+ * business — a garden seeds it from the slot so the same plot scatters the same
+ * way every time rather than re-rolling on each visit.
  */
 export function Sprout({
   progress,
@@ -71,20 +94,22 @@ export function Sprout({
   // The clock is shared, so this doodle's window is a slice of it. Clamped at
   // both ends: before its turn it sits squat and invisible, after it it is
   // simply grown.
-  const start = delayMs / BURST_MS;
-  const peak = (delayMs + SPROUT_MS * 0.65) / BURST_MS;
-  const end = (delayMs + SPROUT_MS) / BURST_MS;
+  const frames = GROWTH.map((frame) => (delayMs + frame.at * SPROUT_MS) / BURST_MS);
 
-  const at = (outputRange: number[]) =>
-    progress.interpolate({ inputRange: [start, peak, end], outputRange, extrapolate: 'clamp' });
+  const track = (channel: Channel) =>
+    progress.interpolate({
+      inputRange: frames,
+      outputRange: GROWTH.map((frame) => frame[channel]),
+      extrapolate: 'clamp',
+    });
 
   return (
     <Animated.View
       style={{
         // A plant grows from its root, not from its middle.
         transformOrigin: 'bottom',
-        opacity: at([0, 1, 1]),
-        transform: [{ scaleY: at([0.25, 1.05, 1]) }, { scaleX: at([0.85, 0.98, 1]) }],
+        opacity: track('opacity'),
+        transform: [{ scaleY: track('scaleY') }, { scaleX: track('scaleX') }],
       }}>
       {children}
     </Animated.View>

@@ -172,7 +172,11 @@ colour and more ink.
 marked by shape — a fill, a 1.5px border, organic corners — and by the app's one
 `accent`, which is ink in the Ink theme and brick in the other two. The accent
 appears in exactly four places: the primary button's fill, the wobbly button's
-border, the breathing ring, and whichever slider marker is travelling. Green
+fill, the breathing ring, and the screen switcher's travelling marker. Note
+which slider that is: navigation earns the accent because where you are in the
+app is worth the app's one loud colour, while the duration dial — a choice made
+*inside* a screen — takes `Slider`'s `tone="quiet"` and a `paperDeep` marker.
+Committing to something is Start's job, and Start is the accent. Green
 means *something grew* — plant strokes, and the garden's session count. The pen
 brights (`penBlue/penOrange/penPink`) have exactly two licences: a plant's bloom
 (the reward-garden colour moment), and the first-run hero's night sky
@@ -203,13 +207,38 @@ sitting), and the single `wobbly` button (Start, and only Start). The active
 tab's scribble underline was the fifth and is gone: the sliding selector's
 marker says "you are here" now, and an interface needs one way of saying it.
 Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
-beyond those is. Every drawn path is stroke-only cubic béziers with round caps and
-baked-in wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect
-arcs. The single sanctioned filled shape is the empty slot's dot
-(`Plant.tsx`'s `EmptySlot`). The pen contract lives in `src/ui/pen.ts`:
-doodles draw at 2.8 on a 48-unit canvas, heroes at 7 on 200, and hand-drawn UI
-marks (`Rule`) at hairline–2 on their own tight canvas — so one hand appears to
-have drawn the whole app.
+beyond those is. Every drawn path is cubic béziers with round caps and baked-in
+wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. Two
+of them are filled rather than stroked — the empty slot's dot (`Plant.tsx`'s
+`EmptySlot`) and the wobbly button's own shape — and nothing else may be. The
+pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
+heroes at 7 on 200, and hand-drawn UI marks (`Rule`, the wobbly button) at
+hairline–2 on their own tight canvas — so one hand appears to have drawn the
+whole app.
+
+**The wobbly button is drawn, not styled.** `borderRadius` can give a box four
+corners that disagree, but the four sides between them stay ruler-straight, and
+a ruler-straight line is the one thing this pen never draws. So Start's shape is
+a path: `src/ui/box.ts` builds a closed rounded rectangle whose corners land
+within ±20% of nominal and whose sides belly one or two percent off true, filled
+with the accent and outlined in ink at 2. `box.ts` is pure — no react, no svg,
+the `ring.ts` precedent — so the geometry is checked without a renderer, and its
+test walks the whole path rather than the knots, because the bellies bow
+furthest between them.
+
+Two things there are deliberate and cost real time to rediscover. Each side's
+bow is a fraction of *its own* length, not of the box's shorter side: measured
+against the short side, a 220pt-wide button's long edges move well under a point
+and the thing comes back looking machined. And opposite sides disagree in sign,
+because displacing top and bottom the same way bends the button like a banana
+instead of making it look uneven. The wobble is a fixed table, unseeded — only
+one control in the app is drawn this way, so it has one character rather than a
+family of them, which is the opposite of `organicCorners`' problem.
+
+In the Ink theme `accent` *is* `ink`, so the outline shows no contrast and the
+button reads as a filled uneven silhouette. In the two brick themes it is a
+proper drawn edge around a brick fill. That is a value difference between
+themes, not a structural one, which is what a theme is allowed to be.
 
 **Батон, the sleeping loaf cat, holds the quiet places** — the reminder step of
 onboarding and the empty garden — and nowhere else. He never cheers; the app's
@@ -249,14 +278,43 @@ tab stays mounted, so a mount effect would fire exactly once in the life of the
 app. Delays are seeded from the slot (`hash32('burst-' + slot)`), never random:
 a field that re-rolled its timings would be a different drawing each visit.
 
+The whole field lands in under half a second — 200ms per doodle scattered across
+280 — and each one is **squash and stretch**, not a fade-up. `GROWTH` in
+`motion.tsx` is the curve, written as frames rather than parallel arrays because
+the character is in how the channels disagree at a moment: the doodle shoots
+past full height while still pinched narrow, swings back under it as it widens,
+then settles. `scaleX` and `scaleY` must never reach their extremes together, or
+it reads as a bubble inflating rather than as something growing. This is livelier
+than the kit's ~300/450 default on purpose; the garden is the one place this app
+is allowed to be pleased with itself, and the burst is over before it could
+become a thing you wait through.
+
+Photographing it needs a trick, since half a second is faster than a screencap
+round trip: multiply `SPROUT_MS` and `BURST_SPREAD_MS` by 8, shoot mid-burst,
+then restore and `diff` against a backup to prove you did.
+
 **One sliding selector, used twice.** `src/ui/Slider.tsx` owns where the marker
 is and how it travels; the caller owns what each item draws and what the row
 sits in. The screen switcher (`SliderNav`) floats in a bar over the page; the
-duration picker sits in a card. Items are a fixed width by contract, which is
+duration picker floats on bare paper. Items are a fixed width by contract, which is
 what keeps the travel to a single `translateX` and therefore on the native
 driver — and means there is nothing to measure and no frame where the marker is
 in the wrong place. It is silent: the kit allows this one navigation a sound,
 but this app rings one bell in, one out, and nothing between.
+
+**The duration dial has no container.** Six numbers with air between them are
+already legible as a row of choices; the card that used to hold them was a box
+drawn around something that did not need one, and the heaviest mark at the foot
+of a screen whose whole argument is that it is quiet. Small boxes with generous
+gaps (38 × 36, gap 10) rather than large boxes packed together — both fit the
+same width, only the second breathes, and the marker then reads as having
+arrived somewhere rather than as one cell of a strip. Selection is carried twice
+over, by the soft marker and by the number darkening from `inkSoft` to `ink`;
+what the unselected ones must never do is fade, because every length is
+available at every stage and five greyed-out numbers would say otherwise.
+
+The chosen length is printed nowhere else. A large figure above the button said
+exactly what the dial's own marker says, in a place you cannot change it.
 
 ## Toolchain traps already hit
 

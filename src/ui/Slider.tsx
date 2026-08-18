@@ -6,7 +6,7 @@ import { BOUNCE, usePressSettle } from './motion';
 import { useOrganicCorners } from './useOrganicCorners';
 
 /**
- * The sliding selector: one accent marker that travels to the chosen item.
+ * The sliding selector: one marker that travels to the chosen item.
  *
  * Every item stays legible at rest — nothing lights up in place, nothing
  * collapses to a dot — so the marker arriving under an item is the only thing
@@ -16,8 +16,16 @@ import { useOrganicCorners } from './useOrganicCorners';
  *
  * This owns where the marker is and how it gets there. What each item draws,
  * and what the row sits in, belong to the caller: the screen switcher floats in
- * a bar of its own and draws doodles, the duration picker sits in a card and
- * draws numbers, and neither needs to know how the other looks.
+ * a bar of its own and draws doodles, the duration picker floats on bare paper
+ * and draws numbers, and neither needs to know how the other looks.
+ *
+ * `tone` is the one thing about the marker's *look* the caller decides, and it
+ * has two settings rather than a colour prop because there are two jobs here,
+ * not a palette. Accent is for navigation — where you are in the app is worth
+ * the app's one loud colour. Quiet is for a choice inside a screen, where a
+ * dark block on bare paper would be the heaviest thing on a page whose whole
+ * point is that it is calm. Committing to something is Start's job, and Start
+ * is the accent.
  *
  * Items are a fixed width by contract, which is what keeps the travel to a
  * single `translateX` and therefore on the native driver. It also means there
@@ -38,6 +46,7 @@ export function Slider({
   gap,
   hitSlop = 0,
   role,
+  tone = 'accent',
   labelFor,
   renderItem,
 }: {
@@ -51,6 +60,8 @@ export function Slider({
   hitSlop?: number;
   /** 'tab' for the screen switcher, 'radio' for a single choice among options. */
   role: 'tab' | 'radio';
+  /** 'accent' for navigation, 'quiet' for a choice made inside a screen. */
+  tone?: 'accent' | 'quiet';
   labelFor: (index: number) => string;
   /** `active` is true for the item the marker has arrived at. */
   renderItem: (index: number, active: boolean) => ReactNode;
@@ -93,7 +104,7 @@ export function Slider({
           {
             width: itemWidth,
             height: itemHeight,
-            backgroundColor: color.accent,
+            backgroundColor: tone === 'accent' ? color.accent : color.paperDeep,
             transform: [{ translateX: travel }],
           },
         ]}
