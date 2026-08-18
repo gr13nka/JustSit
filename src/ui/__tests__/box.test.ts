@@ -4,7 +4,6 @@ import { boxPath } from '../box';
 const WIDTH = 220;
 const HEIGHT = 56;
 const RADIUS = 14;
-const STROKE = 2;
 
 type Point = { x: number; y: number };
 
@@ -50,31 +49,30 @@ function samplePath(d: string, perSegment = 64): Point[] {
 }
 
 describe('boxPath', () => {
-  it('stays inside the room it was given, stroke included', () => {
-    const points = samplePath(boxPath(WIDTH, HEIGHT, RADIUS, STROKE));
-    const half = STROKE / 2;
+  it('stays inside the room it was given', () => {
+    const points = samplePath(boxPath(WIDTH, HEIGHT, RADIUS));
 
     for (const { x, y } of points) {
-      expect(x).toBeGreaterThanOrEqual(half - 0.01);
-      expect(x).toBeLessThanOrEqual(WIDTH - half + 0.01);
-      expect(y).toBeGreaterThanOrEqual(half - 0.01);
-      expect(y).toBeLessThanOrEqual(HEIGHT - half + 0.01);
+      expect(x).toBeGreaterThanOrEqual(-0.01);
+      expect(x).toBeLessThanOrEqual(WIDTH + 0.01);
+      expect(y).toBeGreaterThanOrEqual(-0.01);
+      expect(y).toBeLessThanOrEqual(HEIGHT + 0.01);
     }
   });
 
   it('closes where it started', () => {
-    const points = samplePath(boxPath(WIDTH, HEIGHT, RADIUS, STROKE));
+    const points = samplePath(boxPath(WIDTH, HEIGHT, RADIUS));
     const first = points[0];
     const last = points[points.length - 1];
 
     expect(last.x).toBeCloseTo(first.x, 1);
     expect(last.y).toBeCloseTo(first.y, 1);
-    expect(boxPath(WIDTH, HEIGHT, RADIUS, STROKE).endsWith('Z')).toBe(true);
+    expect(boxPath(WIDTH, HEIGHT, RADIUS).endsWith('Z')).toBe(true);
   });
 
   it('draws the same box every time — nothing here is rolled at runtime', () => {
-    expect(boxPath(WIDTH, HEIGHT, RADIUS, STROKE)).toBe(
-      boxPath(WIDTH, HEIGHT, RADIUS, STROKE)
+    expect(boxPath(WIDTH, HEIGHT, RADIUS)).toBe(
+      boxPath(WIDTH, HEIGHT, RADIUS)
     );
   });
 
@@ -82,22 +80,22 @@ describe('boxPath', () => {
     // The four corner radii reach the path as the distance from each corner of
     // the rectangle to where the straight run ends, so unequal corners show up
     // as unequal first and last knots along the top edge.
-    const d = boxPath(WIDTH, HEIGHT, RADIUS, STROKE);
+    const d = boxPath(WIDTH, HEIGHT, RADIUS);
     const [move, ...segments] = d.split('C');
     const startX = Number(move.replace('M', '').trim().split(',')[0]);
     const topEndX = Number(
       segments[0].trim().split(/\s+/)[2].split(',')[0]
     );
 
-    const leftCorner = startX - STROKE / 2;
-    const rightCorner = WIDTH - STROKE / 2 - topEndX;
+    const leftCorner = startX;
+    const rightCorner = WIDTH - topEndX;
     expect(leftCorner).not.toBeCloseTo(rightCorner, 1);
   });
 
   it('never lets a corner pair outgrow the side they share', () => {
     // A radius past half the shorter side is what makes a platform silently
     // rescale a box; here it has to be clamped instead.
-    const points = samplePath(boxPath(80, 40, 999, STROKE));
+    const points = samplePath(boxPath(80, 40, 999));
 
     for (const { x, y } of points) {
       expect(x).toBeGreaterThanOrEqual(0);

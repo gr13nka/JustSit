@@ -24,9 +24,9 @@ type ButtonProps = {
    * primary — accent fill, CSS corners. The one obvious action on a screen.
    * quiet   — text only. For "not yet", "skip", "I'll set this later".
    * wobbly  — the same fill, but the shape is *drawn*: a closed path whose
-   *           corners disagree and whose sides belly a percent off true, with
-   *           an ink outline around it. Every other box in the app is a
-   *           rectangle with soft corners; this is the one that looks like
+   *           corners disagree and whose sides belly a percent off true, and
+   *           no outline — the silhouette is the whole mark. Every other box
+   *           is a rectangle with soft corners; this is the one that looks like
    *           somebody drew a button. Reserved for the single most hand-placed
    *           action in the app: put a second one on screen and neither reads
    *           as placed by hand any more.
@@ -38,13 +38,6 @@ type ButtonProps = {
 
 /** A shade rounder than a card, because a button is meant to look pressable. */
 const WOBBLY_RADIUS = 14;
-
-/**
- * The outline's weight. At the top of the range the kit gives a hand-drawn UI
- * mark — this one has to read as a drawn edge around a filled shape rather than
- * as the app's structural 1.5px border, which is a different statement.
- */
-const WOBBLY_STROKE = 2;
 
 /** Which token each variant sets its label in. Values arrive with the theme. */
 const labelToken = {
@@ -122,14 +115,7 @@ export function Button({
           style={StyleSheet.absoluteFill}
           width={size.width}
           height={size.height}>
-          <Path
-            d={boxPath(size.width, size.height, WOBBLY_RADIUS, WOBBLY_STROKE)}
-            fill={color.accent}
-            stroke={color.ink}
-            strokeWidth={WOBBLY_STROKE}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <Path d={boxPath(size.width, size.height, WOBBLY_RADIUS)} fill={color.accent} />
         </Svg>
       )}
       <Animated.View style={[settleStyle, wobbly && !measured && styles.unmeasured]}>

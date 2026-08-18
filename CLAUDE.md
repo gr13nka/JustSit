@@ -212,16 +212,15 @@ wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. Two
 of them are filled rather than stroked — the empty slot's dot (`Plant.tsx`'s
 `EmptySlot`) and the wobbly button's own shape — and nothing else may be. The
 pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
-heroes at 7 on 200, and hand-drawn UI marks (`Rule`, the wobbly button) at
-hairline–2 on their own tight canvas — so one hand appears to have drawn the
-whole app.
+heroes at 7 on 200, and hand-drawn UI marks (`Rule`) at hairline–2 on their own
+tight canvas — so one hand appears to have drawn the whole app.
 
 **The wobbly button is drawn, not styled.** `borderRadius` can give a box four
 corners that disagree, but the four sides between them stay ruler-straight, and
 a ruler-straight line is the one thing this pen never draws. So Start's shape is
 a path: `src/ui/box.ts` builds a closed rounded rectangle whose corners land
 within ±20% of nominal and whose sides belly one or two percent off true, filled
-with the accent and outlined in ink at 2. `box.ts` is pure — no react, no svg,
+with the accent. `box.ts` is pure — no react, no svg,
 the `ring.ts` precedent — so the geometry is checked without a renderer, and its
 test walks the whole path rather than the knots, because the bellies bow
 furthest between them.
@@ -235,10 +234,11 @@ instead of making it look uneven. The wobble is a fixed table, unseeded — only
 one control in the app is drawn this way, so it has one character rather than a
 family of them, which is the opposite of `organicCorners`' problem.
 
-In the Ink theme `accent` *is* `ink`, so the outline shows no contrast and the
-button reads as a filled uneven silhouette. In the two brick themes it is a
-proper drawn edge around a brick fill. That is a value difference between
-themes, not a structural one, which is what a theme is allowed to be.
+It carries no outline. A drawn edge in a second colour was a statement only two
+of the three themes could make — in Ink the accent *is* the ink, so there was
+nothing for an edge to contrast with — and a shape outlined in Butter but not in
+Ink is two shapes, which is more than a theme is allowed to be. The silhouette
+says it in all three.
 
 **Батон, the sleeping loaf cat, holds the quiet places** — the reminder step of
 onboarding and the empty garden — and nowhere else. He never cheers; the app's

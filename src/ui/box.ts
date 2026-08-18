@@ -54,18 +54,18 @@ const shift = (p: Point, dx: number, dy: number): Point => ({
 
 /**
  * The box as an SVG path, drawn to fit inside `width` × `height` — every point
- * of it, the bellies and the stroke's own thickness included. Fitting is this
- * module's business rather than a caller's: a caller knows the room it has, and
- * the box's job is to stay in it.
+ * of it, the bellies included. Fitting is this module's business rather than a
+ * caller's: a caller knows the room it has, and the box's job is to stay in it.
+ *
+ * The path is meant to be filled, not stroked. An outline in a second colour
+ * turned out to be a statement only two of the three themes could make — in Ink
+ * the accent *is* the ink, so there was nothing for an edge to contrast with —
+ * and a shape that is drawn in one theme and outlined in another is two shapes.
+ * The silhouette carries it in all three.
  *
  * `radius` is nominal; the corners land within about 15% either side of it.
  */
-export function boxPath(
-  width: number,
-  height: number,
-  radius: number,
-  stroke: number
-): string {
+export function boxPath(width: number, height: number, radius: number): string {
   // A side's bow is a fraction of that side, so top and bottom are measured
   // against the width and the two flanks against the height.
   const [bTop, bRight, bBottom, bLeft] = [
@@ -76,8 +76,8 @@ export function boxPath(
   ];
 
   // Each edge is held in by its own bow: only a side that bellies *outward*
-  // needs room past the stroke, and the four rarely need the same amount.
-  const room = (bow: number) => stroke / 2 + Math.max(0, bow);
+  // needs room at all, and the four rarely need the same amount.
+  const room = (bow: number) => Math.max(0, bow);
 
   const x0 = room(bLeft);
   const y0 = room(bTop);
@@ -146,9 +146,9 @@ export function boxPath(
     corner(bottomEnd, leftStart, -1, 0, 0, -1, rBL),
     side(leftStart, leftEnd, -1, 0, bLeft),
     corner(leftEnd, start, 0, -1, 1, 0, rTL),
-    // Closed, so the stroke joins at the start rather than showing a seam
-    // there. A hand's overshoot would be in character but this path is filled,
-    // and an overshoot on a filled path is a tab, not a flourish.
+    // Closed rather than left to the fill rule to shut, so the last corner
+    // meets the first knot deliberately. A hand's overshoot would be in
+    // character, but on a filled path an overshoot is a tab, not a flourish.
     'Z',
   ].join(' ');
 }
