@@ -455,12 +455,18 @@ node scripts/preview-shot.mjs /tmp/s.png 411 911 /    # then actually look at it
 
 Screen shapes worth checking, in dp:
 
-| Device | dp | ratio |
-|---|---|---|
-| iPhone SE | 375 × 667 | 16:9 |
-| iPhone 15 | 393 × 852 | 19.5:9 |
-| CMF Phone 1 | 411 × 911 | ~20:9 |
-| 21:9 outlier | 412 × 961 | 21:9 |
+| Device | dp | ratio | insets, top/bottom |
+|---|---|---|---|
+| iPhone SE | 375 × 667 | 16:9 | `?top=0&bottom=0` |
+| iPhone 15 | 393 × 852 | 19.5:9 | `?top=59&bottom=34` |
+| CMF Phone 1 | 411 × 911 | ~20:9 | the default, 46/24 |
+| 21:9 outlier | 412 × 961 | 21:9 | `?top=24&bottom=24` |
+
+The insets are the preview's weak point, since a browser reports none and no
+emulation can supply them. To calibrate a new device: render a screen with
+`?top=0&bottom=0`, screencap the same screen on the phone, and difference the
+position of one mark in each — the back arrow for the top, the nav dock for the
+bottom, neither of which moves with content.
 
 In a browser these go in the device toolbar as custom devices; **VisBug** (a free
 extension, Chrome and Firefox) is the other half — it lets you drag and arrow-key

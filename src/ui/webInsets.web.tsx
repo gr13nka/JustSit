@@ -16,12 +16,22 @@ import { EdgeInsets, SafeAreaInsetsContext } from 'react-native-safe-area-contex
  * `SafeAreaProvider` corrects `Screen` and `SliderNav` at once, and neither has
  * to know this exists.
  *
- * Sizes come from the URL — `?top=24&bottom=24` — so a frame can be re-shaped
- * without touching the source. The defaults are an ordinary Android phone with
- * gesture navigation. If a particular handset differs, read its real insets and
- * pass them; that is what the parameters are for.
+ * Sizes come from the URL — `?top=46&bottom=24` — so a frame can be re-shaped
+ * without touching the source, which is what makes previewing a handset other
+ * than the default one a matter of changing the address.
+ *
+ * The defaults are the CMF Phone 1's, because that is the phone this app is
+ * judged on. They were measured rather than guessed, and the method is worth
+ * keeping: render a screen in the browser with `?top=0&bottom=0`, screencap the
+ * same screen on the device, and difference the position of one mark in each —
+ * the back arrow for the top, the nav dock for the bottom, since neither moves
+ * with content. Two screens agreed on the bottom and bracketed the top at 44
+ * and 48, the spread being antialiasing at 2.625x rather than disagreement.
+ *
+ * The top is a display cutout, not a status bar: this app hides the bar, and
+ * hiding it does not fill in the hole the camera sits in.
  */
-const DEFAULTS: EdgeInsets = { top: 24, right: 0, bottom: 24, left: 0 };
+const DEFAULTS: EdgeInsets = { top: 46, right: 0, bottom: 24, left: 0 };
 
 function inset(param: string, fallback: number): number {
   const raw = new URLSearchParams(window.location.search).get(param);
