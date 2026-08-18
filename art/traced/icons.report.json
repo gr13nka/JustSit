@@ -1,0 +1,31 @@
+{
+ "scan": "icons-v2.jpg",
+ "sheet": "icons",
+ "nominalPen": 2.8,
+ "marks": {
+  "garden": {
+   "paths": 4,
+   "pen": 2.1443904545945363
+  },
+  "you": {
+   "paths": 5,
+   "pen": 1.972451224040906
+  },
+  "arrow-right": {
+   "paths": 1,
+   "pen": 2.440268228503523
+  },
+  "arrow-left": {
+   "paths": 1,
+   "pen": 2.378474200696423
+  },
+  "sun": {
+   "paths": 7,
+   "pen": 1.9762628874866384
+  },
+  "leaf": {
+   "paths": 7,
+   "pen": 2.046594486677417
+  }
+ }
+}

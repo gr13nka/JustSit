@@ -42,7 +42,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "art": "node scripts/apply-art.mjs",
+    "art:sheets": "node scripts/drawing-sheets.mjs"
   },
   "jest": {
     "preset": "jest-expo"

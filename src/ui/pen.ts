@@ -1,9 +1,15 @@
 /**
- * The pen everything drawn in this app is drawn with: stroke only, round nib,
+ * The pen the app's *code-drawn* marks are drawn with: stroke only, round nib,
  * nothing filled.
  *
- * One hand, two nibs. `PEN_DOODLE` writes on the 48-unit canvas the plants and
- * the icons share; `PEN_HERO` writes on the 200-unit canvas of the heroes.
+ * One hand, two nibs. `PEN_DOODLE` writes on the 48-unit canvas of the plants;
+ * `PEN_HERO` writes on the 200-unit canvas of the heroes.
+ *
+ * The icons no longer use either. They are outlines of marks made with a real
+ * nib and traced (`icons.paths.ts`), so their weight and taper are in the path
+ * and they are filled rather than stroked. A pen contract is what you need when
+ * the hand is simulated; where there was an actual hand there is nothing left
+ * to configure. The plants are next, and `PEN_DOODLE` retires with them.
  *
  * The hero nib is not the doodle nib scaled with its canvas — that would be
  * nearly 12 units, and a hero is drawn at 200pt across, where such a line is a
@@ -21,7 +27,7 @@
  * would be a stroke through the layout rather than a mark beside it.
  */
 
-/** Plants, doodle icons — the 48-unit canvas. */
+/** Plants — the 48-unit canvas. */
 export const PEN_DOODLE = {
   fill: 'none',
   strokeWidth: 2.8,

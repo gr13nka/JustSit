@@ -207,8 +207,9 @@ sitting), and the single `wobbly` button (Meditate, and only it). The active
 tab's scribble underline was the fifth and is gone: the sliding selector's
 marker says "you are here" now, and an interface needs one way of saying it.
 Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
-beyond those is. Every drawn path is cubic béziers with round caps and baked-in
-wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. Two
+beyond those is. Every *code-drawn* path is cubic béziers with round caps and baked-in
+wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. The
+icons no longer need the rule — they were drawn by an actual hand. Two
 of them are filled rather than stroked — the empty slot's dot (`Plant.tsx`'s
 `EmptySlot`) and the wobbly button's own shape — and nothing else may be. The
 pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
@@ -414,13 +415,42 @@ marks, no congratulation, no pep talk.
 
 ## Art status
 
-**Plants** (`src/ui/Plant.tsx`) are Karakuli pen doodles — twelve species, each
-with a fixed bloom colour that is a property of the species, never of the
-session — and are candidates to be the final art rather than stand-ins. If
-hand-painted PNGs ever replace them, identity (`src/domain/plants.ts`) is kept
-separate from rendering precisely so that stays a one-file change; note PNGs
-cannot be tinted in code, so each would carry its own colours. `SittingFigure`
-and `Baton` follow the same pen contract and come from the Karakuli kit's hand.
+**Icons are traced from real drawings.** The six in `src/ui/icons.tsx` were
+drawn by hand on a Boox, traced to outlines, and generated into
+`src/ui/icons.paths.ts` — so they are **filled** rather than stroked, and use
+neither pen in `pen.ts`. The nib is already in the outline; stroking a traced
+mark would draw a second, even line around something that is not even. They
+still take their colour from the live theme, which is the whole reason this is
+path data and not PNGs.
+
+The loop is one command — `npm run art` — and it is documented in `art/README.md`,
+with the drawing guidelines in `art/DRAWING.md`:
+`drawing-sheets.mjs` prints a jig, you draw on it, `trace-art.py` registers the
+scan off four corner marks and potraces each box, `art-to-code.mjs` writes the TS.
+Two things there are worth knowing before touching it. Marks are normalised **by
+their printed box, never by their own bounding box** — fitting each drawing to
+its own extent silently rescales every stroke width on the sheet, which is
+invisible until all eighteen sit together. And the trace runs on a *blurred*
+upscale: unsmoothed, potrace faithfully follows JPEG ringing along every edge and
+the same six icons cost 41KB of path data instead of 16KB, for no visible gain.
+The run prints a measured pen weight against the nominal 2.8; outside 80–125% the
+sheet needs re-drawing, not rescaling.
+
+The **box size is set by the device's pen, not by taste.** A Go 10.3's brush stops
+at 2.0mm, so the original 480px box asked for a stroke no brush could lay down and
+both passes came in light (34%, then 77%, which was the hardware ceiling). At
+370px, the widest brush *is* the nominal nib — the instruction becomes a setting
+rather than a judgement. Every sheet must keep the same box: marks drawn in
+different-sized boxes carry different stroke weights into the same app, and that
+is invisible until they sit together. `art/templates/gen-480/` keeps the retired
+geometry so scans drawn on it stay reproducible.
+
+**Plants** (`src/ui/Plant.tsx`) are still Karakuli pen doodles — twelve species,
+each with a fixed bloom colour that is a property of the species, never of the
+session. They are next in line to be traced, and `PEN_DOODLE` retires with them.
+Identity (`src/domain/plants.ts`) is kept separate from rendering precisely so
+that stays a one-file change. `SittingFigure` and `Baton` follow the pen contract
+and come from the Karakuli kit's hand.
 
 **Bells are still placeholder** — synthesised inharmonic bowl tones. Regenerate
 with `node scripts/generate-placeholder-bells.mjs`, or replace

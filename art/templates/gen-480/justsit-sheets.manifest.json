@@ -1,0 +1,193 @@
+{
+  "page": {
+    "w": 1404,
+    "h": 1872
+  },
+  "unit": 10,
+  "nib": 28,
+  "corners": [
+    [
+      30,
+      30
+    ],
+    [
+      1374,
+      30
+    ],
+    [
+      30,
+      1842
+    ],
+    [
+      1374,
+      1842
+    ]
+  ],
+  "sheets": [
+    {
+      "id": "icons",
+      "kind": "icon",
+      "file": "justsit-sheets-1-icons.png",
+      "cells": [
+        {
+          "key": "garden",
+          "x": 172,
+          "y": 170,
+          "size": 480,
+          "safe": 30,
+          "baseline": null
+        },
+        {
+          "key": "you",
+          "x": 752,
+          "y": 170,
+          "size": 480,
+          "safe": 30,
+          "baseline": null
+        },
+        {
+          "key": "arrow-right",
+          "x": 172,
+          "y": 732,
+          "size": 480,
+          "safe": 30,
+          "baseline": null
+        },
+        {
+          "key": "arrow-left",
+          "x": 752,
+          "y": 732,
+          "size": 480,
+          "safe": 30,
+          "baseline": null
+        },
+        {
+          "key": "sun",
+          "x": 172,
+          "y": 1294,
+          "size": 480,
+          "safe": 30,
+          "baseline": null
+        },
+        {
+          "key": "leaf",
+          "x": 752,
+          "y": 1294,
+          "size": 480,
+          "safe": 30,
+          "baseline": null
+        }
+      ]
+    },
+    {
+      "id": "plants-a",
+      "kind": "plant",
+      "file": "justsit-sheets-2-plants-a.png",
+      "cells": [
+        {
+          "key": "grass",
+          "x": 172,
+          "y": 170,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "sprout",
+          "x": 752,
+          "y": 170,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "clover",
+          "x": 172,
+          "y": 732,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "fern",
+          "x": 752,
+          "y": 732,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "tulip",
+          "x": 172,
+          "y": 1294,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "daisy",
+          "x": 752,
+          "y": 1294,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        }
+      ]
+    },
+    {
+      "id": "plants-b",
+      "kind": "plant",
+      "file": "justsit-sheets-3-plants-b.png",
+      "cells": [
+        {
+          "key": "mushroom",
+          "x": 172,
+          "y": 170,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "thistle",
+          "x": 752,
+          "y": 170,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "poppy",
+          "x": 172,
+          "y": 732,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "reed",
+          "x": 752,
+          "y": 732,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "berry",
+          "x": 172,
+          "y": 1294,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        },
+        {
+          "key": "sapling",
+          "x": 752,
+          "y": 1294,
+          "size": 480,
+          "safe": 30,
+          "baseline": 430
+        }
+      ]
+    }
+  ]
+}

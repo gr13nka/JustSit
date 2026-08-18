@@ -1,0 +1,202 @@
+{
+  "page": {
+    "w": 1404,
+    "h": 1872
+  },
+  "unit": 7.708333333333333,
+  "nib": 21.583333333333332,
+  "corners": [
+    [
+      30,
+      30
+    ],
+    [
+      1374,
+      30
+    ],
+    [
+      30,
+      1842
+    ],
+    [
+      1374,
+      1842
+    ]
+  ],
+  "sheets": [
+    {
+      "id": "sheet-1",
+      "file": "justsit-sheet-1.png",
+      "cells": [
+        {
+          "key": "garden",
+          "kind": "icon",
+          "x": 92,
+          "y": 170,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": null
+        },
+        {
+          "key": "you",
+          "kind": "icon",
+          "x": 517,
+          "y": 170,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": null
+        },
+        {
+          "key": "arrow-right",
+          "kind": "icon",
+          "x": 942,
+          "y": 170,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": null
+        },
+        {
+          "key": "arrow-left",
+          "kind": "icon",
+          "x": 92,
+          "y": 712,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": null
+        },
+        {
+          "key": "sun",
+          "kind": "icon",
+          "x": 517,
+          "y": 712,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": null
+        },
+        {
+          "key": "leaf",
+          "kind": "icon",
+          "x": 942,
+          "y": 712,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": null
+        },
+        {
+          "key": "grass",
+          "kind": "plant",
+          "x": 92,
+          "y": 1254,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "sprout",
+          "kind": "plant",
+          "x": 517,
+          "y": 1254,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "clover",
+          "kind": "plant",
+          "x": 942,
+          "y": 1254,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        }
+      ]
+    },
+    {
+      "id": "sheet-2",
+      "file": "justsit-sheet-2.png",
+      "cells": [
+        {
+          "key": "fern",
+          "kind": "plant",
+          "x": 92,
+          "y": 170,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "tulip",
+          "kind": "plant",
+          "x": 517,
+          "y": 170,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "daisy",
+          "kind": "plant",
+          "x": 942,
+          "y": 170,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "mushroom",
+          "kind": "plant",
+          "x": 92,
+          "y": 712,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "thistle",
+          "kind": "plant",
+          "x": 517,
+          "y": 712,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "poppy",
+          "kind": "plant",
+          "x": 942,
+          "y": 712,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "reed",
+          "kind": "plant",
+          "x": 92,
+          "y": 1254,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "berry",
+          "kind": "plant",
+          "x": 517,
+          "y": 1254,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        },
+        {
+          "key": "sapling",
+          "kind": "plant",
+          "x": 942,
+          "y": 1254,
+          "size": 370,
+          "safe": 23.125,
+          "baseline": 331.4583333333333
+        }
+      ]
+    }
+  ]
+}
