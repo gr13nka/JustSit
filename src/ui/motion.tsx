@@ -1,5 +1,12 @@
 import { ReactNode, useCallback, useEffect, useRef } from 'react';
-import { Animated, Easing, StyleProp, ViewStyle } from 'react-native';
+import {
+  Animated,
+  Easing,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 
 /**
  * The app's motion, in one file.
@@ -114,6 +121,41 @@ export function Sprout({
       {children}
     </Animated.View>
   );
+}
+
+/**
+ * Pull down at the top of a list to play its entrance again.
+ *
+ * Spread the result onto a ScrollView. The gesture is read from the scroll
+ * events themselves rather than from a RefreshControl, which is the usual way
+ * to get this: that would put a Material spinner on the paper, and a system
+ * progress indicator is a promise that something is loading. Nothing is
+ * loading. The garden is already there and you asked to watch it grow.
+ *
+ * The read is indirect because Android reports no overscroll — offset simply
+ * stays at 0 while you pull, so there is no negative number to notice. What
+ * there is: a drag that *began* at the top and never moved the content can only
+ * have been downward, since upward would have scrolled. iOS bounces and reports
+ * a negative offset, which fails the same `> 0` test, so one rule covers both.
+ */
+export function usePullToReplay(onPull: () => void) {
+  const fromTop = useRef(false);
+
+  return {
+    scrollEventThrottle: 32,
+    onScrollBeginDrag: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      fromTop.current = e.nativeEvent.contentOffset.y <= 0;
+    },
+    onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Moved into the list: whatever this drag was, it was not a pull.
+      if (e.nativeEvent.contentOffset.y > 0) fromTop.current = false;
+    },
+    onScrollEndDrag: () => {
+      if (!fromTop.current) return;
+      fromTop.current = false;
+      onPull();
+    },
+  };
 }
 
 /**

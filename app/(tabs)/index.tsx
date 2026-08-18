@@ -9,7 +9,7 @@ import { useSessions } from '../../src/store';
 import { Baton } from '../../src/ui/Baton';
 import { LeafIcon, SunIcon } from '../../src/ui/icons';
 import { Indicator } from '../../src/ui/Indicator';
-import { useBurst } from '../../src/ui/motion';
+import { useBurst, usePullToReplay } from '../../src/ui/motion';
 import { PlantGrid } from '../../src/ui/PlantGrid';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
@@ -23,6 +23,13 @@ export default function GardenScreen() {
   const streak = currentStreak(sessions);
 
   const { progress, restart } = useBurst();
+
+  /**
+   * Pulling down at the top plays it again. The garden is the one screen in
+   * this app worth looking at rather than using, and the burst was previously
+   * only available by leaving and coming back.
+   */
+  const pull = usePullToReplay(restart);
 
   /**
    * The garden bursts every time you arrive at it, not once per launch. The tab
@@ -68,7 +75,8 @@ export default function GardenScreen() {
       */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}>
+        contentContainerStyle={styles.scroll}
+        {...pull}>
         {/*
           Nothing has grown yet, so the cat has the page. He is here instead of
           copy: a garden of empty dots needs no explaining, and an apology for

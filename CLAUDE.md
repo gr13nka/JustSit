@@ -289,9 +289,25 @@ than the kit's ~300/450 default on purpose; the garden is the one place this app
 is allowed to be pleased with itself, and the burst is over before it could
 become a thing you wait through.
 
+**Pulling down at the top of the garden plays it again** (`usePullToReplay`).
+The garden is the one screen here worth looking at rather than using, and the
+burst was otherwise only reachable by leaving the tab and coming back.
+
+It reads the gesture off the scroll events rather than using a `RefreshControl`,
+which is the usual way to get a pull at the top: that would put a Material
+spinner on the paper, and a system progress indicator is a promise that
+something is loading. Nothing is loading. The read has to be indirect because
+**Android reports no overscroll** — the offset simply stays at 0 while you pull,
+so there is no negative number to notice. What there is: a drag that *began* at
+the top and never moved the content can only have been downward, since upward
+would have scrolled. iOS bounces and reports a negative offset, which fails the
+same `> 0` test, so one rule covers both.
+
 Photographing it needs a trick, since half a second is faster than a screencap
 round trip: multiply `SPROUT_MS` and `BURST_SPREAD_MS` by 8, shoot mid-burst,
-then restore and `diff` against a backup to prove you did.
+then restore and `diff` against a backup to prove you did. On a device, issuing
+`adb shell input swipe` and `screencap` back to back in one command is fast
+enough to land inside the burst without slowing anything down.
 
 **One sliding selector, used twice.** `src/ui/Slider.tsx` owns where the marker
 is and how it travels; the caller owns what each item draws and what the row
