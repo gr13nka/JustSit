@@ -61,7 +61,7 @@ export default function StartScreen() {
         thumb is.
       */}
       <Button
-        label="Start"
+        label="Meditate"
         variant="wobbly"
         onPress={() =>
           router.push({

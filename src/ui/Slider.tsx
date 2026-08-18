@@ -24,8 +24,8 @@ import { useOrganicCorners } from './useOrganicCorners';
  * not a palette. Accent is for navigation — where you are in the app is worth
  * the app's one loud colour. Quiet is for a choice inside a screen, where a
  * dark block on bare paper would be the heaviest thing on a page whose whole
- * point is that it is calm. Committing to something is Start's job, and Start
- * is the accent.
+ * point is that it is calm. Committing to something is Meditate's job, and
+ * Meditate is the accent.
  *
  * Items are a fixed width by contract, which is what keeps the travel to a
  * single `translateX` and therefore on the native driver. It also means there

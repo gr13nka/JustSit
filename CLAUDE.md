@@ -176,7 +176,7 @@ fill, the breathing ring, and the screen switcher's travelling marker. Note
 which slider that is: navigation earns the accent because where you are in the
 app is worth the app's one loud colour, while the duration dial — a choice made
 *inside* a screen — takes `Slider`'s `tone="quiet"` and a `paperDeep` marker.
-Committing to something is Start's job, and Start is the accent. Green
+Committing to something is Meditate's job, and it is the accent. Green
 means *something grew* — plant strokes, and the garden's session count. The pen
 brights (`penBlue/penOrange/penPink`) have exactly two licences: a plant's bloom
 (the reward-garden colour moment), and the first-run hero's night sky
@@ -203,7 +203,7 @@ back to the body face.
 **Hand-drawn touches are rationed.** Exactly four kinds exist: the wobbly
 `Rule`, organic corner asymmetry (`organicCorners` — always seeded, never
 random), hand-drawn arrows (`ArrowRight`, `ArrowLeft` — the way back out of a
-sitting), and the single `wobbly` button (Start, and only Start). The active
+sitting), and the single `wobbly` button (Meditate, and only it). The active
 tab's scribble underline was the fifth and is gone: the sliding selector's
 marker says "you are here" now, and an interface needs one way of saying it.
 Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
@@ -217,7 +217,7 @@ tight canvas — so one hand appears to have drawn the whole app.
 
 **The wobbly button is drawn, not styled.** `borderRadius` can give a box four
 corners that disagree, but the four sides between them stay ruler-straight, and
-a ruler-straight line is the one thing this pen never draws. So Start's shape is
+a ruler-straight line is the one thing this pen never draws. So the button's shape is
 a path: `src/ui/box.ts` builds a closed rounded rectangle whose corners land
 within ±20% of nominal and whose sides belly one or two percent off true, filled
 with the accent. `box.ts` is pure — no react, no svg,
