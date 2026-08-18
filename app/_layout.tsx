@@ -12,6 +12,7 @@ import {
 import { fontAssets } from '../src/theme/fontAssets';
 import { useColor } from '../src/theme/useColor';
 import { useHydrated } from '../src/store';
+import { WebInsets } from '../src/ui/webInsets';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -51,16 +52,23 @@ export default function RootLayout() {
         temporarily, and on paper it must come back in dark ink.
       */}
       <StatusBar hidden style="dark" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: color.paper },
-          animation: 'fade',
-        }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="session" />
-        <Stack.Screen name="onboarding" />
-      </Stack>
+      {/*
+        Nothing on a phone. In the browser preview it supplies the notch and
+        gesture-bar insets the platform cannot, so a screen shape judged there
+        is the shape you get on the device.
+      */}
+      <WebInsets>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: color.paper },
+            animation: 'fade',
+          }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="session" />
+          <Stack.Screen name="onboarding" />
+        </Stack>
+      </WebInsets>
     </SafeAreaProvider>
   );
 }

@@ -24,8 +24,13 @@ import { Platform } from 'react-native';
  * still raises a full-screen error overlay. The only reliable fix is not to
  * require it.
  *
- * The trade is explicit: in Expo Go on Android, reminders and the
- * backgrounded-session safety net quietly do nothing. Everything else — the
+ * Web is excluded too, for a different reason: none of this can work in a
+ * browser, and the web build exists only to look at layout at screen shapes we
+ * don't own. Loading the module there would buy nothing and cost a permission
+ * prompt.
+ *
+ * The trade is explicit: in Expo Go on Android and in the browser, reminders and
+ * the backgrounded-session safety net quietly do nothing. Everything else — the
  * sitting, the bell, the garden, progression — works normally. In a development
  * build, all of it works.
  */
@@ -36,7 +41,8 @@ type NotificationsModule = typeof import('expo-notifications');
 const IN_EXPO_GO =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-const UNSUPPORTED = IN_EXPO_GO && Platform.OS === 'android';
+const UNSUPPORTED =
+  (IN_EXPO_GO && Platform.OS === 'android') || Platform.OS === 'web';
 
 /** undefined = not tried yet, null = tried and unavailable. */
 let cached: NotificationsModule | null | undefined;
@@ -46,8 +52,8 @@ function load(): NotificationsModule | null {
 
   if (UNSUPPORTED) {
     console.warn(
-      '[justsit] Running in Expo Go on Android, so reminders and the ' +
-        'backgrounded-session bell are disabled. Use a development build for them.'
+      '[justsit] Reminders and the backgrounded-session bell are disabled in ' +
+        'this runtime. Use a development build for them.'
     );
     cached = null;
     return cached;

@@ -12,9 +12,16 @@ completed sittings.
 
 ```sh
 npm start          # then scan the QR code with Expo Go
+npm run web        # the same app in a browser, for judging layout
 npm test           # the unit suite over the pure logic
 npm run typecheck
 ```
+
+`npm run web` is a preview target, not a platform — no web build ships. It exists
+because every screen here centres its middle block with `flex: 1`, so the layout
+breathes differently at 667pt of height than at 911, and a browser is the only
+place to see all of those at once. See CLAUDE.md for the screen sizes worth
+checking and what had to be handled for the preview to tell the truth.
 
 ### Expo Go vs a standalone build
 

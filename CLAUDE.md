@@ -382,3 +382,59 @@ storage, and a garden grown in one is invisible to the other.
 The **You tab has a `__DEV__`-only panel** (seed sessions, jump stages, arm the
 advance offer, reset). Use it — the interesting states of this app are the slow
 ones, and waiting three weeks for a stage offer is not a test strategy.
+
+## Judging layout: the web preview
+
+The phone is one screen shape, and this app gives its slack to `flex: 1` on every
+screen — so the same layout breathes very differently at an iPhone SE's 667pt and
+a CMF Phone 1's 911pt. `npm run web` runs the *real* app in a browser, where the
+shape is yours to choose.
+
+```sh
+npm run web                                     # localhost:8081
+node scripts/preview-shot.mjs /tmp/s.png 411 911 /    # then actually look at it
+```
+
+Screen shapes worth checking, in dp:
+
+| Device | dp | ratio |
+|---|---|---|
+| iPhone SE | 375 × 667 | 16:9 |
+| iPhone 15 | 393 × 852 | 19.5:9 |
+| CMF Phone 1 | 411 × 911 | ~20:9 |
+| 21:9 outlier | 412 × 961 | 21:9 |
+
+In a browser these go in the device toolbar as custom devices; **VisBug** (a free
+extension, Chrome and Firefox) is the other half — it lets you drag and arrow-key
+any element on the live page and read the distances, so a spacing decision can be
+made by eye before anything is written down. Its edits are inline styles and are
+meant to be thrown away; the number is the deliverable.
+
+**Web is a preview target, not a platform.** No web build ships. `react-native-web`
+renders flex, spacing and proportion faithfully — which is what you go there to
+judge — but text metrics and SVG rasterisation differ a little from native, so
+decide in the browser and confirm on the phone. Three things needed handling for
+it to tell the truth:
+
+- **`src/ui/webInsets.tsx` / `.web.tsx`.** A desktop browser answers
+  `env(safe-area-inset-*)` with zero however small the window, and no device
+  emulation can fake it, so the whole app would sit 24pt high and the floating nav
+  would land on the gesture bar. The web file supplies insets through
+  `SafeAreaInsetsContext`, which is where the library's web `SafeAreaView` and
+  `useSafeAreaInsets` both read from — so `Screen` and `SliderNav` are corrected
+  without either knowing. `?top=24&bottom=24` overrides them per frame. The native
+  file is a pass-through; Metro picks by extension, so no part of the web one
+  reaches a device.
+- **`expo-notifications` is not loaded on web**, added to the same `UNSUPPORTED`
+  guard that keeps it out of Expo Go on Android.
+- **`react-dom`, `react-native-web` and `@expo/metro-runtime`** are in
+  `dependencies` because `expo install` puts them there. Nothing in `app/` or
+  `src/` imports them; they exist only for the web bundle.
+
+`@react-native-community/datetimepicker` has no web build and degrades to `null`
+with a warning, so the reminder picker is inert in the browser. Nothing else is.
+
+`scripts/preview-shot.mjs` drives Chromium over the DevTools protocol rather than
+passing `--window-size`, because macOS clamps a window to roughly 500px wide — a
+naive headless shot of a 411pt phone lays out at ~500 and captures the middle of
+it, which looks exactly like a layout bug and is not one.
