@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>JustSit — engagement mockups</title>
 <!--
-  Seven phone-framed mockups of proposed engagement features, drawn in the
+  Nine phone-framed mockups of proposed engagement features, drawn in the
   app's own hand. Open it straight off disk — no server, no build step,
   nothing outside this file (the anim-lab.html precedent).
 
@@ -295,7 +295,7 @@
 <header class="page-head">
   <div class="brand">JUST SIT</div>
   <h1>Engagement redesign — screen mockups</h1>
-  <p class="note">Seven proposed screens, drawn with the app's own paths and palette. Nothing here is built; each stands or falls on its own.</p>
+  <p class="note">Nine proposed screens, drawn with the app's own paths and palette. Nothing here is built; each stands or falls on its own.</p>
   <svg class="page-rule" width="48" height="6" viewBox="0 0 48 6"><path d="M1 3.5 C4.8 3.5 8.7 1.9 12.5 1.9 C16.3 1.9 20.2 3.9 24 3.9 C27.8 3.9 31.7 2.4 35.5 2.4 C39.3 2.4 43.2 4 47 4" stroke="var(--ink-faint)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
 </header>
 
@@ -895,11 +895,15 @@ $('ico-leaf-3').innerHTML = iconSVG('leaf', 20, 'var(--ink-soft)');
   $('baton-3').innerHTML = batonSVG(104);
 })();
 
-/* ④ — the trio. The chosen plant stands on the paper-deep marker, so its
-   shapes fill with the ground it is actually on. */
-$('cand-clover').innerHTML = plantSVG('clover', 90);
-$('cand-fern').innerHTML = '<span class="marker"></span>' + plantSVG('fern', 90, 'var(--paper-deep)');
-$('cand-poppy').innerHTML = plantSVG('poppy', 90);
+/* ④ — a long sit's offers: one rare, or two mids, or three commons. Each
+   bundle's plants share a ground; the chosen one stands on the paper-deep
+   marker, so its shapes fill with the ground they are actually on. */
+$('cand-rare').innerHTML = `<span class="bundle">${plantSVG('poppy', 82)}</span>`;
+$('cand-pair').innerHTML =
+  '<span class="marker"></span>' +
+  `<span class="bundle">${plantSVG('fern', 64, 'var(--paper-deep)')}${plantSVG('fern', 56, 'var(--paper-deep)')}</span>`;
+$('cand-trio').innerHTML =
+  `<span class="bundle">${plantSVG('clover', 48)}${plantSVG('clover', 52)}${plantSVG('clover', 46)}</span>`;
 
 /* ⑤ ⑥ — the run screen's ring: elapsed arc (inkFaint, the quietest mark),
    the breathing ring (accent, one 10s breath), the preview plant at centre.
@@ -950,6 +954,51 @@ $('masonry-7').innerHTML = NOTES.map((note, i) =>
     (note.plant ? `<span>${plantSVG(note.plant, 24, 'var(--paper-deep)')}</span>` : '') +
     `</div></div>`
 ).join('');
+
+/* ⑧ — the finished 3-bed, small at the top of the ask. */
+$('bed-8').innerHTML = plantSVG('grass', 62) + plantSVG('sprout', 62) + plantSVG('clover', 62);
+
+/* ⑨ — the shelf. Thumbnails are cheap marks, not plants: a green tick per
+   sitting (two variants, alternated), a bloom-pen fleck where the species
+   blooms — colour stays an edge, never a fill — and the faint blob for an
+   empty slot, all standing on each row's shared baseline. */
+const TICKS = [
+  'M5,13 C4.4,10 5.6,7 5,3.6',
+  'M5,13 C5.6,10 4.4,7 5.2,4',
+];
+function tickSVG(i, bloomPen) {
+  const fleck = bloomPen
+    ? `<path d="M3.2,3.4 C3.9,2 6.1,2 6.8,3.4" stroke="${PEN[bloomPen]}" stroke-width="1.6" stroke-linecap="round" fill="none"/>`
+    : '';
+  return `<svg width="10" height="14" viewBox="0 0 10 14" style="transform:translateY(${((i * 5) % 3) - 1}px)"><path d="${TICKS[i % 2]}" stroke="var(--pen-green)" stroke-width="1.8" stroke-linecap="round" fill="none"/>${fleck}</svg>`;
+}
+const MINI_EMPTY =
+  '<svg width="10" height="14" viewBox="0 0 10 14"><path d="M5,8.1 C5.8,8.2 6.4,8.8 6.3,9.6 C6.2,10.4 5.5,10.9 4.7,10.8 C4,10.7 3.5,10 3.6,9.2 C3.7,8.5 4.3,8 5,8.1" fill="var(--ink-faint)"/></svg>';
+
+const GARDENS = [
+  { cols: 3, total: 3, planted: 3, blooms: {}, meta: 'Feb · 3', radius: '13.1px 10.4px 12.6px 11.2px' },
+  { cols: 7, total: 7, planted: 7, blooms: { 4: 'penPink' }, meta: 'Feb – Mar · 7', radius: '10.8px 13.5px 11.4px 12.9px' },
+  { cols: 6, total: 30, planted: 30, blooms: { 2: 'penOrange', 9: 'penBlue', 15: 'penPink', 22: 'penOrange', 27: 'penPink' }, meta: 'Mar – May · 30', radius: '12.2px 11.0px 13.8px 10.6px' },
+  { cols: 6, total: 30, planted: 15, blooms: { 3: 'penPink', 11: 'penOrange' }, meta: 'now · 15 of 30', radius: '11.6px 12.8px 10.2px 13.3px' },
+];
+$('gardens-9').innerHTML = GARDENS.map((g) => {
+  let marks = '';
+  for (let slot = 0; slot < g.total; slot++) {
+    marks += slot < g.planted ? tickSVG(slot, g.blooms[slot]) : MINI_EMPTY;
+  }
+  return `<div class="garden-card" style="border-radius:${g.radius}">` +
+    `<div class="mini-field" style="grid-template-columns:repeat(${g.cols},12px)">${marks}</div>` +
+    `<div class="garden-meta">${g.meta}</div></div>`;
+}).join('');
+$('keeper-9').innerHTML = batonSVG(96, 'idle');
+$('back-9').innerHTML = iconSVG('arrowLeft', 24, 'var(--ink)');
+
+/* The drawn buttons — measured, then drawn, the way Button.tsx does it. */
+document.querySelectorAll('.btn-wobbly').forEach((el) => {
+  const w = el.offsetWidth, h = el.offsetHeight;
+  el.insertAdjacentHTML('afterbegin',
+    `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${boxPath(w, h, 14)}" fill="var(--accent)"/></svg>`);
+});
 </script>
 </body>
 </html>

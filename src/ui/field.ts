@@ -38,6 +38,27 @@ export const ROOT_Y = 43;
 export const ROOT_SHARE = ROOT_Y / CANVAS;
 
 /**
+ * That same point as a `transformOrigin`, which every animation of a plant has
+ * to pivot on.
+ *
+ * It is an **array and never a string**, and that is not a style preference.
+ * React Native parses a string origin with
+ * `/(top|bottom|left|right|center|\d+(?:%|px)|0)/g` — integer digits only, no
+ * decimal point — so `'50% 89.58333333333334%'` does not fail, it silently
+ * matches `58333333333334%` and pivots the plant fifty-eight trillion percent
+ * down its own height. The transform then throws it somewhere past the horizon
+ * and the garden renders empty, with no error and no clue: layout is untouched,
+ * because a transform does not affect it, so the cells and the next-dot ring
+ * all look right.
+ *
+ * The array form skips that parser entirely and keeps the fraction. It costs
+ * nothing to write and an afternoon to rediscover, and it only shows on device
+ * — `react-native-web` passes the string to CSS, which handles decimals, so a
+ * browser draws the garden perfectly either way.
+ */
+export const ROOT_ORIGIN: [string, string, number] = ['50%', `${ROOT_SHARE * 100}%`, 0];
+
+/**
  * How far a plant is drawn past the share of the cell `ART_SHARE` allows.
  *
  * A plant does not fill its canvas the way the containment share assumes. The

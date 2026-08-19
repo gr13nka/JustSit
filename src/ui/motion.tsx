@@ -8,7 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { ROOT_SHARE } from './field';
+import { ROOT_ORIGIN } from './field';
 import { SWAY_CYCLE_MS, swayTrack } from './sway';
 
 /**
@@ -173,7 +173,7 @@ export function Sway({
     <Animated.View
       style={{
         // The root, as everywhere else a plant is transformed.
-        transformOrigin: `50% ${ROOT_SHARE * 100}%`,
+        transformOrigin: ROOT_ORIGIN,
         transform: [
           { skewX: progress.interpolate({ inputRange: track.at, outputRange: track.skew }) },
           { rotate: progress.interpolate({ inputRange: track.at, outputRange: track.spin }) },
@@ -237,7 +237,7 @@ export function Sprout({
         // ground while the rest of it stretches. Not the bottom of the canvas,
         // which is a nib's margin lower — pivoting there lifted every root a
         // couple of points at the peak and set it back down again.
-        transformOrigin: `50% ${ROOT_SHARE * 100}%`,
+        transformOrigin: ROOT_ORIGIN,
         opacity: track('opacity'),
         transform: [{ scaleY: track('scaleY') }, { scaleX: track('scaleX') }],
       }}>

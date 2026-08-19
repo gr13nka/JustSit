@@ -544,6 +544,24 @@ to its ranges if the app ever grows Cyrillic text. The earlier lesson still
 stands underneath: never import an `@expo-google-fonts` package by its root —
 the root `require`s every weight.
 
+**A `transformOrigin` must be an array, never a string, if it is not a whole
+percent.** React Native parses a string origin with
+`/(top|bottom|left|right|center|\d+(?:%|px)|0)/g` — integer digits, no decimal
+point. `'50% 89.58333333333334%'` therefore does not fail; it matches
+`58333333333334%` out of the middle and pivots the view fifty-eight trillion
+percent down its own height, which throws it past the horizon. `ROOT_SHARE` is
+43/48, so every plant animation lands on exactly this. The array form skips that
+parser: `src/ui/field.ts`'s `ROOT_ORIGIN`, which `Sprout` and `Sway` both use.
+
+It is worth knowing how completely this hides. There is no error, no warning,
+and no layout change — a transform does not affect layout, so the cells, the
+scatter and the next-dot ring all stay exactly where they belong and only the
+drawings disappear, which reads as a data problem rather than a style one. And
+**it does not reproduce in the web preview**, because `react-native-web` hands
+the origin to CSS, which reads decimals perfectly well: the browser drew a
+correct garden the whole time the phone drew an empty one. `origin.test.ts`
+pins it against RN's own parser.
+
 **Do not add `babel.config.js`.** SDK 57 applies `babel-preset-expo` by default.
 Adding the config file the docs show makes Metro demand `babel-preset-expo` as a
 top-level dependency, which isn't hoisted — bundling fails immediately.
