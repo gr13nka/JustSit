@@ -70,8 +70,10 @@ export default function GardenScreen() {
       </View>
 
       {/*
-        Eighteen rows are taller than any phone, so the plot scrolls. The nav
-        floats over the foot of it, so the last rows are padded clear of it.
+        Nine rows fit any phone, so a full plot no longer scrolls. It stays a
+        ScrollView for the empty state, which puts Батон above the field, and
+        for the short phones where the two together do not fit. The nav floats
+        over the foot of it, so the last rows are padded clear of it.
       */}
       <ScrollView
         showsVerticalScrollIndicator={false}

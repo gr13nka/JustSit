@@ -112,13 +112,18 @@ function nominal(fitRadius: number): number {
 }
 
 /**
- * The ring as an SVG path, centred on (`centre`, `centre`) and fitting inside
+ * The ring as an SVG path, centred on (`cx`, `cy`) and fitting inside
  * `fitRadius` of it — every point of it, including the bulge.
+ *
+ * The centre is two numbers rather than one because a ring is not always drawn
+ * in a square frame. The timer's is, and passed the same number twice; the mark
+ * around a plant's roots sits low on the plant's own canvas, where the two
+ * coordinates have nothing to do with each other.
  */
-export function ringPath(centre: number, fitRadius: number): string {
+export function ringPath(cx: number, cy: number, fitRadius: number): string {
   const r = nominal(fitRadius);
   const at = (p: Point) =>
-    `${(centre + p.x * r).toFixed(2)},${(centre + p.y * r).toFixed(2)}`;
+    `${(cx + p.x * r).toFixed(2)},${(cy + p.y * r).toFixed(2)}`;
   return `M${at(UNIT_RING.start)} ${UNIT_RING.cubics
     .map((c) => `C${at(c.c1)} ${at(c.c2)} ${at(c.end)}`)
     .join(' ')}`;

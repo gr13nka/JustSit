@@ -207,12 +207,27 @@ sitting), and the single `wobbly` button (Meditate, and only it). The active
 tab's scribble underline was the fifth and is gone: the sliding selector's
 marker says "you are here" now, and an interface needs one way of saying it.
 Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
-beyond those is. Every *code-drawn* path is cubic béziers with round caps and baked-in
+beyond those is. The garden's next-dot ring is not a fifth kind — it is the
+timer's ring at another size, which is the whole reason that geometry sits in
+`ring.ts` rather than in the component that first wanted it. Every *code-drawn* path is cubic béziers with round caps and baked-in
 wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. The
-icons no longer need the rule — they were drawn by an actual hand. Two
-of them are filled rather than stroked — the empty slot's dot (`Plant.tsx`'s
-`EmptySlot`) and the wobbly button's own shape — and nothing else may be. The
-pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
+icons no longer need the rule — they were drawn by an actual hand.
+
+Fill is spent three ways and no others. Two marks are filled *instead* of being
+stroked — the empty slot's dot (`Plant.tsx`'s `EmptySlot`) and the wobbly
+button's own shape. The third is new and is a different thing: a plant's closed
+paths are filled with **paper** behind their own stroke, so a leaf, a cap, a
+berry and a bloom sit on the page rather than being holes in it. This is a
+departure from the kit, which draws doodles `fill="none"` and sanctions fill for
+UI surfaces alone, and it was taken once `PLANT_ZOOM` reached 1.85 and plants
+began landing on top of each other: a cap you can read the next plant's stem
+through is a tangle, not a garden. It stays a departure about *opacity*, not
+about colour — the fill is always the ground, never a pen, so a garden of solid
+colour would be a second and much larger change. Which paths qualify is read off
+the drawings (`isShape`: a path that closes is a shape, one that does not is a
+stroke), so re-tracing the plants cannot silently get it wrong.
+
+The pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
 heroes at 7 on 200, and hand-drawn UI marks (`Rule`) at hairline–2 on their own
 tight canvas — so one hand appears to have drawn the whole app.
 
@@ -266,11 +281,117 @@ means *something grew*, and elapsed time has not grown anything.
 
 **At most one primary button per screen.** Any second action is `variant="quiet"`.
 
-**Motion lives in `src/ui/motion.tsx`, and none of it loops.** An *entrance*
-(`Sprout`, `Rise`) marks a first appearance; a *settle* (`usePressSettle`) is
-feedback for a touch. Everything animates transform and opacity only, so every
-driver is native. The breathing ring is the one exception and owns its own loop,
-because there the loop is the point.
+**Motion lives in `src/ui/motion.tsx`, and almost none of it loops.** An
+*entrance* (`Sprout`, `Rise`) marks a first appearance; a *settle*
+(`usePressSettle`) is feedback for a touch. Everything animates transform and
+opacity only, so every driver is native. Two things loop and both are named
+exceptions, because in each the loop is the point rather than a transition: the
+breathing ring, which owns its own, and `Pulse`, which breathes the garden's
+next dot to the same four-in six-out count so the app has one breath rather than
+two that nearly match.
+
+`Pulse` is the nearer of the two to something this app does not do. The ring
+reports — a sitting is running — while a pulsing dot invites, and inviting is a
+step towards an engagement mechanic. What keeps it honest is that the swing is
+small enough to notice only once you are already looking at the garden, and that
+nothing about it accumulates, congratulates, or keeps score: miss a week and it
+is doing exactly what it does now.
+
+**The field is twelve across, so 108 lands on nine rows and a whole plot fits
+one screen.** It used to be six across, where a cell was 60pt wide and a dot was
+a 5.5pt blob adrift in it, and the plot ran two and a half screens deep. Dense,
+the dots read as one texture the grown marks sit in rather than as a list of
+buttons — which is what the garden is for. Two costs, both accepted: the tap
+target is a 30pt cell rather than a 60pt one (a mis-tap spends nothing, since
+the slot is only committed when a sitting finishes), and `field.ts` floors
+the cell to a half point and draws the grid at exactly twelve of them, because
+twelve fractional widths can total a hair over a fractional container and throw
+the last cell onto a row of its own.
+
+The field's arithmetic lives in `src/ui/field.ts`, which is pure — no react, no
+svg, the `ring.ts` precedent — because the guarantee it makes is one worth
+checking without a renderer. `COLUMNS`, `PLANT_ZOOM`, the page the plants are
+drawn on and the line they stand on are all there, and `PlantGrid` asks it for
+one `Field` rather than doing the sums itself.
+
+The two drawings in that field are sized differently, and `ART_SHARE` is why.
+The share is derived so that art plus a full scatter cannot cross the cell's
+edge, and the empty dot takes it neat — an unplanted field has to stay on its
+lattice or the whole thing looks spilled. A plant spends the guarantee
+(`PLANT_ZOOM`, 1.85), because a plant does not fill its canvas: rooted at y=43 on
+a 48-unit page with a margin for the nib, its ink is around two thirds of the
+width measured out for it, so at cell size the drawing is small and the field
+reads as sparse. Drawn getting on for twice as large, the ink fills the cell and
+the canvas margin is what hangs over. Plants may touch at the edges; a garden where
+they do is a garden.
+
+**A dot and a plant stand on one line, and `GROUND` is where it is.** They used
+to be centred in their cell instead, which sounds like the same thing for both
+and is not: a dot's ink *is* the middle of its canvas, while a plant's root sits
+`(ROOT_Y - CANVAS / 2) / CANVAS` below the middle of its own. At `PLANT_ZOOM`
+that came to about two thirds of a cell, so every plant grew from well below the
+dot that started it. In a row holding some of each it read as a rendering fault,
+and it quietly contradicted the rule that a sitting grows where you touched.
+`PLANT_ZOOM` did not cause it — the gap is a third of a cell even at zoom 1 —
+but each increase widened it, which is why it arrived by degrees.
+
+So neither drawing owns the line. `field.ts` puts it at `GROUND` of a cell and
+moves each mark by its own distance from it, which is what makes them land
+together at any zoom and any cell size; a test asserts exactly that, because it
+is the sort of guarantee that stops being true silently. The value is a look and
+not a derivation: every value aligns them, and what it picks is which of the two
+pays for it. At 0.8 they split it about evenly. An empty garden is identical at
+any value — a uniform lattice has nothing to compare itself against — so this
+only ever shows itself in a half-planted row.
+
+Two things fall out of it. `Sprout` now pivots on the root rather than on the
+bottom of the canvas, a nib's margin lower, which used to lift every root a
+couple of points at the peak and set it back down. And **dots draw over plants**
+(`styles.above`), which they never had to before: a plant stands about a cell and
+a quarter tall from its root, so once its root is on the dots' line its head
+necessarily reaches past the ground line of the row above, and its shapes are
+filled with paper. A hole left in a planted field would otherwise have its dot —
+and the ring marking where to sit next — quietly painted over by the plant below
+it. A dot showing over a leaf reads as ground behind the garden, which is what it
+is; a target you cannot see does not read as anything.
+
+**The dot a sitting would fill next wears a drawn circle, and it breathes.** A
+field of a hundred alike marks is the point of the garden and also what makes
+any one of them impossible to pick out. The ring is a locator and not a prize:
+it says nothing about you, and it is gone the moment that dot is filled. It
+circles an *empty* dot rather than the newest plant on purpose — marking what
+you grew is a record and the garden is already that, while marking where you
+would go next is the only thing on the screen about carrying on. Which dot that
+is comes from `nextDot`, the first hole in the plot, so it agrees with where
+`nextFreeSlot` would actually plant.
+
+Its colour is `inkSoft`: not the accent, whose four places are spoken for; not
+green, which means something grew and nothing has grown here yet; and not
+`inkFaint`, which is what the dot inside it is drawn in — a ring in the colour of
+the thing it circles is not a ring.
+
+The geometry is `ringPath` at another size, which is why that function takes a
+centre as two numbers rather than one. But `ring.ts`'s wobble is a couple of
+percent, and a couple of percent of an eleven-point ring is a sixth of a point:
+at the timer's 210pt it reads as a hand, and here it read as a compass. So the
+small ring is tilted and run a little long on one axis (`RING_LEAN`), which is
+what a circle closed in one movement actually does — and because the uneven
+scale carries the nib with it, the line thickens through the turn. Fixed and
+unseeded, like every other wobble here: one ring is on screen at a time, so it
+wants one character rather than a family of them.
+
+What the overhang costs is padding on the grid, and it is not optional. A plant
+drawn past its cell needs room outside it, and the top row has none: a scroll
+container clips at its own edge whatever its children say about `overflow`, so
+the first row of flowers came back decapitated — heads sheared flat, which is
+subtle enough to read as a drawing style rather than as a bug. The two edges
+reserve different amounts, and both are worked out from where the ground line
+put things rather than written down: a sprout scales *about* that line, so each
+end swings out from it by `SPROUT_PEAK`, which is read off `GROWTH` rather than
+stated twice. Lifting the plants sent most of the old bottom margin to the top,
+where `below` is now not much more than a scatter and the lowest mark is often
+the dot rather than the plant. A louder pop that quietly outgrew the space kept
+for it is the bug that arrangement exists to prevent.
 
 **The garden bursts on every visit, not once per launch.** `useBurst` runs one
 shared 0..1 clock and each `Sprout` reads its own window out of it, so 108 cells
@@ -279,16 +400,26 @@ tab stays mounted, so a mount effect would fire exactly once in the life of the
 app. Delays are seeded from the slot (`hash32('burst-' + slot)`), never random:
 a field that re-rolled its timings would be a different drawing each visit.
 
-The whole field lands in under half a second — 200ms per doodle scattered across
-280 — and each one is **squash and stretch**, not a fade-up. `GROWTH` in
+The whole field takes about a second and a half — 1000ms per doodle scattered
+across 450 — and each one is **squash and stretch**, not a fade-up. `GROWTH` in
 `motion.tsx` is the curve, written as frames rather than parallel arrays because
-the character is in how the channels disagree at a moment: the doodle shoots
-past full height while still pinched narrow, swings back under it as it widens,
-then settles. `scaleX` and `scaleY` must never reach their extremes together, or
-it reads as a bubble inflating rather than as something growing. This is livelier
-than the kit's ~300/450 default on purpose; the garden is the one place this app
-is allowed to be pleased with itself, and the burst is over before it could
-become a thing you wait through.
+the character is in how the channels disagree at a moment. The doodle shoots
+past full height while still pinched narrow, and everything after that is it
+wobbling to a stop: overshoot nearly two thirds, then a third, then a sixth,
+each swing about half the one before. That halving is what a damped spring does, and it is
+the difference between jelly and a bounce. `scaleX` and `scaleY` must never
+reach their extremes together, or it reads as a bubble inflating rather than as
+something growing — every frame multiplies out to within a few percent of 1, so
+the doodle changes shape and never mass.
+
+This burst used to be over in under half a second, on the argument that it must
+not become a thing you wait through. It is now something you watch, which is a
+deliberate reversal and the one place the app spends time on pleasure: the
+garden is the screen worth looking at rather than using, and `usePullToReplay`
+exists precisely so you can ask for it again. What that costs is written into
+`PlantGrid`'s `above` — a sprout at its peak stands two thirds again over its
+own root, and a second of it is long enough that a top row trimmed by the scroll
+edge is something you would sit and watch happen.
 
 **Pulling down at the top of the garden plays it again** (`usePullToReplay`).
 The garden is the one screen here worth looking at rather than using, and the
@@ -548,3 +679,95 @@ with a warning, so the reminder picker is inert in the browser. Nothing else is.
 passing `--window-size`, because macOS clamps a window to roughly 500px wide — a
 naive headless shot of a 411pt phone lays out at ~500 and captures the middle of
 it, which looks exactly like a layout bug and is not one.
+
+## Tuning the garden's motion: the bench
+
+`tools/anim-lab.html` is the garden's motion on sliders — a **Burst** tab for the
+sprout curve and a **Sway** tab for the idle lean. Open it straight off disk — no
+server, no build step, nothing outside the one file.
+
+```sh
+open tools/anim-lab.html
+python3 tools/lab-data.py    # re-lift the drawings after redrawing one
+```
+
+It exists because the curve had been tuned three times by editing `GROWTH`,
+reloading, and watching a two-and-a-half-second animation go past once. The part
+that is usually wrong is the *settle*, and at 25pt a 3% overshoot is a pixel.
+
+The five sliders are a damped spring — peak, damping, swings, rise, area — and
+the frame table is generated from them, not edited. Two things fall out of that
+which are worth keeping: the swings decay by construction, and `scaleX` is
+`area / scaleY`, so the channels cannot reach their extremes together however
+the knobs are set. Its defaults are the shipped table, and it
+reproduces it line for line — if the two ever disagree, one of them has been
+edited by hand and the bench is the one to trust. The output block is paste-ready
+for `src/ui/motion.tsx`; nothing writes to the repo, which is what keeps the
+bench out of the app's dependency graph.
+
+**It is a copy, and three details are why it can be trusted.** The interpolation
+is piecewise-linear clamped at both ends — what `Animated.interpolate` does, not
+a CSS easing. `transform-origin` is `bottom`, because a plant grows from its
+root. And the start times come from the same `hash32`, so a slot sprouts when it
+would sprout in the app. Change any of those and the bench is a nice animation
+of something else. The `.scroll` box clips like the real ScrollView too, so the
+top row's overhang is judged honestly rather than hidden.
+
+What it does *not* reproduce: which species grows where. The app resolves that
+from a session id at completion; the bench hashes it off the slot, so the field
+is varied and stable but is nobody's real garden. As with the web preview,
+decide here and confirm on the phone.
+
+**The Sway tab is the same argument applied to an idle lean**, and it is where
+the question "each plant on its own, or one wind crossing the field" gets
+answered by eye rather than in prose. It is one model, not three modes:
+`coherence` runs from every plant on its own seeded phase to a single travelling
+wave, and the Independent / Wind field / Gusty buttons are points in it. The
+tabs swap which knobs and which output block you see, never which animation
+runs — the burst and the sway both play, because the handoff between them is the
+part most likely to look wrong.
+
+Three details there carry the same weight as the burst's three. It runs off
+**one clock**, with each plant's whole loop stored as a sampled table, because
+that is exactly what `Animated.interpolate` can read off a single looping
+`Animated.Value` — a sway tuned with a per-plant period would be one the app
+cannot drive natively for 108 cells, and the bill would arrive after the tuning.
+The sway wrapper sits **outside** the sprout, so the composite is `skewX·scaleY`
+and a half-grown plant leans half as far in pixels at the same angle; inverted,
+a squashed plant swings as wide as a full one. And the lean is a **shear**,
+whose determinant is exactly 1 — so unlike a scale channel it cannot break the
+rule that a doodle changes shape and never mass. Everything is periodic over one
+turn of the clock by construction (a whole number of sways, one gust), so the
+loop closes without a seam rather than being checked for one.
+
+The phase seeds off the hash's **low** bits — `(hash32('sway-' + slot) % 4096)`
+— as `burstDelay` and `slotOffset` already do. FNV-1a's top bits run close to
+linear in the last character of a short key, so dividing by 2³² hands back a
+near-monotone ramp across `sway-0`…`sway-11`, and the whole field drifts in step
+at coherence 0: the one thing coherence 0 exists to prevent.
+
+**The `shape` knob is a Möbius warp of the cycle, and the obvious formulation
+was wrong.** Sway asymmetry — fast through upright one way, slow the other — is
+tempting to write as `sin(a + b·sin a)`, but that carries a velocity factor
+`(1 + b·cos a)` which is *exactly zero* at `a = π` when `b = 1`. The plant stops
+dead at upright, hangs, and starts again; decelerating in and accelerating out
+reads as two twitches per swing, and since the table is straight lines between
+knots, the flattest part of the curve is also where the linear corners show
+worst. The warp used instead has the Poisson kernel
+`(1−k²)/(1 − 2k·cos a + k²)` as its derivative, which is strictly positive for
+every `k < 1` — so however hard the asymmetry is pushed, the motion never stops.
+
+That trade moves the cost to the knot count, which is why `knots` is a fidelity
+setting rather than a taste one and why the panel prints the worst velocity
+corner in the table. Pushing `shape` to 1 compresses the fast crossing into
+fewer samples: at the current settings 32 knots leaves a 20°/s corner and 64
+brings it to 12, while backing `shape` to 0.6 gets there at 32. Set it against
+the number, not by eye.
+
+The Room panel is a finding the sway forced out. `above`/`below` budget the
+vertical overhang and nothing budgets the sideways one, and sideways has no
+padding to hide in — the grid is centred, so widening it moves nothing. At the
+shipped geometry a plant already reaches about 1px past its cell at rest, and a
+3.5° lean makes that 4.9px against 1.5px of room, so the outer columns get
+shaved. **Make room** shows what fixing it costs: the cell gives the width up
+(30 → 28.5pt at 9°), and the output block prints the closed form.

@@ -1,6 +1,12 @@
 /**
- * The pen the app's *code-drawn* marks are drawn with: stroke only, round nib,
- * nothing filled.
+ * The pen the app's *code-drawn* marks are drawn with: round nib, drawn as a
+ * stroke.
+ *
+ * `fill` is `none` here because that is what a nib does, and a caller that
+ * needs otherwise overrides it deliberately. One does: a plant fills its closed
+ * paths with paper so that overlapping drawings stop being see-through
+ * (`Plant.tsx`, `isShape`). That is the ground showing through an outline, not
+ * the pen changing — colour still only ever appears as an edge.
  *
  * One hand, two nibs. `PEN_DOODLE` writes on the 48-unit canvas of the plants;
  * `PEN_HERO` writes on the 200-unit canvas of the heroes.

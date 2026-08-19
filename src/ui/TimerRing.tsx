@@ -109,7 +109,7 @@ export function TimerRing({
       {fraction !== null && (
         <Svg width={size} height={size} style={styles.layer}>
           <Path
-            d={ringPath(centre, arcR)}
+            d={ringPath(centre, centre, arcR)}
             stroke={color.inkFaint}
             strokeWidth={strokeWidth}
             fill="none"
@@ -127,7 +127,7 @@ export function TimerRing({
       <Animated.View style={[styles.layer, ringStyle]}>
         <Svg width={size} height={size}>
           <Path
-            d={ringPath(centre, fitRadius)}
+            d={ringPath(centre, centre, fitRadius)}
             stroke={color.accent}
             strokeWidth={strokeWidth}
             fill="none"

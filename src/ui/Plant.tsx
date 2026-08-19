@@ -3,7 +3,9 @@ import Svg, { Path } from 'react-native-svg';
 import { isKnownPlant, PlantKey } from '../domain/plants';
 import { ColorName } from '../theme/themes';
 import { useColor } from '../theme/useColor';
+import { CANVAS, ROOT_Y } from './field';
 import { PEN_DOODLE } from './pen';
+import { ringPath } from './ring';
 
 /**
  * How a plant is drawn.
@@ -181,10 +183,72 @@ const SPECIES: Record<PlantKey, Species> = {
 const FALLBACK: PlantKey = 'grass';
 
 /**
- * Renders one plant, in the doodle pen: stroke-only cubic béziers on a 48-unit
- * canvas, nothing filled. The wobble is in the path data, not in a runtime
- * effect — a plant that shimmered would be a second thing moving on a screen
- * whose whole job is to hold still.
+ * How near a path's two ends must come for it to count as closed. Two units on
+ * the 48-unit page — the same order as the wobble baked into the drawings,
+ * because a hand that closed a shape to the decimal would not read as a hand.
+ */
+const CLOSE_ENOUGH = 2;
+
+const COORDINATE = /-?\d*\.?\d+/g;
+
+/**
+ * Whether one `M`-started run of curves comes back to where it began. Every
+ * path here is an `M` followed by cubics, so the first pair of numbers is where
+ * the nib went down and the last pair is where it came up.
+ */
+function closes(subpath: string): boolean {
+  const n = subpath.match(COORDINATE)?.map(Number) ?? [];
+  if (n.length < 4) return false;
+  return Math.hypot(n[0] - n[n.length - 2], n[1] - n[n.length - 1]) <= CLOSE_ENOUGH;
+}
+
+/**
+ * A *shape* is a path that closes; anything else is a *stroke*. That single
+ * distinction decides which marks take a fill, and it is read off the drawing
+ * rather than recorded beside it — so a redrawn plant, or a species added
+ * later, comes out right without anyone having to remember this exists.
+ *
+ * A leaf, a cap, a berry and a bloom all come back to where they started and
+ * enclose something. A stem, a blade, a frond and a bristle do not, and filling
+ * one would lay a slab across the gap between its ends.
+ */
+function isShape(d: string): boolean {
+  const subpaths = d.split('M').filter((run) => run.trim());
+  return subpaths.length > 0 && subpaths.every(closes);
+}
+
+type Mark = { d: string; pen: ColorName; shape: boolean };
+
+/**
+ * The species flattened into the marks that draw them, once, at load. Whether a
+ * path encloses anything is a property of the drawing and cannot change while
+ * the app is running, so it is not worth deciding again for every plant in a
+ * hundred-cell garden.
+ */
+/** The plant canvas as a viewBox — the page `field.ts` measures everything against. */
+const PAGE = `0 0 ${CANVAS} ${CANVAS}`;
+
+const MARKS = Object.fromEntries(
+  (Object.keys(SPECIES) as PlantKey[]).map((key) => {
+    const { growth, bloom } = SPECIES[key];
+    const marks: Mark[] = growth.map((d) => ({ d, pen: 'penGreen', shape: isShape(d) }));
+    if (bloom) {
+      for (const d of bloom.paths) marks.push({ d, pen: bloom.pen, shape: isShape(d) });
+    }
+    return [key, marks];
+  })
+) as Record<PlantKey, Mark[]>;
+
+/**
+ * Renders one plant, in the doodle pen: cubic béziers on a 48-unit canvas. The
+ * wobble is in the path data, not in a runtime effect — a plant that shimmered
+ * would be a second thing moving on a screen whose whole job is to hold still.
+ *
+ * Its shapes are filled with paper. Plants are drawn well past their cells now
+ * and land on top of one another, and a cap you can read the next plant's stem
+ * through is a tangle rather than a garden. An ink drawing stops being
+ * see-through by sitting on paper, not by being coloured in — so the fill is
+ * the ground, and colour stays an edge.
  *
  * `plant` is whatever a stored session says it is, so a key this version does
  * not know draws the grass fallback rather than throwing. A garden is not worth
@@ -193,23 +257,26 @@ const FALLBACK: PlantKey = 'grass';
 export function Plant({ plant, size = 24 }: { plant: string; size?: number }) {
   const color = useColor();
   const key = isKnownPlant(plant) ? plant : FALLBACK;
-  const { growth, bloom } = SPECIES[key];
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 48 48">
-      {growth.map((d, i) => (
-        <Path key={`g${i}`} d={d} stroke={color.penGreen} {...PEN_DOODLE} />
-      ))}
-      {bloom?.paths.map((d, i) => (
-        <Path key={`b${i}`} d={d} stroke={color[bloom.pen]} {...PEN_DOODLE} />
+    <Svg width={size} height={size} viewBox={PAGE}>
+      {MARKS[key].map((mark, i) => (
+        <Path
+          key={i}
+          d={mark.d}
+          {...PEN_DOODLE}
+          stroke={color[mark.pen]}
+          fill={mark.shape ? color.paper : 'none'}
+        />
       ))}
     </Svg>
   );
 }
 
 /**
- * The one filled shape in the whole drawing set, and the only place a mark is
- * made without the pen being dragged.
+ * The only place in the drawing set where a mark is made without the pen being
+ * dragged — a plant's fills are paper, the ground showing through its own
+ * outline, while this one is ink and is the whole mark.
  *
  * It is a blob rather than a circle for the same reason nothing else here is
  * geometric: a true circle beside this art reads as a different hand.
@@ -218,16 +285,94 @@ const DOT =
   'M24,21.4 C25.5,21.5 26.7,22.7 26.6,24.2 C26.5,25.6 25.3,26.7 23.8,26.6 C22.4,26.5 21.3,25.2 21.4,23.7 C21.5,22.3 22.6,21.3 24,21.4';
 
 /**
+ * The blob's own canvas, tighter than the 48 units a plant is drawn on — which
+ * is the whole of how the dot is 1.7× the mark it would otherwise be at the
+ * same `size`.
+ *
+ * It needs one because a plant and a dot are not the same kind of drawing. A
+ * plant fills its canvas; the dot occupies a tenth of the middle of one, so
+ * shrinking the cell from 60pt to 30pt took the plants from clear to small and
+ * the dot from small to invisible. A field you cannot see is not a promise.
+ */
+const DOT_CANVAS = '10 10 28 28';
+
+/** The blob's centre, and so the ring's — the middle of that canvas. */
+const DOT_CENTRE = 24;
+
+/**
+ * The circle drawn round the dot a sitting would fill next.
+ *
+ * It answers one question and no other: where does the garden carry on. A field
+ * of a hundred alike marks is the point of the garden and also what makes any
+ * one of them impossible to pick out, so the ring is a locator — drawn in ink
+ * rather than in colour, saying nothing about you, and gone the moment that dot
+ * is filled.
+ *
+ * It circles an empty dot rather than the newest plant on purpose. Marking what
+ * you grew is a record, and the garden is already that; marking where you would
+ * go next is the only thing on the screen that is about carrying on.
+ *
+ * The geometry is the timer's ring (`ring.ts`) at another size — seven cubics
+ * off a fixed knot table. A geometric circle beside this art would read as a
+ * different hand, which is why the dot inside it is a blob and not one either.
+ *
+ * Concentric with the blob, so both marks come out of `DOT_CANVAS` and the ring
+ * cannot drift off its own dot when the cell size changes.
+ */
+const RING_RADIUS = 7;
+const RING_WIDTH = 1.6;
+
+/**
+ * The lean that stops it reading as a compass circle.
+ *
+ * `ring.ts` nudges its knots by a couple of percent, which is plenty at the
+ * timer's 210pt but comes to about a sixth of a point here — invisible, so what
+ * is left is a machine circle sitting next to a garden drawn by hand. Tilting
+ * it and letting one axis run a little long is what a circle closed in one
+ * movement actually does, and at this size it is the only part of the wobble
+ * you can see.
+ *
+ * The uneven scale carries the nib with it, so the line thickens through the
+ * turn the way a real one does — which is the other half of why the drawn
+ * version reads as drawn.
+ *
+ * Fixed, like every other wobble in the app: one ring is on screen at a time,
+ * so it wants one character rather than a family of them.
+ */
+const RING_LEAN = `rotate(-9 ${DOT_CENTRE} ${DOT_CENTRE}) translate(${DOT_CENTRE} ${DOT_CENTRE}) scale(1.07 0.93) translate(${-DOT_CENTRE} ${-DOT_CENTRE})`;
+
+/**
  * A slot with nothing in it yet — the dot you touch to start a sitting there.
  *
  * It stays the faintest ink in the app: the dots ahead of you are a promise,
- * not an instruction.
+ * not an instruction. The ring is `inkSoft` rather than that faint, because a
+ * ring drawn in the colour of the thing it circles is not a ring — and it is
+ * not the accent, whose four places are spoken for, nor green, which means
+ * something grew and nothing has grown here yet.
  */
-export function EmptySlot({ size = 24 }: { size?: number }) {
+export function EmptySlot({
+  size = 24,
+  next = false,
+}: {
+  size?: number;
+  /** Whether this is the dot a sitting would fill next. */
+  next?: boolean;
+}) {
   const color = useColor();
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 48 48">
+    <Svg width={size} height={size} viewBox={DOT_CANVAS}>
+      {next && (
+        <Path
+          d={ringPath(DOT_CENTRE, DOT_CENTRE, RING_RADIUS)}
+          transform={RING_LEAN}
+          stroke={color.inkSoft}
+          strokeWidth={RING_WIDTH}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
       <Path d={DOT} fill={color.inkFaint} />
     </Svg>
   );

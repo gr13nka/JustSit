@@ -1,7 +1,14 @@
 import { arcLength, ringPath } from '../ring';
 
-/** Arbitrary, and deliberately not the TimerRing's own numbers. */
-const CENTRE = 105;
+/**
+ * Arbitrary, and deliberately not the TimerRing's own numbers — and deliberately
+ * two *different* numbers. A ring is centred on a point, not on a scalar, and
+ * the app's only square-framed caller passes the same value twice. Given one
+ * number here, a path that had transposed its two coordinates would satisfy
+ * every assertion in this file.
+ */
+const CX = 105;
+const CY = 61;
 const RADIUS = 100;
 
 type Point = { x: number; y: number };
@@ -46,7 +53,7 @@ function samplePath(d: string, perSegment = 64): Point[] {
   return points;
 }
 
-const distanceFromCentre = (p: Point) => Math.hypot(p.x - CENTRE, p.y - CENTRE);
+const distanceFromCentre = (p: Point) => Math.hypot(p.x - CX, p.y - CY);
 
 function polylineLength(points: Point[]): number {
   let total = 0;
@@ -56,7 +63,7 @@ function polylineLength(points: Point[]): number {
   return total;
 }
 
-const SAMPLES = samplePath(ringPath(CENTRE, RADIUS));
+const SAMPLES = samplePath(ringPath(CX, CY, RADIUS));
 
 describe('ringPath', () => {
   // Coordinates are written to two decimals, so a hair of slack is rounding.
@@ -82,15 +89,15 @@ describe('ringPath', () => {
 
   it('starts at twelve o’clock and runs clockwise', () => {
     const start = SAMPLES[0];
-    expect(Math.abs(start.x - CENTRE)).toBeLessThan(1);
-    expect(start.y).toBeLessThan(CENTRE - RADIUS * 0.95);
+    expect(Math.abs(start.x - CX)).toBeLessThan(1);
+    expect(start.y).toBeLessThan(CY - RADIUS * 0.95);
 
     // Straight away it travels to the right, and a quarter of the way round it
     // is at three o'clock — this is what lets the elapsed arc be a plain dash
     // offset rather than a rotation.
     expect(SAMPLES[1].x).toBeGreaterThan(start.x);
     const quarter = SAMPLES[Math.round((SAMPLES.length - 1) / 4)];
-    expect(quarter.x).toBeGreaterThan(CENTRE + RADIUS * 0.9);
+    expect(quarter.x).toBeGreaterThan(CX + RADIUS * 0.9);
   });
 });
 

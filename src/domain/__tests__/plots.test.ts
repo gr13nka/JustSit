@@ -4,6 +4,7 @@ import {
   ART_SHARE,
   currentPlot,
   isSlotFree,
+  nextDot,
   nextFreeSlot,
   PLOT_SIZE,
   plotAt,
@@ -103,6 +104,38 @@ describe('currentPlot', () => {
     const plot = currentPlot(sessions(PLOT_SIZE + 3));
     expect(plot.index).toBe(1);
     expect(plot.sessions).toHaveLength(3);
+  });
+});
+
+describe('nextDot', () => {
+  it('is the very first dot of an untouched garden', () => {
+    expect(nextDot(currentPlot([]))).toBe(0);
+  });
+
+  it('is the first hole, not the dot after the last plant', () => {
+    // The distinction the garden's marker rests on. The user picks the dot, so
+    // a garden routinely has gaps behind its newest plant, and a test that
+    // planted in order would pass on either reading and prove nothing.
+    const grown = [session(0, 40), session(1, 7), session(2, 90), session(3, 12)];
+    expect(nextDot(currentPlot(grown))).toBe(0);
+    expect(nextDot(currentPlot([...grown, session(4, 0)]))).toBe(1);
+  });
+
+  it('has nothing to point at once a plot is full', () => {
+    expect(nextDot(plotAt(sessions(PLOT_SIZE), 0))).toBeNull();
+  });
+
+  it('counts from the plot it is asked about, not from the garden', () => {
+    // Slots are absolute, so the second plot's first dot is 108 and not 0 —
+    // which is what lets the grid compare it against the slot it is drawing.
+    expect(nextDot(currentPlot(sessions(PLOT_SIZE)))).toBe(PLOT_SIZE);
+  });
+
+  it('agrees with where a sitting would actually be planted', () => {
+    // `nextFreeSlot` is the store's answer and `nextDot` is the grid's; a
+    // marker that pointed anywhere else would be a promise the app breaks.
+    const grown = [session(0, 5), session(1, 1), session(2, 0)];
+    expect(nextDot(currentPlot(grown))).toBe(nextFreeSlot(grown));
   });
 });
 

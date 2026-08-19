@@ -8,14 +8,17 @@ import {
   ViewStyle,
 } from 'react-native';
 
+import { ROOT_SHARE } from './field';
+
 /**
  * The app's motion, in one file.
  *
  * Two layers, and they mean different things. An *entrance* marks a first
  * appearance — a screen arriving, a garden being shown — and plays once.
- * A *settle* is feedback for a touch. Nothing here loops; the breathing ring
- * is the only thing in the app that does, and it owns its own loop because the
- * loop is the point rather than a transition.
+ * A *settle* is feedback for a touch. Neither repeats. Two things in the app do
+ * loop and both are deliberate: the timer's breathing ring, which owns its own,
+ * and `Pulse` below. In each the loop is the point rather than a transition —
+ * one says a sitting is running, the other says the garden carries on here.
  *
  * Everything animates transform and opacity only, so every driver here is
  * native and none of it competes with the wall clock a sitting runs on.
@@ -24,10 +27,10 @@ import {
 /** Overshoot-and-settle, for anything that moves or scales. */
 export const BOUNCE = Easing.bezier(0.34, 1.56, 0.64, 1);
 
-/** How long one doodle takes to grow. */
-const SPROUT_MS = 200;
+/** How long one doodle takes to grow and stop wobbling. */
+const SPROUT_MS = 1000;
 /** The window the whole field's delays are scattered across. */
-export const BURST_SPREAD_MS = 280;
+export const BURST_SPREAD_MS = 450;
 const BURST_MS = BURST_SPREAD_MS + SPROUT_MS;
 
 /**
@@ -42,13 +45,39 @@ const BURST_MS = BURST_SPREAD_MS + SPROUT_MS;
  * their extremes together: the doodle shoots past full height while still
  * pinched narrow, then swings back under it as it widens, then settles. A pop
  * where both go fat at once reads as a bubble rather than as something growing.
+ *
+ * What keeps that true however loud it gets is the *area*: every row below
+ * multiplies out to within a few percent of 1, so the doodle only ever changes
+ * shape, never mass. Widen `scaleX` to agree with the stretch and the character
+ * is gone whatever the numbers say.
+ *
+ * The shoot up is fast and everything after it is the plant wobbling to a stop
+ * — an overshoot of nearly two thirds, then a third, then a sixth, each swing
+ * about half the one before, which is what a damped spring does and what makes
+ * it read as jelly rather than as a bounce. The rise takes an eighth of the
+ * window and the six swings share the rest, so the wobble slows as it dies.
+ *
+ * Tuned in `tools/anim-lab.html`, which is where the next pass should happen
+ * too: the settle is the hard part of a curve to judge, and at this size it is
+ * invisible in the app until you have already committed it.
  */
 const GROWTH = [
   { at: 0, opacity: 0, scaleY: 0.05, scaleX: 0.7 },
-  { at: 0.55, opacity: 1, scaleY: 1.22, scaleX: 0.88 },
-  { at: 0.8, opacity: 1, scaleY: 0.96, scaleX: 1.05 },
+  { at: 0.12, opacity: 1, scaleY: 1.63, scaleX: 0.64 },
+  { at: 0.27, opacity: 1, scaleY: 0.69, scaleX: 1.53 },
+  { at: 0.41, opacity: 1, scaleY: 1.16, scaleX: 0.91 },
+  { at: 0.56, opacity: 1, scaleY: 0.92, scaleX: 1.14 },
+  { at: 0.71, opacity: 1, scaleY: 1.04, scaleX: 1.01 },
+  { at: 0.85, opacity: 1, scaleY: 0.98, scaleX: 1.07 },
   { at: 1, opacity: 1, scaleY: 1, scaleX: 1 },
 ] as const;
+
+/**
+ * The tallest a sprout ever gets, for whoever has to leave room for it. Read
+ * off the curve rather than written down twice: a louder pop that quietly
+ * outgrew the space reserved for it is exactly the bug this prevents.
+ */
+export const SPROUT_PEAK = Math.max(...GROWTH.map((frame) => frame.scaleY));
 
 type Channel = 'opacity' | 'scaleY' | 'scaleX';
 
@@ -113,10 +142,79 @@ export function Sprout({
   return (
     <Animated.View
       style={{
-        // A plant grows from its root, not from its middle.
-        transformOrigin: 'bottom',
+        // A plant grows from its root, so that is what stays nailed to the
+        // ground while the rest of it stretches. Not the bottom of the canvas,
+        // which is a nib's margin lower — pivoting there lifted every root a
+        // couple of points at the peak and set it back down again.
+        transformOrigin: `50% ${ROOT_SHARE * 100}%`,
         opacity: track('opacity'),
         transform: [{ scaleY: track('scaleY') }, { scaleX: track('scaleX') }],
+      }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+/**
+ * One breath, at a pace worth borrowing: out longer than in. The timer's ring
+ * breathes to the same count, so the app has one breath rather than two that
+ * nearly match.
+ */
+const INHALE_MS = 4000;
+const EXHALE_MS = 6000;
+
+/**
+ * A mark breathing where it stands — the one place the garden asks for anything.
+ *
+ * It wraps the dot a sitting would fill next, and it exists because a ring alone
+ * is a label: it tells you where the garden carries on, but a still field gives
+ * you no reason to look. The breath is what turns that into an invitation.
+ *
+ * It is the second looping animation in the app and that is a real exception,
+ * taken knowingly: this one nudges rather than informs, which is nearer an
+ * engagement mechanic than anything else here. What keeps it honest is its
+ * size. The swing is small enough that you notice it only once you are already
+ * looking at the garden, and nothing about it accumulates, congratulates or
+ * keeps score — miss a week and it is doing exactly what it does now.
+ *
+ * Transform and opacity only, so it stays on the native driver and never
+ * competes with the wall clock a sitting runs on. One driver, because only one
+ * dot is ever next.
+ */
+export function Pulse({ children }: { children: ReactNode }) {
+  const breath = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: EXHALE_MS,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: INHALE_MS,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    loop.start();
+    // Stopping on unmount matters for the same reason the ring's does: a loop
+    // left running holds the component alive after the screen is gone.
+    return () => loop.stop();
+  }, [breath]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: breath.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }),
+        transform: [
+          { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) },
+        ],
       }}>
       {children}
     </Animated.View>

@@ -78,6 +78,19 @@ export function plotAt(sessions: readonly Session[], index: number): Plot {
   };
 }
 
+/**
+ * The dot a sitting would fill next: the first empty one in the plot, or null
+ * once there are none left.
+ *
+ * The *first* empty one, not the one after the last plant. The user picks the
+ * dot, so a garden routinely has holes behind its newest plant, and the front of
+ * the unplanted field is where the garden carries on from.
+ */
+export function nextDot(plot: Plot): number | null {
+  const cell = plot.cells.indexOf(null);
+  return cell === -1 ? null : plot.index * PLOT_SIZE + cell;
+}
+
 /** The plot currently being filled — what the Garden tab shows. */
 export function currentPlot(sessions: readonly Session[]): Plot {
   return plotAt(sessions, plotCount(sessions) - 1);
@@ -133,9 +146,8 @@ export function isSlotFree(sessions: readonly Session[], slot: number): boolean 
  */
 export function nextFreeSlot(sessions: readonly Session[]): number {
   const plot = currentPlot(sessions);
-  const cell = plot.cells.indexOf(null);
 
   // A complete plot is never the current one, but if it somehow were, the plant
   // belongs in the plot after it rather than nowhere.
-  return plot.index * PLOT_SIZE + (cell === -1 ? PLOT_SIZE : cell);
+  return nextDot(plot) ?? (plot.index + 1) * PLOT_SIZE;
 }
