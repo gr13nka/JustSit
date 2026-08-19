@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { currentPlot, PLOT_SIZE } from '../../src/domain/plots';
@@ -9,7 +9,7 @@ import { useSessions } from '../../src/store';
 import { Baton } from '../../src/ui/Baton';
 import { LeafIcon, SunIcon } from '../../src/ui/icons';
 import { Indicator } from '../../src/ui/Indicator';
-import { useBurst, usePullToReplay } from '../../src/ui/motion';
+import { useBurst, usePullToReplay, useSway } from '../../src/ui/motion';
 import { PlantGrid } from '../../src/ui/PlantGrid';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
@@ -36,11 +36,23 @@ export default function GardenScreen() {
    * stays mounted while you are on the other one, so a mount effect would play
    * this exactly once in the life of the app.
    */
+  /**
+   * Whether the garden is the tab you are looking at. The sway is a loop, and
+   * the tab stays mounted behind the other one — so unlike the burst, which
+   * simply plays and stops, this has to be told when to give up.
+   */
+  const [shown, setShown] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       restart();
+      setShown(true);
+      return () => setShown(false);
     }, [restart])
   );
+
+  /** The idle sway, one clock for all 108. Still while you are elsewhere. */
+  const sway = useSway(shown);
 
   /**
    * The dot travels with the sitting rather than being written down here.
@@ -89,7 +101,7 @@ export default function GardenScreen() {
             <Baton size={BATON_SIZE} />
           </View>
         )}
-        <PlantGrid plot={plot} onPressEmpty={sitIn} burst={progress} />
+        <PlantGrid plot={plot} onPressEmpty={sitIn} burst={progress} sway={sway} />
       </ScrollView>
     </Screen>
   );

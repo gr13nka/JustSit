@@ -131,6 +131,17 @@
     text-align: center;
     padding: 16px 32px;
   }
+  /* The drawn button: box.ts's closed cubic path, accent fill, no outline.
+     The committing buttons — Meditate and Done — never on one screen. */
+  .btn-wobbly {
+    position: relative;
+    display: block;
+    color: var(--paper);
+    text-align: center;
+    padding: 16px 32px;
+  }
+  .btn-wobbly svg { position: absolute; inset: 0; }
+  .btn-wobbly span { position: relative; }
 
   .footer { margin-top: auto; padding-bottom: 24px; }
 
@@ -206,15 +217,41 @@
 
   .choose-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
   .choose-title { font: 700 26px/33px var(--sans); color: var(--ink); }
-  .trio { display: flex; align-items: flex-end; gap: 24px; }
-  .candidate { position: relative; width: 98px; height: 102px; display: flex; align-items: flex-end; justify-content: center; }
+  .trio { display: flex; align-items: flex-end; gap: 14px; }
+  .candidate { position: relative; height: 100px; padding: 0 6px; display: flex; align-items: flex-end; justify-content: center; }
   .candidate .marker {
     position: absolute; inset: 0;
     background: var(--paper-deep);
     border-radius: 14.6px 11.1px 13.2px 12.3px; /* organicCorners(12ish) */
   }
-  .candidate svg { position: relative; }
-  .candidate.chosen svg { transform: scale(1.06); transform-origin: 50% 90%; }
+  /* A bundle: its plants share a ground and overlap the way the garden lets
+     them. Chosen state scales the whole offer about its roots. */
+  .bundle { position: relative; display: flex; align-items: flex-end; }
+  .bundle svg + svg { margin-left: -16px; }
+  .candidate.chosen .bundle { transform: scale(1.06); transform-origin: 50% 92%; }
+
+  /* Frame 8 — the commitment ask. */
+  .ask-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; }
+  .finished-bed { display: flex; align-items: flex-end; }
+  .finished-bed svg + svg { margin-left: -10px; }
+  .size-row { display: flex; gap: 20px; }
+  .size-choice { position: relative; width: 76px; padding: 12px 0 10px; display: flex; flex-direction: column; align-items: center; }
+  .size-choice .marker {
+    position: absolute; inset: 0;
+    background: var(--paper-deep);
+    border-radius: 11.8px 9.1px 10.8px 9.6px; /* organicCorners(10ish) */
+  }
+  .size-choice .num { position: relative; font: 700 24px/28px var(--sans); color: var(--ink-soft); }
+  .size-choice.sel .num { color: var(--ink); }  /* the dial's language: the number darkens */
+  .size-choice .sub { position: relative; font: 500 12px/16px var(--sans); color: var(--ink-soft); margin-top: 3px; }
+
+  /* Frame 9 — the shelf of gardens. Cards keep the app's card contract. */
+  .gardens-wrap { position: relative; }
+  .gardens-list { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  .garden-card { background: var(--paper-deep); padding: 12px 14px; }
+  .mini-field { display: grid; gap: 3px 5px; align-items: end; justify-items: center; }
+  .garden-meta { font: 500 12px/16px var(--sans); color: var(--ink-faint); margin-top: 8px; }
+  .keeper { position: absolute; right: 6px; top: -2px; }
 
   .run-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .ringbox { position: relative; width: 210px; height: 210px; display: flex; align-items: center; justify-content: center; }
@@ -321,7 +358,7 @@
     </div>
     <figcaption>
       <span class="cap-num">2</span><span class="cap-title">A small bed — the garden at zero (F2)</span>
-      <p>The garden opens at three dots instead of a 108-slot plot, and the next dot breathes — the one pulsing mark on the screen. Батон keeps the empty bed company, as he already does. The caption's wording ("A small bed · 0 of 3") is open: it has to promise little without hiding that the field will grow.</p>
+      <p>The bed is literally the first garden — three dots, whole in itself, not a partial reveal of a bigger field. Filling it is what triggers the ask in frame 8. The next dot breathes, the one pulsing mark on the screen, and Батон keeps the empty bed company. The caption's wording ("A small bed · 0 of 3") is open.</p>
     </figcaption>
   </figure>
 
@@ -331,11 +368,11 @@
       <div class="screen" style="padding-bottom:0">
         <div class="figures">
           <div class="indicator"><span id="ico-sun-3"></span><span class="t-title" style="color:var(--pen-green)">6</span></div>
-          <div class="indicator"><span id="ico-leaf-3"></span><span class="t-title" style="color:var(--pen-green)">15</span></div>
+          <div class="indicator"><span id="ico-leaf-3"></span><span class="t-title" style="color:var(--pen-green)">55</span></div>
         </div>
         <div class="garden-head">
           <div class="t-title">Your garden</div>
-          <div class="t-caption">Plot 1 · 15 of 108</div>
+          <div class="t-caption">Fourth garden · 15 of 30</div>
         </div>
         <div class="field-zone">
           <div class="grid" id="grid-3"></div>
@@ -351,8 +388,8 @@
       </div>
     </div>
     <figcaption>
-      <span class="cap-num">3</span><span class="cap-title">The daily loop, visible (F2 + F3 + F4)</span>
-      <p>At ~15 sittings the field has revealed three of its nine rows; the ring waits on the next dot. A green sun means you sat today, and Батон naps by the garden on sat-days — on other days he is simply elsewhere, never a reproach. Every seventh consecutive day quietly guarantees a rare candidate in the completion trio; nothing announces this anywhere.</p>
+      <span class="cap-num">3</span><span class="cap-title">The daily loop, in a mid-size garden (F2 + F3 + F4)</span>
+      <p>A 30-garden at 15 grown, on a 6-wide bed — small gardens take small field shapes; only 108 keeps the full 12-wide lattice. A green sun means you sat today, and Батон naps by the garden on sat-days — on other days he is simply elsewhere, never a reproach. Every seventh consecutive day quietly guarantees a rare candidate in the completion offers. The leaf counts every sitting across all gardens; the in-frame caption wording ("Fourth garden · 15 of 30") is open.</p>
     </figcaption>
   </figure>
 
@@ -363,20 +400,20 @@
         <div class="choose-middle">
           <div class="choose-title">Something grew.</div>
           <div class="trio">
-            <div class="candidate" id="cand-clover"></div>
-            <div class="candidate chosen" id="cand-fern"></div>
-            <div class="candidate" id="cand-poppy"></div>
+            <div class="candidate" id="cand-rare"></div>
+            <div class="candidate chosen" id="cand-pair"></div>
+            <div class="candidate" id="cand-trio"></div>
           </div>
-          <div class="t-body" style="color:var(--ink-soft)">It takes the dot you chose.</div>
+          <div class="t-body" style="color:var(--ink-soft)">The first takes the dot you chose.</div>
         </div>
         <div class="footer">
-          <div class="btn-primary t-button">Done</div>
+          <div class="btn-wobbly t-button"><span>Done</span></div>
         </div>
       </div>
     </div>
     <figcaption>
-      <span class="cap-num">4</span><span class="cap-title">Something grew — choose (F1)</span>
-      <p>The sitting seeds three candidates, weighted by its length — longer sittings draw from a richer pool, and nothing is ever labelled rare in-app. Selection borrows the dial's language: a quiet paper-deep marker and a slightly fuller stance, plants keeping their own colours. The judgement call: is choosing at all worth more than the single surprise it replaces?</p>
+      <span class="cap-num">4</span><span class="cap-title">Something grew — a long sit's offers (F1)</span>
+      <p>Offers are seeded by the sitting and weighted by its length: a long sit may take one rare, two mids, or three commons — rarity traded against quantity, so three two-minute sits never beat one twenty-minute sit in plants. Nothing is ever labelled rare in-app. Done is now the drawn shape: the doctrine grew to the committing buttons — Meditate and Done, never on one screen.</p>
     </figcaption>
   </figure>
 
@@ -444,6 +481,51 @@
     <figcaption>
       <span class="cap-num">7</span><span class="cap-title">Notes (F6)</span>
       <p>Everything caught, at Keep-like density and still on paper: paper-deep cards, organic corners, no borders, no shadows. Tap a card to edit; long-press a plant in the garden to open its sitting's note. The small plant glyph is the only drawn link between a note and where it grew.</p>
+    </figcaption>
+  </figure>
+
+  <!-- ⑧ The commitment ask (new) -->
+  <figure class="mock">
+    <div class="phone">
+      <div class="screen">
+        <div class="ask-middle">
+          <div class="finished-bed" id="bed-8"></div>
+          <div class="t-title">The bed is full.</div>
+          <div class="t-body" style="color:var(--ink-soft); margin-top:-14px">How big is the next garden?</div>
+          <div class="size-row">
+            <div class="size-choice"><span class="num">7</span><span class="sub">a week</span></div>
+            <div class="size-choice sel"><span class="marker"></span><span class="num">30</span><span class="sub">a month</span></div>
+            <div class="size-choice"><span class="num">108</span><span class="sub">a mala</span></div>
+          </div>
+        </div>
+        <div class="footer">
+          <div class="btn-wobbly t-button"><span>Begin it</span></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>
+      <span class="cap-num">8</span><span class="cap-title">The commitment ask — a garden's last dot fills</span>
+      <p>A commitment, not a quest: no reward is promised for finishing — only the question of size. Sittings fill a garden; days only frame it. The size stays freely changeable later from the garden, and shrinking below what has grown simply closes the garden at its count. All wording is open: "The bed is full.", the sub-labels ("a week / a month / a mala"), and "Begin it".</p>
+    </figcaption>
+  </figure>
+
+  <!-- ⑨ Your gardens (new) -->
+  <figure class="mock">
+    <div class="phone">
+      <div class="screen">
+        <div class="notes-head">
+          <span class="back" id="back-9"></span>
+          <div class="t-title">Your gardens</div>
+        </div>
+        <div class="gardens-wrap">
+          <span class="keeper" id="keeper-9"></span>
+          <div class="gardens-list" id="gardens-9"></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>
+      <span class="cap-num">9</span><span class="cap-title">Your gardens — the shelf</span>
+      <p>Every garden, oldest first, the current one last: this is the app's whole progress figure, and there is no percentage anywhere. Reached by tapping the plot caption in the garden; tap a garden to view it full. Батон — awake, the unused idle pose — keeps the finished gardens. Thumbnails are cheap marks, not plants: green ticks with bloom-pen flecks, so the shelf stays a glance.</p>
     </figcaption>
   </figure>
 
@@ -645,23 +727,80 @@ function iconSVG(name, size, color) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="${color}">${paths}</svg>`;
 }
 
-/* src/ui/Baton.tsx — the loaf, asleep. PEN_HERO: stroke 7, round caps. */
-const BATON = [
+/* src/ui/Baton.tsx — the loaf, plus what changes between poses: the face,
+   and, asleep, what is above his head. PEN_HERO: stroke 7, round caps. */
+const BATON_LOAF = [
   'M28,165 C19,137 24,103 39,84 C45,75 51,69 59,65 C57,55 61,43 71,47 C79,50 79,61 75,69 C85,62 97,59 109,63 C107,53 111,41 121,45 C129,49 127,61 121,69 C136,67 151,75 159,91 C169,109 169,137 161,154 C156,163 149,169 139,171 C101,177 61,176 28,165 Z',
   'M55,168 C60,159 69,157 76,163',
   'M96,170 C101,160 111,158 119,164',
   'M68,100 C56,97 44,95 33,94 M68,107 C56,108 45,110 35,112 M67,114 C58,118 49,123 42,128',
   'M116,100 C128,96 140,93 151,91 M116,107 C128,109 139,112 149,116 M115,113 C125,119 133,125 141,131',
   'M160,140 C175,149 171,167 152,171 C138,174 128,167 132,157',
-  'M74,98 C77,101 82,101 85,98',
-  'M106,96 C109,99 114,99 117,96',
-  'M84,112 C88,116 96,116 100,112',
-  'M128,38 C137,36 144,36 147,38 C143,43 134,49 130,53 C134,51 143,50 149,52',
-  'M149,20 C155,19 160,19 162,21 C158,25 152,30 148,32 C152,31 158,30 163,31',
 ];
-function batonSVG(size) {
-  const paths = BATON.map((d) => `<path d="${d}"/>`).join('');
+const BATON_POSE = {
+  sleep: [
+    'M74,98 C77,101 82,101 85,98',
+    'M106,96 C109,99 114,99 117,96',
+    'M84,112 C88,116 96,116 100,112',
+    'M128,38 C137,36 144,36 147,38 C143,43 134,49 130,53 C134,51 143,50 149,52',
+    'M149,20 C155,19 160,19 162,21 C158,25 152,30 148,32 C152,31 158,30 163,31',
+  ],
+  idle: [
+    'M76,97 C77.3,97.5 78.7,98.4 80,99',
+    'M108,95 C109.3,95.5 110.7,96.4 112,97',
+    'M82,112 C87,117 97,117 102,112',
+  ],
+};
+function batonSVG(size, pose = 'sleep') {
+  const paths = [...BATON_LOAF, ...BATON_POSE[pose]].map((d) => `<path d="${d}"/>`).join('');
   return `<svg width="${size}" height="${size}" viewBox="0 0 200 200" stroke="var(--ink)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">${paths}</svg>`;
+}
+
+/* src/ui/box.ts, ported line for line: the drawn button's closed path.
+   Fixed corner and belly tables — one control drawn this way, one character. */
+const BOX_CORNER = [1.2, 0.82, 1.12, 0.88];
+const BOX_BELLY = [0.015, 0.02, 0.009, -0.016];
+const ARC_HANDLE = 0.5523;
+function boxPath(width, height, radius) {
+  const at = (p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+  const shift = (p, dx, dy) => ({ x: p.x + dx, y: p.y + dy });
+  const [bTop, bRight, bBottom, bLeft] = [
+    BOX_BELLY[0] * width, BOX_BELLY[1] * height, BOX_BELLY[2] * width, BOX_BELLY[3] * height,
+  ];
+  const room = (bow) => Math.max(0, bow);
+  const x0 = room(bLeft), y0 = room(bTop);
+  const x1 = width - room(bRight), y1 = height - room(bBottom);
+  const limit = Math.min(x1 - x0, y1 - y0) / 2;
+  const [rTL, rTR, rBR, rBL] = BOX_CORNER.map((f) => Math.max(0, Math.min(radius * f, limit)));
+  const start = { x: x0 + rTL, y: y0 };
+  const topEnd = { x: x1 - rTR, y: y0 };
+  const rightStart = { x: x1, y: y0 + rTR };
+  const rightEnd = { x: x1, y: y1 - rBR };
+  const bottomStart = { x: x1 - rBR, y: y1 };
+  const bottomEnd = { x: x0 + rBL, y: y1 };
+  const leftStart = { x: x0, y: y1 - rBL };
+  const leftEnd = { x: x0, y: y0 + rTL };
+  const side = (from, to, nx, ny, bow) => {
+    const c1 = shift({ x: from.x + (to.x - from.x) / 3, y: from.y + (to.y - from.y) / 3 }, nx * bow, ny * bow);
+    const c2 = shift({ x: from.x + ((to.x - from.x) * 2) / 3, y: from.y + ((to.y - from.y) * 2) / 3 }, nx * bow, ny * bow);
+    return `C${at(c1)} ${at(c2)} ${at(to)}`;
+  };
+  const corner = (from, to, inX, inY, outX, outY, r) => {
+    const h = ARC_HANDLE * r;
+    return `C${at(shift(from, inX * h, inY * h))} ${at(shift(to, -outX * h, -outY * h))} ${at(to)}`;
+  };
+  return [
+    `M${at(start)}`,
+    side(start, topEnd, 0, -1, bTop),
+    corner(topEnd, rightStart, 1, 0, 0, 1, rTR),
+    side(rightStart, rightEnd, 1, 0, bRight),
+    corner(rightEnd, bottomStart, 0, 1, -1, 0, rBR),
+    side(bottomStart, bottomEnd, 0, 1, bBottom),
+    corner(bottomEnd, leftStart, -1, 0, 0, -1, rBL),
+    side(leftStart, leftEnd, -1, 0, bLeft),
+    corner(leftEnd, start, 0, -1, 1, 0, rTL),
+    'Z',
+  ].join(' ');
 }
 
 /* NEW — a pencil, drawn to the doodle pen's contract (48-unit canvas, stroke
@@ -685,7 +824,7 @@ function pencilSVG(size, color) {
 const $ = (id) => document.getElementById(id);
 
 /* ① — three small dots and the cat, previewed under the stage card. */
-$('bed-dots-1').innerHTML = [0, 1, 2].map(() => dotSVG(16)).join('');
+$('bed-dots-1').innerHTML = [0, 1, 2].map(() => dotSVG(22)).join('');
 $('baton-1').innerHTML = batonSVG(92);
 
 /* ② — the three-dot patch; the first dot wears the breathing ring. */
@@ -706,13 +845,15 @@ $('ico-leaf-2').innerHTML = iconSVG('leaf', 20, 'var(--ink-soft)');
 $('ico-sun-3').innerHTML = iconSVG('sun', 20, 'var(--pen-green)');   /* sat today */
 $('ico-leaf-3').innerHTML = iconSVG('leaf', 20, 'var(--ink-soft)');
 
-/* ③ — three revealed rows of the twelve-wide lattice.
-   Geometry from src/ui/field.ts at the app's numbers: width 345 → cell
-   floor(345/12·2)/2 = 28.5; dot = cell·ART_SHARE(0.84); plant = dot·1.85;
-   ground at 0.8 of the cell; a plant's root (43/48 of its canvas) and a
-   dot's centre both land on it. Scatter stays within ±SCATTER(0.08)·cell. */
+/* ③ — a 30-garden on its 6-wide bed shape: small gardens take small field
+   shapes; only 108 keeps the full 12-wide lattice.
+   Geometry from src/ui/field.ts at the lattice's own pitch: cell 28.5
+   (floor(345/12·2)/2 — the pitch stays the 108 plot's, the bed just has
+   fewer columns); dot = cell·ART_SHARE(0.84); plant = dot·1.85; ground at
+   0.8 of the cell; a plant's root (43/48 of its canvas) and a dot's centre
+   both land on it. Scatter stays within ±SCATTER(0.08)·cell. */
 (function buildField() {
-  const CELL = 28.5, COLS = 12, ROWS = 3;
+  const CELL = 28.5, COLS = 6, ROWS = 5;
   const dotSize = CELL * 0.84;               // 23.94
   const plantSize = dotSize * 1.85;          // 44.29
   const ground = CELL * 0.8;                 // 22.8

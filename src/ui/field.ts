@@ -8,6 +8,7 @@
  */
 
 import { ART_SHARE, SCATTER } from '../domain/plots';
+import { SWAY_LEAN_DEG } from './sway';
 
 /**
  * Twelve across, so 108 lands on nine rows exactly and the whole plot sits on
@@ -78,6 +79,41 @@ export const GROUND = 0.8;
  */
 const BLOB_SHARE = 2.7 / 28;
 
+/**
+ * A plant's ink across its own page, as a fraction of it. The doodles span
+ * x=8.6..39.4 of the 48, so a plant is a good deal narrower than the canvas
+ * measured out for it — which is the slack `PLANT_ZOOM` spends.
+ */
+const INK_HALF = 15.4 / CANVAS;
+
+/**
+ * How far the topmost ink stands above the root it pivots on. Measured from
+ * `ROOT_Y` and not from the foot of the canvas, because the root is what the
+ * sway turns about and a lean's reach is the tip's arc around that point.
+ */
+const INK_RISE = (ROOT_Y - 5) / CANVAS;
+
+/**
+ * How far a plant reaches past its own cell, per side, as a share of a cell.
+ *
+ * Sideways is the one direction with nowhere to put an overhang. Above and
+ * below it becomes padding on the grid, but the grid is *centred*, so widening
+ * it moves nothing at all — the leftmost cell stays exactly where it was. The
+ * only thing that can pay is the cell itself.
+ *
+ * Every term is proportional to the cell, which is what stops "how wide is a
+ * cell when its own margin depends on the cell" from needing to iterate: the
+ * whole margin is a fixed share, and `field` divides by it once.
+ */
+export const SWAY_REACH = Math.max(
+  0,
+  ART_SHARE *
+    PLANT_ZOOM *
+    (INK_HALF + INK_RISE * Math.tan((SWAY_LEAN_DEG * Math.PI) / 180)) +
+    SCATTER -
+    0.5
+);
+
 /** Everything the grid needs to draw one plot, in points. */
 export type Field = {
   /** The side of one cell, and so the pitch of the lattice. */
@@ -103,12 +139,14 @@ export type Field = {
  * room the top row needs, so it is asked for rather than assumed.
  */
 export function field(width: number, sproutPeak: number): Field {
-  // Floored to a half point, and the grid is then drawn at exactly what twelve
+  // Twelve cells plus the room a leaning plant needs either side of the field,
+  // then floored to a half point, and the grid is drawn at exactly what twelve
   // of them come to. Twelve fractional widths can total a hair over a fractional
   // container, which throws the twelfth cell onto a row of its own — a rounding
   // error that looks like a bug in the garden. Six columns were too coarse to
-  // reach it. The leftover half-points sit outside the grid instead.
-  const cell = width > 0 ? Math.floor((width / COLUMNS) * 2) / 2 : 0;
+  // reach it. The leftover, `SWAY_REACH` either side and the odd half-point,
+  // sits outside the grid, which is precisely where the outermost plants lean.
+  const cell = width > 0 ? Math.floor((width / (COLUMNS + 2 * SWAY_REACH)) * 2) / 2 : 0;
   const dot = cell * ART_SHARE;
   const plant = dot * PLANT_ZOOM;
 

@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useRef } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -9,16 +9,26 @@ import {
 } from 'react-native';
 
 import { ROOT_SHARE } from './field';
+import { SWAY_CYCLE_MS, swayTrack } from './sway';
 
 /**
  * The app's motion, in one file.
  *
  * Two layers, and they mean different things. An *entrance* marks a first
  * appearance — a screen arriving, a garden being shown — and plays once.
- * A *settle* is feedback for a touch. Neither repeats. Two things in the app do
- * loop and both are deliberate: the timer's breathing ring, which owns its own,
- * and `Pulse` below. In each the loop is the point rather than a transition —
- * one says a sitting is running, the other says the garden carries on here.
+ * A *settle* is feedback for a touch. Neither repeats. Three things in the app
+ * do loop and all three are deliberate: the timer's breathing ring, which owns
+ * its own, and `Pulse` and `Sway` below. In each the loop is the point rather
+ * than a transition — the first says a sitting is running, the second says the
+ * garden carries on here, and the third says the garden is a living thing
+ * rather than a chart of one.
+ *
+ * `Sway` is the one that had to argue hardest for itself, being a whole screen
+ * that never stops moving in an app whose case is that it is quiet. What earns
+ * it is that it reports nothing and asks for nothing: it does not accumulate,
+ * congratulate or keep score, it is the same whether you sat today or not, and
+ * it is gone the moment you leave the tab. A garden moves in wind. That is all
+ * it says.
  *
  * Everything animates transform and opacity only, so every driver here is
  * native and none of it competes with the wall clock a sitting runs on.
@@ -93,6 +103,87 @@ type Channel = 'opacity' | 'scaleY' | 'scaleX';
  * that only fired on mount would fire once ever: the tab stays mounted, so
  * coming back to it is not a mount.
  */
+/**
+ * The garden's idle sway: one clock for the whole field.
+ *
+ * A hundred and eight looping drivers is not a thing to do, so there is one
+ * linear 0..1 ramp and each `Sway` reads its own window out of it — the same
+ * arrangement as the burst, for the same reason. It restarts at 0 without a
+ * jump because every plant's table ends exactly where it began.
+ *
+ * `active` is asked for rather than assumed because the tab stays mounted when
+ * you are on the other one: stopping on unmount, which is enough for `Pulse`,
+ * would leave this turning for the life of the app.
+ */
+export function useSway(active: boolean) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!active) return;
+
+    const loop = Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: SWAY_CYCLE_MS,
+        // Linear on purpose, exactly as the burst's is: the shape of the sway
+        // is in the table, and easing the shared clock would bend every
+        // plant's phase along with it.
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [progress, active]);
+
+  return progress;
+}
+
+/**
+ * One plant leaning, read off the shared clock.
+ *
+ * This sits OUTSIDE `Sprout`, which is not arbitrary. Outside, the composite is
+ * `skewX · scaleY`, so a half-grown plant leans half as far in pixels at the
+ * same angle. Inside, the lean is applied before the growth and is therefore
+ * unscaled — a plant squashed to a fifth of its height swings as wide as a full
+ * one, which reads as a glitch rather than as wind.
+ *
+ * The lean is a shear and a turn, never a scale, so it cannot break the rule
+ * `GROWTH` above works so hard to keep: a shear's determinant is exactly 1, and
+ * a doodle that only shears changes shape and never mass.
+ */
+export function Sway({
+  progress,
+  slot,
+  col,
+  row,
+  children,
+}: {
+  /** The shared 0..1 clock from `useSway`. */
+  progress: Animated.Value;
+  slot: number;
+  col: number;
+  row: number;
+  children: ReactNode;
+}) {
+  const track = useMemo(() => swayTrack(slot, col, row), [slot, col, row]);
+
+  return (
+    <Animated.View
+      style={{
+        // The root, as everywhere else a plant is transformed.
+        transformOrigin: `50% ${ROOT_SHARE * 100}%`,
+        transform: [
+          { skewX: progress.interpolate({ inputRange: track.at, outputRange: track.skew }) },
+          { rotate: progress.interpolate({ inputRange: track.at, outputRange: track.spin }) },
+        ],
+      }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 export function useBurst() {
   const progress = useRef(new Animated.Value(1)).current;
 

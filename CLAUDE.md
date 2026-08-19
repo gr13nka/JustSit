@@ -284,11 +284,64 @@ means *something grew*, and elapsed time has not grown anything.
 **Motion lives in `src/ui/motion.tsx`, and almost none of it loops.** An
 *entrance* (`Sprout`, `Rise`) marks a first appearance; a *settle*
 (`usePressSettle`) is feedback for a touch. Everything animates transform and
-opacity only, so every driver is native. Two things loop and both are named
-exceptions, because in each the loop is the point rather than a transition: the
-breathing ring, which owns its own, and `Pulse`, which breathes the garden's
-next dot to the same four-in six-out count so the app has one breath rather than
-two that nearly match.
+opacity only, so every driver is native. Three things loop and all three are
+named exceptions, because in each the loop is the point rather than a
+transition: the breathing ring, which owns its own; `Pulse`, which breathes the
+garden's next dot to the same four-in six-out count so the app has one breath
+rather than two that nearly match; and `Sway`, the garden's idle lean.
+
+**`Sway` is a whole screen that never stops moving**, which is the largest
+claim any loop here makes, so it is worth saying what earns it. It reports
+nothing and asks for nothing: it does not accumulate, congratulate or keep
+score, it is identical whether you sat today or not, and it stops the moment you
+leave the tab. A garden moves in wind — that is the entire statement, and it is
+the same one the burst makes about growth. The pen's rule holds too, because the
+lean is a *shear*: a shear's determinant is exactly 1, so unlike a scale channel
+it cannot break the rule that a doodle changes shape and never mass.
+
+Its arithmetic is `src/ui/sway.ts`, pure and tested on the `ring.ts` precedent,
+and three things about it cost real time to rediscover.
+
+**One clock, and each plant's whole loop stored as a sampled table.** A hundred
+and eight looping drivers is not a thing to do, so `useSway` runs a single
+linear 0..1 ramp and each `Sway` reads its own window out of it with
+`interpolate` — the same arrangement as the burst. Everything is periodic over
+one turn *by construction* (a whole number of sways, one gust), so the ramp
+restarts at 0 without a seam rather than being checked for one. Unlike `Pulse`,
+it takes an `active` flag: the tab stays mounted behind the other one, so
+stopping on unmount would leave it turning for the life of the app.
+
+**`Sway` sits outside `Sprout`.** The composite is then `skewX · scaleY`, so a
+half-grown plant leans half as far in pixels at the same angle. Inverted, the
+lean is applied before the growth and is therefore unscaled — a plant squashed
+to a fifth of its height swings as wide as a full one, which reads as a glitch
+rather than as wind.
+
+**The shape knob is a Möbius warp of the cycle, and the obvious formulation was
+wrong.** Asymmetry — fast through upright one way, slow the other — is tempting
+to write as `sin(a + b·sin a)`, but its speed carries a factor `(1 + b·cos a)`
+that is *exactly zero* at `a = π` when `b = 1`. The plant halts dead at upright,
+hangs, and starts again; decelerating in and accelerating out reads as two
+twitches either side of the middle. The warp used instead has the Poisson kernel
+`(1 − k²)/(1 − 2k·cos a + k²)` as its derivative, strictly positive for every
+`k < 1`, so the motion never stops however hard the asymmetry is pushed. A test
+pins the property rather than the formula: the slowest crossing measures 0.22 of
+the busiest step, where the old warp gave 0.0001.
+
+That trade moves the cost to `SWAY_KNOTS`, which is why it is a fidelity setting
+rather than a taste one — the table is straight lines between knots, and the
+harder the shape is pushed the fewer of them fall across the fast crossing,
+which is where a corner shows. Set it against the bench's worst-corner readout,
+not by eye.
+
+**A lean has to come out of the cell, because sideways there is nowhere else.**
+`above` and `below` become padding on the grid, but the grid is *centred*, so
+widening it moves nothing at all — the leftmost cell stays exactly where it was.
+`field.ts` therefore divides the width by `COLUMNS + 2 * SWAY_REACH`, and the
+reach is derived from the drawings (ink spans x=8.6..39.4 of the 48-unit page,
+and its top stands `ROOT_Y - 5` above the root it pivots on) rather than chosen.
+Every term is proportional to the cell, which is what stops "how wide is a cell
+when its own margin depends on the cell" from needing to iterate.
 
 `Pulse` is the nearer of the two to something this app does not do. The ring
 reports — a sitting is running — while a pulsing dot invites, and inviting is a

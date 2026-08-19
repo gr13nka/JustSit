@@ -4,7 +4,7 @@ import { Animated, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-
 import { hash32 } from '../domain/hash';
 import { nextDot, Plot, PLOT_SIZE, slotOffset } from '../domain/plots';
 import { COLUMNS, field } from './field';
-import { BURST_SPREAD_MS, Pulse, Sprout, SPROUT_PEAK } from './motion';
+import { BURST_SPREAD_MS, Pulse, Sprout, SPROUT_PEAK, Sway } from './motion';
 import { EmptySlot, Plant } from './Plant';
 
 /**
@@ -30,6 +30,7 @@ export function PlantGrid({
   plot,
   onPressEmpty,
   burst,
+  sway,
 }: {
   plot: Plot;
   /** Given the absolute slot of the dot touched. */
@@ -41,6 +42,12 @@ export function PlantGrid({
    * than a burst.
    */
   burst?: Animated.Value;
+  /**
+   * The shared 0..1 clock from `useSway`, if this plot should sway while it is
+   * shown. Like the burst, only what has grown takes part — the empty dots are
+   * the ground, and ground does not move in wind.
+   */
+  sway?: Animated.Value;
 }) {
   const [width, setWidth] = useState(0);
 
@@ -82,21 +89,39 @@ export function PlantGrid({
             // A plant is a record of something that happened; there is nothing to
             // do to it. Only the empty dots ahead of you are worth touching.
             if (session) {
-              // The scatter, the lift and the sprout all want `transform`, so
-              // they get a view each: the cell holds its offset and never
-              // animates, the lift is static and belongs to the drawing, and
-              // the animation never has to carry either.
+              // The scatter, the lift, the sway and the sprout all want
+              // `transform`, so they get a view each: the cell holds its offset
+              // and never animates, the lift is static and belongs to the
+              // drawing, and neither animation has to carry any of it.
               const drawn = <Plant plant={session.plant} size={plant} />;
+
+              const grown = burst ? (
+                <Sprout progress={burst} delayMs={burstDelay(slot)}>
+                  {drawn}
+                </Sprout>
+              ) : (
+                drawn
+              );
 
               return (
                 <View key={i} style={style}>
                   <View style={{ transform: [{ translateY: -lift }] }}>
-                    {burst ? (
-                      <Sprout progress={burst} delayMs={burstDelay(slot)}>
-                        {drawn}
-                      </Sprout>
+                    {/*
+                      Outside the sprout, so a plant still growing leans by the
+                      same angle and therefore a smaller distance. The other way
+                      round its lean is unscaled and a squashed plant swings as
+                      wide as a full one.
+                    */}
+                    {sway ? (
+                      <Sway
+                        progress={sway}
+                        slot={slot}
+                        col={slot % COLUMNS}
+                        row={Math.floor(slot / COLUMNS)}>
+                        {grown}
+                      </Sway>
                     ) : (
-                      drawn
+                      grown
                     )}
                   </View>
                 </View>
