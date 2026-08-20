@@ -21,17 +21,26 @@ import { hash32 } from '../domain/hash';
  * window out of the same 0..1 ramp, and the ramp can restart at 0 without a
  * jump because every plant's table ends where it began.
  */
-export const SWAY_CYCLE_MS = 7250;
+export const SWAY_CYCLE_MS = 5000;
 
-/** How far the tip leans at the top of a gust. */
-export const SWAY_LEAN_DEG = 5;
+/**
+ * How far the tip leans at the top of a gust.
+ *
+ * Chosen on a phone, not in the bench, and the difference was most of a factor
+ * of two. At 5° a plant's tip travels 3pt, and measured off the device that came
+ * to three pixels of movement across a whole row of plants — correct, smooth, and
+ * invisible at arm's length. The bench draws its phone 411px wide on a desktop
+ * monitor, which is half again the physical width of a 411dp screen and read at
+ * desk distance, so an amplitude that looks right there is not.
+ */
+export const SWAY_LEAN_DEG = 11;
 
 /**
  * Sways per turn of the clock, and gusts per turn is always one. Both are whole
  * numbers so the loop closes by construction rather than by anyone checking —
  * the same trick that makes the burst's swings decay without being told to.
  */
-const SWAY_CYCLES = 1;
+const SWAY_CYCLES = 2;
 
 /**
  * How many samples one plant's loop is stored as.
@@ -89,7 +98,7 @@ const SWAY_WAVELENGTH = 9;
 const SWAY_DIRECTION = 12;
 
 /** How far the wind dies away between pulses. At 0 it never stops. */
-const SWAY_GUST = 0.42;
+const SWAY_GUST = 0.34;
 
 /**
  * Where in its loop the plant in one slot is, as a fraction of a turn.

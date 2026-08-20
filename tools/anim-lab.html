@@ -212,11 +212,11 @@
   <div class="stack" id="panelSway" hidden>
     <fieldset>
       <legend>Sway</legend>
-      <div class="row"><label for="lean">lean &deg;</label><input id="lean" type="range" min="0" max="12" step="0.1" value="5"><output for="lean"></output></div>
+      <div class="row"><label for="lean">lean &deg;</label><input id="lean" type="range" min="0" max="12" step="0.1" value="11"><output for="lean"></output></div>
       <p class="hint">How far the tip leans when the wind is at full strength. Three or four degrees is a breath; ten is weather.</p>
-      <div class="row"><label for="cycle">cycle ms</label><input id="cycle" type="range" min="2000" max="16000" step="250" value="7250"><output for="cycle"></output></div>
+      <div class="row"><label for="cycle">cycle ms</label><input id="cycle" type="range" min="2000" max="16000" step="250" value="5000"><output for="cycle"></output></div>
       <p class="hint">How long the one shared clock takes to come round. Everything below fits a whole number of times into it.</p>
-      <div class="row"><label for="cycles">sways/cycle</label><input id="cycles" type="range" min="1" max="8" step="1" value="1"><output for="cycles"></output></div>
+      <div class="row"><label for="cycles">sways/cycle</label><input id="cycles" type="range" min="1" max="8" step="1" value="2"><output for="cycles"></output></div>
       <p class="hint">How many times a plant leans and returns per turn of the clock. A whole number, so the loop closes without a seam.</p>
       <div class="row"><label for="shape">shape</label><input id="shape" type="range" min="0" max="1" step="0.02" value="0.36"><output for="shape"></output></div>
       <p class="hint">How unevenly the cycle is travelled &mdash; fast through upright one way,
@@ -249,7 +249,7 @@
       <p class="hint">How many cells apart two crests are. Longer than the field and the whole garden leans as one.</p>
       <div class="row"><label for="direction">direction</label><input id="direction" type="range" min="-90" max="90" step="1" value="12"><output for="direction"></output></div>
       <p class="hint">Which way the gust travels, in degrees off horizontal. Only does anything with coherence above 0.</p>
-      <div class="row"><label for="gust">gust</label><input id="gust" type="range" min="0" max="1" step="0.02" value="0.42"><output for="gust"></output></div>
+      <div class="row"><label for="gust">gust</label><input id="gust" type="range" min="0" max="1" step="0.02" value="0.34"><output for="gust"></output></div>
       <p class="hint">How far the wind dies away between pulses. At 0 it never stops; at 1 the garden goes still and waits.</p>
       <div class="buttons">
         <button id="freeze" aria-pressed="false">Freeze</button>
