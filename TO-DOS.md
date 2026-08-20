@@ -1,0 +1,14 @@
+# To-dos
+
+Ideas parked for later. Each entry should stand on its own months from now —
+what the problem is, which files it touches, and what makes it awkward.
+
+## Wind that follows the real weather - 2026-08-20 14:37
+
+- **Drive the garden's sway from local conditions** - Let the wind in the garden be the wind outside the window: wind speed into the lean amplitude and the layer weights, gustiness into how far the layers' strengths spread, and bearing into the layer directions so the crest crosses the field the way the real one crosses the street. **Problem:** The wind is three fixed layers and always the same wind — a lovely one, but the same on a still July morning as in a gale. Weather is the one outside fact a meditation app could borrow without asking anything of the user's behaviour, and it would make the garden quietly different day to day rather than only over the forty-second turn. **Files:** `src/ui/sway.ts:92-96` (the `WINDS` table — `cycles`/`weight`/`wavelength`/`direction` per layer), `src/ui/sway.ts:51` (`SWAY_CYCLE_MS`), `src/ui/sway.ts:67` (`SWAY_LEAN_DEG`), `src/ui/sway.ts:~120` (`SWAY_COHERENCE`), `src/ui/field.ts:129` (`SWAY_REACH`, derived from the lean), `src/ui/field.ts:170` (the cell divides by `COLUMNS + 2 * SWAY_REACH`), `src/store/` (somewhere to cache the last reading). **Solution:** Three things make this harder than it sounds, and all three are worth knowing before starting.
+
+  1. **It breaks the app's central promise.** `CLAUDE.md:17` says local-only, no account, no server. This would be the first network call *and* the first location permission in the app. The cheapest version that stays near the doctrine: ask for coarse location once, fetch once a day, cache the reading in the store, and fall back to today's fixed layers whenever there is no permission, no network, or a stale answer — so the feature is additive and the app still works entirely offline. Whether it is worth spending the promise on at all is the actual decision, not the implementation.
+
+  2. **The lean is not a free parameter.** `SWAY_REACH` is derived from `SWAY_LEAN_DEG` and `field()` sizes the cell against it, so a windy day cannot simply lean further — the garden would get narrower on windy days, which is absurd. The bound has to stay fixed at its current 13° and the *typical* lean vary underneath it, which means weather should move the layer weights and the normalisation target, not the bound.
+
+  3. **The layer rates must stay pairwise coprime** (currently 16/11/7 per turn). If weather is ever allowed to change the rates, anything that gives two of them a common factor makes the garden repeat inside its own turn — silently, with every other property still passing. `src/ui/__tests__/sway.test.ts` has the test that catches it; keep rates out of the weather mapping, or re-derive them through a coprimality check.
