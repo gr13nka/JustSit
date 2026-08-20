@@ -313,7 +313,7 @@ and three things about it cost real time to rediscover.
 and eight looping drivers is not a thing to do, so `useSway` runs a single
 linear 0..1 ramp and each `Sway` reads its own window out of it with
 `interpolate` — the same arrangement as the burst. Everything is periodic over
-one turn *by construction* (a whole number of sways, one gust), so the ramp
+one turn *by construction* (a whole number of cycles per layer), so the ramp
 restarts at 0 without a seam rather than being checked for one. Unlike `Pulse`,
 it takes an `active` flag: the tab stays mounted behind the other one, so
 stopping on unmount would leave it turning for the life of the app.
@@ -335,11 +335,41 @@ twitches either side of the middle. The warp used instead has the Poisson kernel
 pins the property rather than the formula: the slowest crossing measures 0.22 of
 the busiest step, where the old warp gave 0.0001.
 
+**The wind is three layers, and their rates are pairwise coprime.** One
+oscillation under one gust envelope can only be a metronome — it arrives at the
+same strength at the same interval forever, and the garden repeated every five
+seconds visibly. Three layers at 16, 11 and 7 cycles to a turn line up again
+only at the end of it, so the repeat is the whole forty seconds; any shared
+factor brings them back into step early and the garden repeats inside its own
+turn, silently, with every other property still holding. A test shifts each
+plant's loop by a half, a third, a quarter, a fifth and an eighth of the turn
+and requires it to differ from itself.
+
+Two things follow. There is **no gust envelope** — layers drifting in and out of
+phase quieten and swell on their own, and unlike a cosine they do not do it on a
+schedule, which also retires the last once-per-cycle regularity. And **slower
+layers are broader** (wavelengths 36, 52 and 82 cells against a garden twelve
+across), so the long waves move the whole garden together while the quick one
+ripples through it — which is what stops the quickest reading as a stripe.
+
+Coherence has to be higher with layers than without: each carries its own share
+of the seeded half, so three dilute it. At the single-layer setting of 0.68,
+neighbours agreed with each other only 4% more than plants at opposite ends of
+the garden. At 0.88 the separation is 34%. The seed is **one per plant, shared
+by every layer** — a plant's personal offset is a fact about the plant, and
+three independent randoms average the wind out of the field.
+
+`SWAY_LEAN_DEG` is a bound rather than a target: three layers rarely crest
+together, so each plant's loop is normalised to peak there exactly. That keeps
+the typical lean worth looking at while guaranteeing what `field.ts` sizes the
+cell against.
+
 That trade moves the cost to `SWAY_KNOTS`, which is why it is a fidelity setting
-rather than a taste one — the table is straight lines between knots, and the
-harder the shape is pushed the fewer of them fall across the fast crossing,
-which is where a corner shows. Set it against the bench's worst-corner readout,
-not by eye.
+rather than a taste one — the table is straight lines between knots, and what
+sets the count is the *fastest* layer. It is also a real cost: 108 tables are
+built on mount, so every knot is another 216 numbers formatted into strings
+before the garden can draw. 160 knots and degree strings rounded to three
+decimals take that from 60ms to 27ms.
 
 **A lean has to come out of the cell, because sideways there is nowhere else.**
 `above` and `below` become padding on the grid, but the grid is *centred*, so
