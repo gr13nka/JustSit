@@ -28,13 +28,17 @@ function burstDelay(slot: number): number {
 
 export function PlantGrid({
   plot,
-  onPressEmpty,
+  onBegin,
   burst,
   sway,
 }: {
   plot: Plot;
-  /** Given the absolute slot of the dot touched. */
-  onPressEmpty: (slot: number) => void;
+  /**
+   * Begin a sitting. Takes no dot, because there is no longer one to take: a
+   * garden fills in order, so only the next dot answers a touch at all and
+   * where the plant lands is settled when the sitting finishes.
+   */
+  onBegin: () => void;
   /**
    * The shared 0..1 clock from `useBurst`, if this plot should sprout when it
    * is shown. Only what has grown takes part: the empty dots are the ground the
@@ -132,17 +136,34 @@ export function PlantGrid({
             // Only the drawing moves — the cell stays where the lattice put it,
             // so what you tap is still the square you are looking at.
             const mark = <EmptySlot size={dot} next={slot === next} />;
+            const drawn = <View style={{ transform: [{ translateY: drop }] }}>{mark}</View>;
+
+            // The rest of the unplanted field is scenery. It used to be a
+            // hundred buttons, one per dot, because a sitting grew wherever you
+            // touched; a garden that fills in order has exactly one place to
+            // carry on from, and offering the others would be offering a choice
+            // that is not there.
+            if (slot !== next) {
+              return (
+                <View key={i} style={style}>
+                  {drawn}
+                </View>
+              );
+            }
 
             return (
               <Pressable
                 key={i}
                 accessibilityRole="button"
-                accessibilityLabel="Empty plot. Begin a sitting here."
-                onPress={() => onPressEmpty(slot)}
+                accessibilityLabel="Begin a sitting"
+                onPress={onBegin}
+                // The mark is a third of an inch and it is now the only way into
+                // a sitting, so the target is grown rather than the drawing:
+                // `hitSlop` reaches past the cell without moving the lattice or
+                // the ink, and neighbouring cells no longer compete for a touch.
+                hitSlop={cell / 2}
                 style={({ pressed }) => [style, styles.above, pressed && styles.pressed]}>
-                <View style={{ transform: [{ translateY: drop }] }}>
-                  {slot === next ? <Pulse>{mark}</Pulse> : mark}
-                </View>
+                <Pulse>{drawn}</Pulse>
               </Pressable>
             );
           })}

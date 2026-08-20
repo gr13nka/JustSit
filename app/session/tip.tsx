@@ -26,10 +26,7 @@ const ROMAN = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight
  * your attention is an odd thing to do.
  */
 export default function TipScreen() {
-  const { durationMs, slot } = useLocalSearchParams<{
-    durationMs: string;
-    slot: string;
-  }>();
+  const { durationMs } = useLocalSearchParams<{ durationMs: string }>();
   const progress = useProgress();
   const sessions = useSessions();
   const stage = stageAt(progress.stage);
@@ -43,7 +40,7 @@ export default function TipScreen() {
   const begin = () => {
     // Marked here rather than on render: backing out should not spend a tip.
     markTipSeen(tip.id);
-    router.replace({ pathname: '/session/run', params: { durationMs, slot } });
+    router.replace({ pathname: '/session/run', params: { durationMs } });
   };
 
   return (

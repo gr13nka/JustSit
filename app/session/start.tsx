@@ -17,15 +17,16 @@ import { TimerRing } from '../../src/ui/TimerRing';
 const PREVIEW_PLANT = 'grass';
 
 /**
- * Opened by touching an empty dot in the garden, which is why it is a screen
- * rather than a tab: a sitting starts from the place it will show up, and there
- * is no timer to visit for its own sake.
+ * Opened by touching the garden's next dot, which is why it is a screen rather
+ * than a tab: a sitting starts from the place it will show up, and there is no
+ * timer to visit for its own sake.
  *
- * `slot` is the dot that was touched. It travels with the sitting and is only
- * spent if the sitting finishes.
+ * Which dot that is does not travel with the sitting. A garden fills in order,
+ * so the answer is worked out from the garden at the moment the sitting
+ * finishes — the dot the screen was opened from is a fact about now, not a
+ * promise about then.
  */
 export default function StartScreen() {
-  const params = useLocalSearchParams<{ slot: string }>();
   const progress = useProgress();
   const settings = useSettings();
   const stage = stageAt(progress.stage);
@@ -66,7 +67,7 @@ export default function StartScreen() {
         onPress={() =>
           router.push({
             pathname: '/session/tip',
-            params: { durationMs: String(durationMs), slot: params.slot },
+            params: { durationMs: String(durationMs) },
           })
         }
         style={styles.start}

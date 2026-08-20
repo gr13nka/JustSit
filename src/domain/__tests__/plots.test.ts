@@ -3,7 +3,6 @@ import {
   allPlots,
   ART_SHARE,
   currentPlot,
-  isSlotFree,
   nextDot,
   nextFreeSlot,
   PLOT_SIZE,
@@ -113,9 +112,11 @@ describe('nextDot', () => {
   });
 
   it('is the first hole, not the dot after the last plant', () => {
-    // The distinction the garden's marker rests on. The user picks the dot, so
-    // a garden routinely has gaps behind its newest plant, and a test that
-    // planted in order would pass on either reading and prove nothing.
+    // The two readings agree in a garden that has only ever filled in order,
+    // which is why this plants out of order deliberately: a test that planted
+    // linearly would pass on either reading and prove nothing. Gardens like
+    // this one exist — they were grown while the user still picked the dot —
+    // and the marker has to carry on from the front of them.
     const grown = [session(0, 40), session(1, 7), session(2, 90), session(3, 12)];
     expect(nextDot(currentPlot(grown))).toBe(0);
     expect(nextDot(currentPlot([...grown, session(4, 0)]))).toBe(1);
@@ -139,9 +140,15 @@ describe('nextDot', () => {
   });
 });
 
+/**
+ * A garden fills in order now, so these all describe gardens grown before it
+ * did. They are not testing a feature any more; they are testing that a garden
+ * someone has been keeping still draws the way they left it, which is the
+ * reason `slot` is stored rather than derived from array order.
+ */
 describe('placing plants by slot', () => {
   it('draws a plant in the dot it was given, not the order it grew', () => {
-    // Someone who taps the middle of an empty plot, then the start of it.
+    // Someone who tapped the middle of an empty plot, then the start of it.
     const garden = [session(0, 50), session(1, 3)];
     const { cells } = plotAt(garden, 0);
 
@@ -177,7 +184,8 @@ describe('nextFreeSlot', () => {
   });
 
   it('takes the first empty dot, not the one after the last plant', () => {
-    // Holes are the normal case now: the user picked dot 4 first.
+    // A garden left with a hole in it — dot 4 was picked before planting became
+    // linear. New sittings fill the hole rather than appending past it.
     expect(nextFreeSlot([session(0, 4)])).toBe(0);
     expect(nextFreeSlot([session(0, 0), session(1, 4)])).toBe(1);
   });
@@ -222,14 +230,6 @@ describe('slotOffset', () => {
     const some = Array.from({ length: 20 }, (_, i) => slotOffset(i));
     expect(some.some((o) => Math.abs(o.dx) > 0.01)).toBe(true);
     expect(some.some((o) => Math.abs(o.dy) > 0.01)).toBe(true);
-  });
-});
-
-describe('isSlotFree', () => {
-  it('knows an occupied dot from an empty one', () => {
-    const garden = [session(0, 12)];
-    expect(isSlotFree(garden, 12)).toBe(false);
-    expect(isSlotFree(garden, 13)).toBe(true);
   });
 });
 

@@ -2,12 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { plantFor } from '../domain/plants';
-import {
-  currentPlot,
-  isSlotFree,
-  nextFreeSlot,
-  plotIndexOfSlot,
-} from '../domain/plots';
+import { nextFreeSlot } from '../domain/plots';
 import { DEFAULT_THEME } from '../theme/themes';
 import {
   mergePersisted,
@@ -96,34 +91,20 @@ function newSessionId(startedAt: number): string {
 }
 
 /**
- * The chosen dot, if it is still a dot the user could legitimately have tapped.
- *
- * It arrives as a route param that has survived a whole sitting, so it may name
- * a slot in an archived plot, or one that filled in the meantime. A plant must
- * never land on top of another, and never in a finished plot — falling back to
- * the first free dot is always better than refusing to record the sitting.
- */
-function resolveSlot(sessions: readonly Session[], chosen: number | undefined): number {
-  if (chosen === undefined || !Number.isInteger(chosen) || chosen < 0) {
-    return nextFreeSlot(sessions);
-  }
-
-  const usable =
-    plotIndexOfSlot(chosen) === currentPlot(sessions).index &&
-    isSlotFree(sessions, chosen);
-
-  return usable ? chosen : nextFreeSlot(sessions);
-}
-
-/**
  * The only way a plant ever appears. Called once, when a sitting has run its
  * full length — abandoned sessions are simply never passed here.
+ *
+ * Where the plant lands is not a parameter. A garden fills in order, so the
+ * only answer is the first free dot, and there is no caller — screen, route
+ * param or otherwise — that may say otherwise. This used to take the dot the
+ * user had tapped, along with the guard that came with it: a slot arriving as
+ * a route param had survived a whole sitting, so it could name a filled dot or
+ * one in a plot that had since been archived, and it had to be checked before
+ * it was trusted. Nothing to trust, nothing to check.
  */
 export function recordCompletedSession(args: {
   startedAt: number;
   durationMs: number;
-  /** The dot the user tapped. Omitted or unusable means the first free one. */
-  slot?: number;
 }): Session {
   const { startedAt, durationMs } = args;
   const { sessions, progress } = useStore.getState();
@@ -135,7 +116,7 @@ export function recordCompletedSession(args: {
     completedAt: Date.now(),
     stage: progress.stage,
     plant: plantFor(id),
-    slot: resolveSlot(sessions, args.slot),
+    slot: nextFreeSlot(sessions),
   };
 
   useStore.setState((s) => ({

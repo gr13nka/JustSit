@@ -81,17 +81,7 @@ describe('recordCompletedSession', () => {
 });
 
 describe('the dot a plant grows in', () => {
-  it('is the one the user tapped', () => {
-    const session = recordCompletedSession({
-      startedAt: Date.now(),
-      durationMs: TEN_MIN,
-      slot: 42,
-    });
-    expect(session.slot).toBe(42);
-    expect(getState().sessions[0].slot).toBe(42);
-  });
-
-  it('is the first free dot when nobody picked one', () => {
+  it('is the first free one, and no caller may say otherwise', () => {
     __replaceState({ sessions: [seeded('a', 0), seeded('b', 1)] });
     const session = recordCompletedSession({
       startedAt: Date.now(),
@@ -100,40 +90,39 @@ describe('the dot a plant grows in', () => {
     expect(session.slot).toBe(2);
   });
 
-  it('never lands on a plant that is already there', () => {
-    // The slot rides a route param through a whole sitting; it can go stale.
-    __replaceState({ sessions: [seeded('a', 7)] });
-    const session = recordCompletedSession({
-      startedAt: Date.now(),
-      durationMs: TEN_MIN,
-      slot: 7,
-    });
-    expect(session.slot).not.toBe(7);
-    expect(getState().sessions).toHaveLength(2);
-    expect(getState().sessions.filter((s) => s.slot === 7)).toHaveLength(1);
+  it('fills consecutive dots across consecutive sittings', () => {
+    const grown = [0, 1, 2].map((i) =>
+      recordCompletedSession({ startedAt: i + 1, durationMs: TEN_MIN })
+    );
+    expect(grown.map((s) => s.slot)).toEqual([0, 1, 2]);
   });
 
-  it('never lands in a plot that is already finished', () => {
+  /**
+   * A garden grown while the user still picked dots has holes in it, and the
+   * holes are where it carries on from — front to back, not after the newest
+   * plant. Linear planting fills such a garden in rather than appending past
+   * it, which is also what stops a plant landing on one already there.
+   */
+  it('fills the holes in a garden grown before planting was linear', () => {
+    __replaceState({ sessions: [seeded('a', 0), seeded('b', 4), seeded('c', 9)] });
+
+    const first = recordCompletedSession({ startedAt: 1, durationMs: TEN_MIN });
+    const second = recordCompletedSession({ startedAt: 2, durationMs: TEN_MIN });
+
+    expect([first.slot, second.slot]).toEqual([1, 2]);
+    const slots = getState().sessions.map((s) => s.slot);
+    expect(new Set(slots).size).toBe(slots.length);
+  });
+
+  it('rolls into the next plot once this one is full', () => {
     const full = Array.from({ length: PLOT_SIZE }, (_, i) => seeded(`s${i}`, i));
     __replaceState({ sessions: full });
 
-    // A dot from the archived plot — free there, but that plot is closed.
     const session = recordCompletedSession({
       startedAt: Date.now(),
       durationMs: TEN_MIN,
-      slot: 3,
     });
     expect(session.slot).toBe(PLOT_SIZE);
-  });
-
-  it('shrugs off a slot that is not a usable number', () => {
-    // `Number(params.slot)` yields NaN when the param never arrived.
-    const session = recordCompletedSession({
-      startedAt: Date.now(),
-      durationMs: TEN_MIN,
-      slot: Number.NaN,
-    });
-    expect(session.slot).toBe(0);
   });
 });
 

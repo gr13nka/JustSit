@@ -108,11 +108,18 @@ holds the key resolved at completion; `plantFor()` runs once per session, ever.
 That is what makes adding species to `PLANT_KEYS` safe later — existing plants
 never change, even though the same seed would now hash differently.
 
-`Session.slot` is the same idea applied to position. A sitting starts by touching
-an empty dot, so the user chose that dot and nothing may move the plant
-afterwards. The slot is absolute across the whole garden — plot is
-`slot / PLOT_SIZE`, cell within it is `slot % PLOT_SIZE`. Position used to be
-array order; deriving it again would silently rearrange gardens people keep.
+`Session.slot` is the same idea applied to position. A garden fills in order, so
+`nextFreeSlot` decides where a plant lands — asked at the moment a sitting
+finishes, never passed in. The slot is absolute across the whole garden — plot is
+`slot / PLOT_SIZE`, cell within it is `slot % PLOT_SIZE`.
+
+It is still **stored and never derived**, and linear planting makes that more
+important rather than less. Gardens grown while the user picked their own dot
+have holes anywhere in them, and those gardens are on people's phones: position
+used to be array order, and deriving it again would silently rearrange them. It
+is also why `Plot.cells` stays a sparse array and `nextDot` looks for the first
+hole rather than the dot after the last plant — in a garden that has only ever
+filled in order those are the same dot, and in an older one they are not.
 
 **New fields need a default, not a migration.** `mergePersisted` in
 `store/persistence.ts` merges `progress` and `settings` over their defaults on
@@ -146,7 +153,7 @@ Leaving early shows no message and no confirmation dialog.
 |---|---|
 | One plant per completed session | `store.recordCompletedSession` |
 | Plots of 108 (mala bead count); the plot is derived, the plant's slot is stored | `domain/plots.ts` |
-| A sitting starts by touching an empty dot, and grows there | `ui/PlantGrid.tsx` → `app/session/start.tsx` |
+| A garden fills in order; only the next dot answers a touch | `domain/plots.ts` → `ui/PlantGrid.tsx` → `app/session/start.tsx` |
 | Whole minutes by default; seconds are opt-in | `settings.hideSeconds`, `ui/Clock.tsx` |
 | Advance offered at ≥20 sessions **and** ≥21 days at stage; a decline is respected for 14 days | `domain/progression.ts` |
 | The app proposes a stage; **the user confirms** | `app/session/advance.tsx` |
@@ -355,11 +362,17 @@ one screen.** It used to be six across, where a cell was 60pt wide and a dot was
 a 5.5pt blob adrift in it, and the plot ran two and a half screens deep. Dense,
 the dots read as one texture the grown marks sit in rather than as a list of
 buttons — which is what the garden is for. Two costs, both accepted: the tap
-target is a 30pt cell rather than a 60pt one (a mis-tap spends nothing, since
-the slot is only committed when a sitting finishes), and `field.ts` floors
+target is a 30pt cell rather than a 60pt one, and `field.ts` floors
 the cell to a half point and draws the grid at exactly twelve of them, because
 twelve fractional widths can total a hair over a fractional container and throw
 the last cell onto a row of its own.
+
+That tap target used to be cheap — a hundred dots each started a sitting where
+you touched, and a mis-tap spent nothing because the slot was only committed when
+the sitting finished. Now exactly one dot answers a touch at all, so the argument
+has to be made differently: `PlantGrid` gives that one `Pressable` a `hitSlop` of
+half a cell, which grows the target without moving the lattice or the ink. The
+drawing stays a third of an inch; what you can hit is twice that.
 
 The field's arithmetic lives in `src/ui/field.ts`, which is pure — no react, no
 svg, the `ring.ts` precedent — because the guarantee it makes is one worth
@@ -417,6 +430,16 @@ you grew is a record and the garden is already that, while marking where you
 would go next is the only thing on the screen about carrying on. Which dot that
 is comes from `nextDot`, the first hole in the plot, so it agrees with where
 `nextFreeSlot` would actually plant.
+
+Since planting became linear it is also **the button** — the one mark in the
+field that answers a touch — which is a better job than the one it was drawn for
+and needs no change to the drawing. It is also what quietly fixed an overlap: a
+plant's head stands about 12.5pt above its own cell, so a plant in the row
+*below* an empty dot used to reach up over that dot's ring, and `zIndex: 1` meant
+the ring won and looked wrong. That case is a hole with a plant after it, which
+only free planting could make. Filling in order, everything past the next dot is
+empty, so nothing is ever drawn over it. Older gardens still have such holes and
+will show the overlap until they fill; it heals itself and is not worth code.
 
 Its colour is `inkSoft`: not the accent, whose four places are spoken for; not
 green, which means something grew and nothing has grown here yet; and not
@@ -725,7 +748,15 @@ meant to be thrown away; the number is the deliverable.
 **Web is a preview target, not a platform.** No web build ships. `react-native-web`
 renders flex, spacing and proportion faithfully — which is what you go there to
 judge — but text metrics and SVG rasterisation differ a little from native, so
-decide in the browser and confirm on the phone. Three things needed handling for
+decide in the browser and confirm on the phone.
+
+**And it is honest about proportion but not about size.** A 411px frame on a
+desktop monitor is physically about half again as wide as a 411dp phone, and it
+is read at desk distance rather than in the hand — so anything whose whole
+question is *how much* comes out too small when it reaches the device. The sway's
+amplitude was chosen in `anim-lab.html` at 5°, which is 3pt of travel at the tip,
+and on the phone it was barely visible. Shape, timing and layout are decided in
+the browser; amount is decided in the hand. Three things needed handling for
 it to tell the truth:
 
 - **`src/ui/webInsets.tsx` / `.web.tsx`.** A desktop browser answers

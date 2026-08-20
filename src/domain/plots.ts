@@ -16,8 +16,12 @@ export type Plot = {
   sessions: Session[];
   /**
    * The same plants laid out the way the grid draws them: one entry per slot,
-   * null wherever nothing has grown yet. Growing order and drawing order are
-   * two different things now that the user picks the dot.
+   * null wherever nothing has grown yet.
+   *
+   * A garden fills in order, so this is normally a run of plants followed by a
+   * run of nulls, and growing order and drawing order agree. It stays a sparse
+   * array all the same, because gardens grown while the user still picked dots
+   * have holes anywhere in them, and those gardens are on people's phones.
    */
   cells: (Session | null)[];
   isComplete: boolean;
@@ -80,11 +84,15 @@ export function plotAt(sessions: readonly Session[], index: number): Plot {
 
 /**
  * The dot a sitting would fill next: the first empty one in the plot, or null
- * once there are none left.
+ * once there are none left. It is the only dot in the field that answers a
+ * touch, so this decides where a sitting can be started as well as where the
+ * plant will land.
  *
- * The *first* empty one, not the one after the last plant. The user picks the
- * dot, so a garden routinely has holes behind its newest plant, and the front of
- * the unplanted field is where the garden carries on from.
+ * The *first* empty one, not the one after the last plant. Those are the same
+ * dot in a garden that has only ever filled in order — but a garden grown while
+ * the user picked dots has holes behind its newest plant, and filling those in
+ * is both tidier and the only reading that cannot land a plant on one already
+ * there.
  */
 export function nextDot(plot: Plot): number | null {
   const cell = plot.cells.indexOf(null);
@@ -134,15 +142,13 @@ export function slotOffset(slot: number): { dx: number; dy: number } {
   return { dx: x * SCATTER, dy: y * SCATTER };
 }
 
-/** True if nothing has grown in this slot. */
-export function isSlotFree(sessions: readonly Session[], slot: number): boolean {
-  return !sessions.some((s) => s.slot === slot);
-}
-
 /**
- * Where a plant goes when the user did not pick a dot — the first empty one in
- * the plot being filled, which reproduces how the garden filled before dots
- * were tappable.
+ * Where a plant goes: the first empty dot in the plot being filled.
+ *
+ * There is no longer anything to compare this against — the user cannot pick a
+ * dot, so this is not a fallback but the whole rule, and `recordCompletedSession`
+ * asks it at the moment a sitting finishes rather than being told an answer that
+ * was worked out before the sitting began.
  */
 export function nextFreeSlot(sessions: readonly Session[]): number {
   const plot = currentPlot(sessions);

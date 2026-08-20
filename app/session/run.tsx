@@ -14,11 +14,8 @@ import { TimerRing } from '../../src/ui/TimerRing';
 const PREVIEW_PLANT = 'grass';
 
 export default function RunScreen() {
-  const params = useLocalSearchParams<{ durationMs: string; slot: string }>();
+  const params = useLocalSearchParams<{ durationMs: string }>();
   const durationMs = Number(params.durationMs);
-  // NaN if the dot was never named. `recordCompletedSession` treats that as
-  // "put it in the first free one" rather than refusing the sitting.
-  const slot = Number(params.slot);
 
   // Fixed at mount. Everything downstream derives from wall time, so a re-render
   // must never restart the clock.
@@ -35,7 +32,7 @@ export default function RunScreen() {
     startedAt,
     durationMs,
     onComplete: () => {
-      const session = recordCompletedSession({ startedAt, durationMs, slot });
+      const session = recordCompletedSession({ startedAt, durationMs });
       router.replace({
         pathname: '/session/complete',
         params: { sessionId: session.id },

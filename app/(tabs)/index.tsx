@@ -55,12 +55,12 @@ export default function GardenScreen() {
   const sway = useSway(shown);
 
   /**
-   * The dot travels with the sitting rather than being written down here.
-   * Nothing is promised to it until a sitting actually finishes, which is what
-   * keeps backing out of the flow free of consequences.
+   * Nothing is promised to the garden until a sitting actually finishes, which
+   * is what keeps backing out of the flow free of consequences. The dot is not
+   * named here or carried along: the garden fills in order, so where the plant
+   * goes is decided at the end, from the garden as it is then.
    */
-  const sitIn = (slot: number) =>
-    router.push({ pathname: '/session/start', params: { slot: String(slot) } });
+  const beginSitting = () => router.push('/session/start');
 
   return (
     <Screen edges={['top']}>
@@ -101,7 +101,7 @@ export default function GardenScreen() {
             <Baton size={BATON_SIZE} />
           </View>
         )}
-        <PlantGrid plot={plot} onPressEmpty={sitIn} burst={progress} sway={sway} />
+        <PlantGrid plot={plot} onBegin={beginSitting} burst={progress} sway={sway} />
       </ScrollView>
     </Screen>
   );
