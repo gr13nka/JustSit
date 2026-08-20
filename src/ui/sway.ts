@@ -14,6 +14,32 @@
 import { hash32 } from '../domain/hash';
 
 /**
+ * A final avalanche over `hash32`, because FNV-1a on its own is not scrambled
+ * enough to seed a phase with — in either half of the word.
+ *
+ * Its last act is `h = (h ^ c) * prime`, so two keys whose last character
+ * differs by one come out differing by about `prime`. In the TOP bits that is a
+ * near-monotone ramp; in the BOTTOM bits it is an arithmetic progression of
+ * `prime mod 2^k` — for the low twelve bits, exactly 403/4096 per slot. Neither
+ * is random. Taking the low bits was the first attempt at fixing this and it
+ * only swapped one ramp for another: consecutive plants came out 35° apart in
+ * phase, every time, which is a travelling wave dressed up as a seed and is
+ * precisely what the phase is supposed to break up.
+ *
+ * This is murmur3's finalizer, whose whole job is that one flipped input bit
+ * changes half the output bits. `hash32` itself stays frozen — the garden's
+ * scatter and the burst's start times depend on it answering the same forever.
+ */
+function scramble(h: number): number {
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+/**
  * How long the one shared clock takes to come round.
  *
  * Everything below fits a whole number of times into it, which is what lets a
@@ -91,8 +117,24 @@ const SWAY_BEND = 0.5;
  */
 const SWAY_COHERENCE = 0.68;
 
-/** How many cells apart two crests are. Longer than the field and it leans as one. */
-const SWAY_WAVELENGTH = 9;
+/**
+ * How many cells apart two crests are.
+ *
+ * This has to be read against the size of the field, which is the thing that
+ * caught us out. Twelve columns and nine rows measure a little over twelve
+ * cells along the wind, so at a wavelength of 9 the garden held a whole wave —
+ * corner to corner the phase spread 0.94 of a turn. A full wave standing in the
+ * field does not read as wind. It reads as a boundary: half the plants leaning
+ * one way, half the other, the join marching across and wrapping round once a
+ * cycle, which is exactly the "sway one way and teleport back" it was reported
+ * as. It was doing that at the old seven-second clock too, once every seven
+ * seconds.
+ *
+ * Well longer than the field, and the garden leans together with a lag from one
+ * corner to the other — one wind over one garden, which is the thing being
+ * drawn. At 36 the spread is under a quarter turn.
+ */
+const SWAY_WAVELENGTH = 36;
 
 /** Which way the gust travels, in degrees off horizontal. */
 const SWAY_DIRECTION = 12;
@@ -103,16 +145,13 @@ const SWAY_GUST = 0.34;
 /**
  * Where in its loop the plant in one slot is, as a fraction of a turn.
  *
- * The seeded half takes the hash's LOW bits, as everything else that seeds off
- * it does — `burstDelay` takes a modulo, `slotOffset` masks bytes. FNV-1a's top
- * bits run close to linear in the last character of a short key, so dividing by
- * 2³² hands back a near-monotone ramp across `sway-0`…`sway-11` and the whole
- * field drifts in step: precisely what coherence 0 exists to prevent.
+ * The seeded half is scrambled first — see `scramble` above for why neither
+ * end of `hash32`'s word will do on its own.
  */
 function swayPhase(slot: number, col: number, row: number): number {
   const th = (SWAY_DIRECTION * Math.PI) / 180;
   const along = (col * Math.cos(th) + row * Math.sin(th)) / SWAY_WAVELENGTH;
-  const own = (hash32(`sway-${slot}`) % 4096) / 4096;
+  const own = scramble(hash32(`sway-${slot}`)) / 4294967296;
   // Negative along the wind, so the crest travels with it rather than against.
   return -SWAY_COHERENCE * along + (1 - SWAY_COHERENCE) * own;
 }
