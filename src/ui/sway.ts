@@ -40,17 +40,18 @@ function scramble(h: number): number {
 }
 
 /**
- * How long the one shared clock takes to come round.
+ * How long the one shared clock takes to come round — and so how long the
+ * garden takes to repeat itself exactly.
  *
- * Everything below fits a whole number of times into it, which is what lets a
- * hundred and eight plants ride a single `Animated.Value`: each reads its own
- * window out of the same 0..1 ramp, and the ramp can restart at 0 without a
- * jump because every plant's table ends where it began.
+ * It used to be five seconds, which is short enough to watch the same gust
+ * arrive twice and notice. The wind below is built so that lengthening this is
+ * the whole lever: the layers are at rates that share no common factor, so the
+ * only moment they all line up again is the end of the turn.
  */
-export const SWAY_CYCLE_MS = 5000;
+export const SWAY_CYCLE_MS = 40000;
 
 /**
- * How far the tip leans at the top of a gust.
+ * How far the tip leans at its furthest.
  *
  * Chosen on a phone, not in the bench, and the difference was most of a factor
  * of two. At 5° a plant's tip travels 3pt, and measured off the device that came
@@ -58,31 +59,61 @@ export const SWAY_CYCLE_MS = 5000;
  * invisible at arm's length. The bench draws its phone 411px wide on a desktop
  * monitor, which is half again the physical width of a 411dp screen and read at
  * desk distance, so an amplitude that looks right there is not.
+ *
+ * It is a hard bound rather than a target: `field.ts` sizes the cell so a plant
+ * at full lean still fits, so `swayLeans` normalises every plant's loop to peak
+ * here exactly. Nothing may lean further.
  */
-export const SWAY_LEAN_DEG = 11;
+export const SWAY_LEAN_DEG = 13;
 
 /**
- * Sways per turn of the clock, and gusts per turn is always one. Both are whole
- * numbers so the loop closes by construction rather than by anyone checking —
- * the same trick that makes the burst's swings decay without being told to.
+ * The wind, as layers.
+ *
+ * One oscillation and one gust envelope can only ever be a metronome: whatever
+ * the shape, it arrives at the same strength at the same interval forever, and
+ * over a long look that is what it reads as. Real wind is several things at
+ * once, so this is several — a quick one that carries the motion, and slower,
+ * weaker ones that push it around.
+ *
+ * `cycles` is per turn of the clock and the three are **pairwise coprime**,
+ * which is the point rather than a detail. Any common factor would bring the
+ * layers back into step early and the garden would repeat inside its own turn:
+ * 16/10/6 all share a 2 and would repeat twice a turn. 16/11/7 line up only at
+ * the end, so the repeat is the full forty seconds.
+ *
+ * The slower a layer, the broader it is — a long wave moves the whole garden
+ * more or less together, a short one ripples through it — which is also what
+ * keeps the fastest layer from reading as a stripe crossing the field.
+ *
+ * There is no separate gust any more. Three layers drifting in and out of phase
+ * quieten and swell on their own, and unlike a cosine envelope they do not do
+ * it on a schedule.
  */
-const SWAY_CYCLES = 2;
+const WINDS = [
+  { cycles: 16, weight: 1.0, wavelength: 36, direction: 12 },
+  { cycles: 11, weight: 0.5, wavelength: 52, direction: 20 },
+  { cycles: 7, weight: 0.3, wavelength: 82, direction: 4 },
+] as const;
 
 /**
  * How many samples one plant's loop is stored as.
  *
  * The table is straight lines between them, so every knot is a corner in the
- * velocity, and the harder `SWAY_SHAPE` is pushed the fewer of them fall across
- * the fast crossing — which is where a corner shows. This is fidelity rather
- * than taste: at this shape the bench measures the worst corner at 0.6°/s,
- * which is generous, and the count was set against that number rather than by
- * eye.
+ * velocity, and what sets the count is the *fastest* layer: at 16 cycles a turn
+ * this is ten samples per oscillation. A sine sampled that coarsely and joined
+ * with straight lines is off by about 5% of its own amplitude, and that layer
+ * is a little over half of the total, so the error lands near a third of a
+ * degree — a fifth of a point at the tip, which is under a device pixel.
+ *
+ * It is also 108 tables built on mount, so this is a cost as well as a fidelity
+ * setting: every extra knot is another 216 numbers formatted into another 216
+ * strings before the garden can draw.
  */
-const SWAY_KNOTS = 96;
+const SWAY_KNOTS = 160;
 
 /**
- * How unevenly the cycle is travelled — fast through upright one way, slow the
- * other, so a gust reads as a push and a drift instead of as a pendulum.
+ * How unevenly each layer travels its cycle — fast through upright one way,
+ * slow the other, so a gust reads as a push and a drift instead of a pendulum.
  *
  * The warp is a Möbius map of the circle, and the reason is its derivative: the
  * Poisson kernel `(1 − k²)/(1 − 2k·cos a + k²)`, which is strictly positive for
@@ -93,9 +124,7 @@ const SWAY_KNOTS = 96;
  * carries a factor `(1 + b·cos a)` that is exactly zero at `a = π` when
  * `b = 1`: the plant halts dead at upright, hangs there and starts again, and
  * decelerating in and accelerating out reads as two twitches either side of the
- * middle. That dead spot is also where a table of straight lines shows its
- * corners worst, the flattest part of a curve being where they are largest
- * relative to the motion around them.
+ * middle.
  */
 const SWAY_SHAPE = 0.36;
 
@@ -110,69 +139,74 @@ const SWAY_SHAPE = 0.36;
 const SWAY_BEND = 0.5;
 
 /**
- * How much of the phase comes from where a plant stands rather than from its
- * own seed. 0 is a hundred and eight plants each on their own clock; 1 is one
- * wind crossing the field. Between blends them, and between is what reads as
- * weather rather than as either a chorus line or a crowd.
+ * How much of each layer's phase comes from where a plant stands rather than
+ * from its own seed. 0 is a hundred and eight plants each on their own clock;
+ * 1 is one wind crossing the field. Between blends them, and between is what
+ * reads as weather rather than as either a chorus line or a crowd.
+ *
+ * It wants to be higher with layers than it did with one wind. Each layer
+ * carries its own share of the seeded half, so three of them dilute it: at 0.68
+ * — which read as wind when there was a single layer — neighbours agreed with
+ * each other only 4% more than plants at opposite ends of the garden, which is
+ * not a wind at all. At 0.88 the separation is 34% and the field still spreads
+ * some 14° across itself, so it is weather rather than a slab.
  */
-const SWAY_COHERENCE = 0.68;
+const SWAY_COHERENCE = 0.88;
 
 /**
- * How many cells apart two crests are.
+ * Where in one layer's cycle the plant in a given slot is, as a fraction of a
+ * turn.
  *
- * This has to be read against the size of the field, which is the thing that
- * caught us out. Twelve columns and nine rows measure a little over twelve
- * cells along the wind, so at a wavelength of 9 the garden held a whole wave —
- * corner to corner the phase spread 0.94 of a turn. A full wave standing in the
- * field does not read as wind. It reads as a boundary: half the plants leaning
- * one way, half the other, the join marching across and wrapping round once a
- * cycle, which is exactly the "sway one way and teleport back" it was reported
- * as. It was doing that at the old seven-second clock too, once every seven
- * seconds.
- *
- * Well longer than the field, and the garden leans together with a lag from one
- * corner to the other — one wind over one garden, which is the thing being
- * drawn. At 36 the spread is under a quarter turn.
+ * The seeded half is scrambled first — see `scramble` above for why neither end
+ * of `hash32`'s word will do on its own. Each layer seeds off its own key, so
+ * the layers are independent rather than three views of one number.
  */
-const SWAY_WAVELENGTH = 36;
-
-/** Which way the gust travels, in degrees off horizontal. */
-const SWAY_DIRECTION = 12;
-
-/** How far the wind dies away between pulses. At 0 it never stops. */
-const SWAY_GUST = 0.34;
-
-/**
- * Where in its loop the plant in one slot is, as a fraction of a turn.
- *
- * The seeded half is scrambled first — see `scramble` above for why neither
- * end of `hash32`'s word will do on its own.
- */
-function swayPhase(slot: number, col: number, row: number): number {
-  const th = (SWAY_DIRECTION * Math.PI) / 180;
-  const along = (col * Math.cos(th) + row * Math.sin(th)) / SWAY_WAVELENGTH;
+function layerPhase(wind: (typeof WINDS)[number], layer: number, slot: number, col: number, row: number) {
+  const th = (wind.direction * Math.PI) / 180;
+  const along = (col * Math.cos(th) + row * Math.sin(th)) / wind.wavelength;
+  /* One seed per plant, shared by every layer, not one per layer. A plant's
+     personal offset is a fact about the plant — its stiffness, where it happens
+     to stand — not three unrelated facts. Seeding each layer separately gave
+     every plant three independent randoms, and summing three independent
+     randoms averages the wind out of the field: neighbours stopped agreeing
+     with each other any more than strangers did, which is the coherence the
+     spatial term exists to provide. */
   const own = scramble(hash32(`sway-${slot}`)) / 4294967296;
   // Negative along the wind, so the crest travels with it rather than against.
   return -SWAY_COHERENCE * along + (1 - SWAY_COHERENCE) * own;
 }
 
+/** One layer's contribution at clock position `p`, in the range ±weight. */
+function layerAt(wind: (typeof WINDS)[number], phase: number, p: number): number {
+  const k = 0.65 * SWAY_SHAPE;
+  const a = 2 * Math.PI * (wind.cycles * p + phase);
+  const warped = a + 2 * Math.atan2(k * Math.sin(a), 1 - k * Math.cos(a));
+  return wind.weight * Math.sin(warped);
+}
+
 /**
  * One plant's whole loop, sampled: a lean in degrees at each of `SWAY_KNOTS`
  * even steps through a turn of the clock, ending exactly where it started.
+ *
+ * Normalised to peak at `SWAY_LEAN_DEG`. Three layers only rarely crest
+ * together, so the raw sum wanders well under its own worst case and scaling by
+ * that worst case is what keeps the typical lean worth looking at while
+ * guaranteeing the bound `field.ts` sizes the cell against.
  */
 export function swayLeans(slot: number, col: number, row: number): number[] {
-  const phase = swayPhase(slot, col, row);
-  const k = 0.65 * SWAY_SHAPE;
+  const phases = WINDS.map((wind, i) => layerPhase(wind, i, slot, col, row));
 
-  const leans: number[] = [];
+  const raw: number[] = [];
   for (let i = 0; i <= SWAY_KNOTS; i++) {
     const p = i / SWAY_KNOTS;
-    const gust = 1 - SWAY_GUST + SWAY_GUST * (0.5 - 0.5 * Math.cos(2 * Math.PI * p));
-    const a = 2 * Math.PI * (SWAY_CYCLES * p + phase);
-    const warped = a + 2 * Math.atan2(k * Math.sin(a), 1 - k * Math.cos(a));
-    leans.push(SWAY_LEAN_DEG * gust * Math.sin(warped));
+    let sum = 0;
+    for (let w = 0; w < WINDS.length; w++) sum += layerAt(WINDS[w], phases[w], p);
+    raw.push(sum);
   }
-  return leans;
+
+  const peak = Math.max(...raw.map(Math.abs));
+  const scale = peak > 0 ? SWAY_LEAN_DEG / peak : 0;
+  return raw.map((v) => v * scale);
 }
 
 /** One plant's loop as an `Animated.interpolate` config, in degrees. */
@@ -198,7 +232,11 @@ export function swayTrack(slot: number, col: number, row: number): SwayTrack {
   const leans = swayLeans(slot, col, row);
   return {
     at: leans.map((_, i) => i / SWAY_KNOTS),
-    skew: leans.map((deg) => `${-deg * SWAY_BEND}deg`),
-    spin: leans.map((deg) => `${deg * (1 - SWAY_BEND)}deg`),
+    /* Rounded, because the full double prints twenty-odd characters of which
+       about five carry meaning: a thousandth of a degree is six ten-thousandths
+       of a point at the tip. 216 of these are built per plant and 108 plants
+       per garden, so the formatting is a real share of the mount. */
+    skew: leans.map((deg) => `${(-deg * SWAY_BEND).toFixed(3)}deg`),
+    spin: leans.map((deg) => `${(deg * (1 - SWAY_BEND)).toFixed(3)}deg`),
   };
 }

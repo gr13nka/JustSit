@@ -24,27 +24,49 @@ describe('the sway loop', () => {
   });
 
   /**
-   * The one that would have caught the twitch, and it is worth stating as the
-   * property rather than as the formula.
+   * The one that would have caught the original twitch, restated.
    *
    * A stem is at its fastest passing through upright and stops only at the two
    * extremes. `sin(a + b·sin a)` gets that exactly backwards as b approaches 1:
    * its speed carries a factor that vanishes at the halfway crossing, so the
-   * plant halts dead at upright and starts again, which reads as a pair of
-   * jerks either side of the middle. The Möbius warp cannot, at any setting.
+   * plant halts dead at upright and starts again. The Möbius warp each layer is
+   * built on cannot do that at any setting.
    *
-   * Measured, the slowest crossing is 0.22 of the busiest step; the old warp at
-   * the same amplitude gives 0.0001. A tenth sits between them with room on
-   * both sides.
+   * It is asserted as a *sustained* stillness rather than a single slow sample,
+   * because the sum of three layers is allowed to crawl through upright when
+   * they happen to cancel — that is the wind dropping, and it is wanted. What is
+   * never allowed is stopping: a genuine stall shows as a flat run at the same
+   * phase every turn. The worst run here is two knots, a third of a second.
    */
-  it('never comes to a standstill at upright', () => {
+  it('never comes to a sustained standstill', () => {
     for (const leans of field()) {
-      const steps = leans.slice(1).map((deg, i) => Math.abs(deg - leans[i]));
-      const busiest = Math.max(...steps);
-      const crossings = steps.filter((_, i) => leans[i] === 0 || leans[i] * leans[i + 1] < 0);
+      let run = 0;
+      for (let i = 1; i < leans.length; i++) {
+        run = Math.abs(leans[i] - leans[i - 1]) < 0.02 ? run + 1 : 0;
+        expect(run).toBeLessThan(6);
+      }
+    }
+  });
 
-      expect(crossings.length).toBeGreaterThan(0);
-      expect(Math.min(...crossings)).toBeGreaterThan(busiest / 10);
+  /**
+   * The point of the layers, and the thing a single oscillation could not do.
+   *
+   * The rates are pairwise coprime, so the only moment all three line up again
+   * is the end of the turn. If someone gives two of them a common factor — 16
+   * and 10 both carry a 2 — the garden starts repeating inside its own turn,
+   * and it does so silently: every other property here still passes.
+   */
+  it('does not repeat inside its own turn', () => {
+    for (const leans of field()) {
+      const knots = leans.length - 1;
+      for (const divisor of [2, 3, 4, 5, 8]) {
+        const shift = Math.round(knots / divisor);
+        let worst = 0;
+        for (let i = 0; i < knots; i++) {
+          worst = Math.max(worst, Math.abs(leans[i] - leans[(i + shift) % knots]));
+        }
+        expect(worst).toBeGreaterThan(SWAY_LEAN_DEG / 4);
+      }
     }
   });
 });
