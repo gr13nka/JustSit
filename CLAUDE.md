@@ -210,11 +210,20 @@ back to the body face.
 **Hand-drawn touches are rationed.** Exactly four kinds exist: the wobbly
 `Rule`, organic corner asymmetry (`organicCorners` — always seeded, never
 random), hand-drawn arrows (`ArrowRight`, `ArrowLeft` — the way back out of a
-sitting), and the single `wobbly` button (Meditate, and only it). The active
+sitting), and the `wobbly` button. The active
 tab's scribble underline was the fifth and is gone: the sliding selector's
 marker says "you are here" now, and an interface needs one way of saying it.
 Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
-beyond those is. The garden's next-dot ring is not a fifth kind — it is the
+beyond those is.
+
+**The `wobbly` button is for committing, and that is the whole rule.** It was
+Meditate and only Meditate; onboarding's **Begin** has it too, being the first
+thing in the app you agree to. What keeps it rationed is the verb rather than a
+count: starting a sitting and starting altogether are commitments, while
+"Choose a time" is a setting and "Not now" is a way out, so neither gets the
+pen. Two drawn buttons are never on screen together, and since each side's bow
+is a fraction of its own length they come out at different widths — one hand at
+two sizes, which is why `box.ts` can stay unseeded. The garden's next-dot ring is not a fifth kind — it is the
 timer's ring at another size, which is the whole reason that geometry sits in
 `ring.ts` rather than in the component that first wanted it. Every *code-drawn* path is cubic béziers with round caps and baked-in
 wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. The

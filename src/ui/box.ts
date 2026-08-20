@@ -16,11 +16,14 @@
 
 /**
  * Each corner's radius, as a multiple of the nominal one, clockwise from the
- * top left. Fixed rather than seeded: exactly one control in the app is drawn
- * this way, so it has one character rather than a family of them, and a shape
- * that re-rolled itself between frames would read as a glitch instead of a
- * hand. (`organicCorners` seeds because many boxes are on screen at once and
- * have to differ from each other. This one has nothing to differ from.)
+ * top left. Fixed rather than seeded, and it stays fixed now that more than one
+ * control is drawn this way: never two at once. Meditate and onboarding's Begin
+ * are on different screens, and each side's bow is a fraction of its own length
+ * so the two come out at different widths anyway — one hand, two sizes, rather
+ * than a family of characters. A shape that re-rolled itself between frames
+ * would read as a glitch instead of a hand. (`organicCorners` seeds because
+ * many boxes are on screen at once and have to differ from each other. These
+ * have nothing to differ from.)
  */
 const CORNER = [1.2, 0.82, 1.12, 0.88];
 

@@ -80,8 +80,14 @@ export default function Onboarding() {
         </View>
 
         <View style={styles.footer}>
+          {/*
+            Drawn rather than styled, like Meditate. This is the other button in
+            the app that commits you to something — the first one, in fact — and
+            a committing button is the one place the pen is allowed on a control.
+          */}
           <Button
             label="Begin"
+            variant="wobbly"
             onPress={() => setStep('reminder')}
             style={styles.stretch}
           />
