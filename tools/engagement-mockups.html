@@ -230,28 +230,50 @@
   .bundle svg + svg { margin-left: -16px; }
   .candidate.chosen .bundle { transform: scale(1.06); transform-origin: 50% 92%; }
 
-  /* Frame 8 — the commitment ask. */
+  /* Frame 8 — the commitment ask, preview-first. A size is a field shape
+     before it is a number, so each option draws the bed it would lay out. */
   .ask-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; }
   .finished-bed { display: flex; align-items: flex-end; }
   .finished-bed svg + svg { margin-left: -10px; }
-  .size-row { display: flex; gap: 20px; }
-  .size-choice { position: relative; width: 76px; padding: 12px 0 10px; display: flex; flex-direction: column; align-items: center; }
+  .size-row { display: flex; gap: 15px; }
+  .size-choice { position: relative; width: 75px; padding: 9px 0 7px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .size-choice .marker {
     position: absolute; inset: 0;
     background: var(--paper-deep);
     border-radius: 11.8px 9.1px 10.8px 9.6px; /* organicCorners(10ish) */
   }
-  .size-choice .num { position: relative; font: 700 24px/28px var(--sans); color: var(--ink-soft); }
+  /* The shapes stand on one line, tallest rising: a size reads as how much
+     bed it is, not as how many dots it holds. */
+  .size-choice .shape { position: relative; height: 52px; display: flex; align-items: flex-end; }
+  .size-choice .num { position: relative; font: 700 21px/25px var(--sans); color: var(--ink-soft); }
   .size-choice.sel .num { color: var(--ink); }  /* the dial's language: the number darkens */
-  .size-choice .sub { position: relative; font: 500 12px/16px var(--sans); color: var(--ink-soft); margin-top: 3px; }
+  /* The second path. Quiet text, the run screen's End: a way out marked by
+     nothing, so it cannot compete with the one drawn button. */
+  .grow-link { font: 500 14px/20px var(--sans); color: var(--ink-soft); }
 
-  /* Frame 9 — the shelf of gardens. Cards keep the app's card contract. */
-  .gardens-wrap { position: relative; }
-  .gardens-list { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
-  .garden-card { background: var(--paper-deep); padding: 12px 14px; }
-  .mini-field { display: grid; gap: 3px 5px; align-items: end; justify-items: center; }
+  /* Frames 8 and 9 — the shelf. Cards are frame 7's note cards: paper-deep,
+     organic corners, no border, no shadow. A card is cut to the shape of its
+     own field, so the twelve-wide gardens take a row to themselves. */
+  .shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 12px; align-items: start; }
+  .shelf-card {
+    background: var(--paper-deep);
+    padding: 14px;
+    justify-self: start;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .shelf-card.wide { grid-column: 1 / -1; justify-self: stretch; }
+  .mini-field { display: grid; align-items: end; justify-items: center; }
   .garden-meta { font: 500 12px/16px var(--sans); color: var(--ink-faint); margin-top: 8px; }
-  .keeper { position: absolute; right: 6px; top: -2px; }
+  .keeper-cell { align-self: end; justify-self: center; }
+
+  /* Frame 8's copy of the shelf, at a glance size and laid along one line:
+     small enough to be read as "where the next one would sit" rather than
+     as a second screen inside the first. */
+  .shelf-mini { display: flex; align-items: flex-end; gap: 12px; }
+  .shelf-mini .shelf-card { padding: 8px; }
+  /* A garden that does not exist yet: the card drawn as an outline, which is
+     the one place on this page a border is allowed to say something. */
+  .shelf-card.ghost { background: none; border: 1.5px dashed var(--ink-faint); }
 
   .run-middle { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .ringbox { position: relative; width: 210px; height: 210px; display: flex; align-items: center; justify-content: center; }
@@ -492,11 +514,9 @@
           <div class="finished-bed" id="bed-8"></div>
           <div class="t-title">The bed is full.</div>
           <div class="t-body" style="color:var(--ink-soft); margin-top:-14px">How big is the next garden?</div>
-          <div class="size-row">
-            <div class="size-choice"><span class="num">7</span><span class="sub">a week</span></div>
-            <div class="size-choice sel"><span class="marker"></span><span class="num">30</span><span class="sub">a month</span></div>
-            <div class="size-choice"><span class="num">108</span><span class="sub">a mala</span></div>
-          </div>
+          <div class="size-row" id="sizes-8"></div>
+          <div class="shelf-mini" id="shelf-8"></div>
+          <div class="grow-link">or grow this garden instead</div>
         </div>
         <div class="footer">
           <div class="btn-wobbly t-button"><span>Begin it</span></div>
@@ -505,7 +525,8 @@
     </div>
     <figcaption>
       <span class="cap-num">8</span><span class="cap-title">The commitment ask — a garden's last dot fills</span>
-      <p>A commitment, not a quest: no reward is promised for finishing — only the question of size. Sittings fill a garden; days only frame it. The size stays freely changeable later from the garden, and shrinking below what has grown simply closes the garden at its count. All wording is open: "The bed is full.", the sub-labels ("a week / a month / a mala"), and "Begin it".</p>
+      <p>A commitment, not a quest: nothing is promised for finishing, only the question of size. Day labels are retired — a long sitting can grow two or three plants, so "a week" was never true of anything — and the honest answer is shape: four fractions of a mala, each drawing the bed it would lay out. Under them the user's own shelf, with the new garden ghosted in, so the size is chosen against what is already there rather than against a number.</p>
+      <p>The quiet line grows the garden just finished instead of starting another, by the same steps. Only the latest garden can be grown; growing a finished one reopens it, and nothing already planted ever moves. Open wording: "The bed is full.", "or grow this garden instead" (alternatives: "or grow this one further", "or add 27 to this garden"), and "Begin it".</p>
     </figcaption>
   </figure>
 
@@ -517,15 +538,13 @@
           <span class="back" id="back-9"></span>
           <div class="t-title">Your gardens</div>
         </div>
-        <div class="gardens-wrap">
-          <span class="keeper" id="keeper-9"></span>
-          <div class="gardens-list" id="gardens-9"></div>
-        </div>
+        <div class="shelf" id="gardens-9"></div>
       </div>
     </div>
     <figcaption>
       <span class="cap-num">9</span><span class="cap-title">Your gardens — the shelf</span>
-      <p>Every garden, oldest first, the current one last: this is the app's whole progress figure, and there is no percentage anywhere. Reached by tapping the plot caption in the garden; tap a garden to view it full. Батон — awake, the unused idle pose — keeps the finished gardens. Thumbnails are cheap marks, not plants: green ticks with bloom-pen flecks, so the shelf stays a glance.</p>
+      <p>Every garden, oldest first, the current one last: this is the app's whole progress figure, and there is no percentage anywhere. Frame 7's cards, each cut to the shape of its own field — a bed of three sits beside a row of nine, and the twelve-wide gardens take a row each because that is how wide they are. The mark stays one size across the shelf, which is what lets a 108 be seen to be twelve times a 9.</p>
+      <p>Day labels are gone from the sizes for frame 8's reason: a long sitting can grow two or three plants, so a garden's length in days was never honest — its shape and how far it has grown are. When a finished garden ran is a fact, and stays. Reached by tapping the plot caption in the garden; tap a garden to view it full. Батон — awake, the unused idle pose — keeps the finished gardens.</p>
     </figcaption>
   </figure>
 
@@ -955,43 +974,114 @@ $('masonry-7').innerHTML = NOTES.map((note, i) =>
     `</div></div>`
 ).join('');
 
-/* ⑧ — the finished 3-bed, small at the top of the ask. */
-$('bed-8').innerHTML = plantSVG('grass', 62) + plantSVG('sprout', 62) + plantSVG('clover', 62);
-
-/* ⑨ — the shelf. Thumbnails are cheap marks, not plants: a green tick per
-   sitting (two variants, alternated), a bloom-pen fleck where the species
-   blooms — colour stays an edge, never a fill — and the faint blob for an
-   empty slot, all standing on each row's shared baseline. */
+/* ⑧ ⑨ — the shelf's marks. Cheap marks, not plants: a green tick per
+   sitting (two strokes, alternated), a bloom-pen fleck where the species
+   blooms — colour stays an edge, never a fill — and a faint blob for an
+   empty slot, all standing on the row's shared baseline. Both are drawn on
+   one 10×14 page, so a garden's shape is read off the grid and never off
+   the marks; the mark is one size across a shelf, which is what lets a 108
+   be seen to be twelve times a 9. */
 const TICKS = [
   'M5,13 C4.4,10 5.6,7 5,3.6',
   'M5,13 C5.6,10 4.4,7 5.2,4',
 ];
-function tickSVG(i, bloomPen) {
+const MINI_BLOB = 'M5,8.1 C5.8,8.2 6.4,8.8 6.3,9.6 C6.2,10.4 5.5,10.9 4.7,10.8 C4,10.7 3.5,10 3.6,9.2 C3.7,8.5 4.3,8 5,8.1';
+const MARK_RATIO = 1.4;   /* the 10×14 page: a stroke standing on a ground */
+
+function tickSVG(i, bloomPen, w) {
   const fleck = bloomPen
     ? `<path d="M3.2,3.4 C3.9,2 6.1,2 6.8,3.4" stroke="${PEN[bloomPen]}" stroke-width="1.6" stroke-linecap="round" fill="none"/>`
     : '';
-  return `<svg width="10" height="14" viewBox="0 0 10 14" style="transform:translateY(${((i * 5) % 3) - 1}px)"><path d="${TICKS[i % 2]}" stroke="var(--pen-green)" stroke-width="1.8" stroke-linecap="round" fill="none"/>${fleck}</svg>`;
+  const lift = (((i * 5) % 3) - 1) * (w / 10);   /* the scatter, scaled with the mark */
+  return `<svg width="${w}" height="${w * MARK_RATIO}" viewBox="0 0 10 14" style="transform:translateY(${lift.toFixed(2)}px)"><path d="${TICKS[i % 2]}" stroke="var(--pen-green)" stroke-width="1.8" stroke-linecap="round" fill="none"/>${fleck}</svg>`;
 }
-const MINI_EMPTY =
-  '<svg width="10" height="14" viewBox="0 0 10 14"><path d="M5,8.1 C5.8,8.2 6.4,8.8 6.3,9.6 C6.2,10.4 5.5,10.9 4.7,10.8 C4,10.7 3.5,10 3.6,9.2 C3.7,8.5 4.3,8 5,8.1" fill="var(--ink-faint)"/></svg>';
+function emptyMarkSVG(w) {
+  return `<svg width="${w}" height="${w * MARK_RATIO}" viewBox="0 0 10 14"><path d="${MINI_BLOB}" fill="var(--ink-faint)"/></svg>`;
+}
 
-const GARDENS = [
-  { cols: 3, total: 3, planted: 3, blooms: {}, meta: 'Feb · 3', radius: '13.1px 10.4px 12.6px 11.2px' },
-  { cols: 7, total: 7, planted: 7, blooms: { 4: 'penPink' }, meta: 'Feb – Mar · 7', radius: '10.8px 13.5px 11.4px 12.9px' },
-  { cols: 6, total: 30, planted: 30, blooms: { 2: 'penOrange', 9: 'penBlue', 15: 'penPink', 22: 'penOrange', 27: 'penPink' }, meta: 'Mar – May · 30', radius: '12.2px 11.0px 13.8px 10.6px' },
-  { cols: 6, total: 30, planted: 15, blooms: { 3: 'penPink', 11: 'penOrange' }, meta: 'now · 15 of 30', radius: '11.6px 12.8px 10.2px 13.3px' },
-];
-$('gardens-9').innerHTML = GARDENS.map((g) => {
+/* One garden's thumbnail: `cols` wide, filling in order. */
+function miniField(g, w, gx, gy) {
   let marks = '';
   for (let slot = 0; slot < g.total; slot++) {
-    marks += slot < g.planted ? tickSVG(slot, g.blooms[slot]) : MINI_EMPTY;
+    marks += slot < g.planted ? tickSVG(slot, (g.blooms || {})[slot], w) : emptyMarkSVG(w);
   }
-  return `<div class="garden-card" style="border-radius:${g.radius}">` +
-    `<div class="mini-field" style="grid-template-columns:repeat(${g.cols},12px)">${marks}</div>` +
-    `<div class="garden-meta">${g.meta}</div></div>`;
-}).join('');
-$('keeper-9').innerHTML = batonSVG(96, 'idle');
+  return `<div class="mini-field" style="grid-template-columns:repeat(${g.cols},${w}px);gap:${gy}px ${gx}px">${marks}</div>`;
+}
+function shelfCard(g, w, gx, gy, radius, extra = '') {
+  const meta = g.meta ? `<div class="garden-meta">${g.meta}</div>` : '';
+  return `<div class="shelf-card${g.wide ? ' wide' : ''}${extra}" style="border-radius:${radius}">` +
+    miniField(g, w, gx, gy) + meta + '</div>';
+}
+
+/* Corners come from frame 7's table — one hand draws both shelves, and a
+   second table of the same six radii would be a second hand. */
+
+/* ⑨ — the shelf. Oldest first, the current garden last. The 12-wide
+   gardens are 12-wide on the page too, which is what makes them take a row.
+   Blooms are kept near one in twenty-five: a fleck reads several times its
+   share, and a shelf speckled with colour would be a chart. */
+const MARK = 12.5, MARK_GX = 3, MARK_GY = 4.5;
+const GARDENS = [
+  { cols: 3,  total: 3,   planted: 3,   blooms: {}, meta: 'Feb · 3' },
+  { cols: 9,  total: 9,   planted: 9,   blooms: { 5: 'penPink' }, meta: 'Feb – Mar · 9' },
+  { cols: 6,  total: 27,  planted: 27,  blooms: { 4: 'penOrange', 19: 'penPink' }, meta: 'Mar – Apr · 27' },
+  { cols: 12, total: 108, planted: 108, wide: true,
+    blooms: { 7: 'penPink', 23: 'penOrange', 46: 'penBlue', 71: 'penPink', 95: 'penOrange' },
+    meta: 'Apr – Jul · 108' },
+  { cols: 12, total: 54,  planted: 15,  wide: true,
+    blooms: { 6: 'penBlue' }, meta: 'now · 15 of 54' },
+];
+const shelf9 = GARDENS.map((g, i) => shelfCard(g, MARK, MARK_GX, MARK_GY, CARD_RADII[i]));
+/* Батон takes the half-row the 27's bed leaves — a six-wide bed is half
+   of the twelve-wide lattice, and the card says so by being half as wide. */
+shelf9.splice(3, 0, `<div class="keeper-cell">${batonSVG(104, 'idle')}</div>`);
+$('gardens-9').innerHTML = shelf9.join('');
 $('back-9').innerHTML = iconSVG('arrowLeft', 24, 'var(--ink)');
+
+/* ⑧ — the ask. The bed that just filled, drawn as plants rather than as
+   marks: it is the only warm thing on a screen otherwise made of grids. */
+$('bed-8').innerHTML = plantSVG('grass', 62) + plantSVG('sprout', 62) + plantSVG('clover', 62);
+
+/* The four sizes, as the fields they would lay out. Fractions of a mala:
+   9 is a row, 27 a six-wide bed, 54 half the lattice, 108 the whole of it.
+   Empty dots at one pitch, standing on one line, so the shapes compare. */
+const PREVIEW_W = 4.2, PREVIEW_GX = 1.6, PREVIEW_GY = 1.6;
+const PREVIEW_BLOB_VIEW = '3.4 7.9 3.1 3.1';   /* the blob alone, filling its box */
+function previewDotSVG() {
+  return `<svg width="${PREVIEW_W}" height="${PREVIEW_W}" viewBox="${PREVIEW_BLOB_VIEW}"><path d="${MINI_BLOB}" fill="var(--ink-faint)"/></svg>`;
+}
+function shapePreview(cols, total) {
+  const dots = Array.from({ length: total }, previewDotSVG).join('');
+  return `<div class="mini-field" style="grid-template-columns:repeat(${cols},${PREVIEW_W}px);gap:${PREVIEW_GY}px ${PREVIEW_GX}px">${dots}</div>`;
+}
+
+const SIZES = [
+  { n: 9,   cols: 9 },
+  { n: 27,  cols: 6 },
+  { n: 54,  cols: 12 },
+  { n: 108, cols: 12 },
+];
+const CHOSEN = 27;
+$('sizes-8').innerHTML = SIZES.map((size) =>
+  `<div class="size-choice${size.n === CHOSEN ? ' sel' : ''}">` +
+    (size.n === CHOSEN ? '<span class="marker"></span>' : '') +
+    `<span class="shape">${shapePreview(size.cols, size.n)}</span>` +
+    `<span class="num">${size.n}</span></div>`
+).join('');
+
+/* The same shelf at a glance size, with the chosen size appended as a card
+   not yet drawn — the question is answered against what is already there.
+   No labels: the ghost's shape is the shape selected above, which is the
+   whole of what preview-first means. */
+const SHELF_8 = [
+  { cols: 3, total: 3, planted: 3, blooms: {} },
+  { cols: 9, total: 9, planted: 9, blooms: { 5: 'penPink' } },
+];
+const MINI = 10.5, MINI_GX = 2.5, MINI_GY = 2.5;
+const candidate = { cols: SIZES.find((s) => s.n === CHOSEN).cols, total: CHOSEN, planted: 0 };
+$('shelf-8').innerHTML =
+  SHELF_8.map((g, i) => shelfCard(g, MINI, MINI_GX, MINI_GY, CARD_RADII[i])).join('') +
+  shelfCard(candidate, MINI, MINI_GX, MINI_GY, CARD_RADII[2], ' ghost');
 
 /* The drawn buttons — measured, then drawn, the way Button.tsx does it. */
 document.querySelectorAll('.btn-wobbly').forEach((el) => {

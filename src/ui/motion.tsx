@@ -350,13 +350,21 @@ export function usePullToReplay(onPull: () => void) {
 /**
  * A card or a button arriving: lifted a little and faded, settling into place.
  * Plays once, on mount — this is an entrance, not a state change.
+ *
+ * `from` is how far below its place it starts. The default is the nudge a card
+ * on a page wants — enough to say "this is new", not enough to be a movement.
+ * Something that genuinely arrives from off the bottom of the screen, like the
+ * note sheet, asks for more, and asking is better than a second component that
+ * differs from this one by a single number.
  */
 export function Rise({
   delayMs = 0,
+  from = 10,
   style,
   children,
 }: {
   delayMs?: number;
+  from?: number;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
@@ -380,7 +388,7 @@ export function Rise({
         {
           opacity: enter,
           transform: [
-            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [from, 0] }) },
           ],
         },
         style,
@@ -388,6 +396,42 @@ export function Rise({
       {children}
     </Animated.View>
   );
+}
+
+/**
+ * Something arriving that must not move.
+ *
+ * `Rise`'s sibling, and the pair covers the app's entrances: a card arrives
+ * from somewhere, a veil does not. A veil that slid would be a sheet of paper
+ * over the screen rather than the screen going quiet, and the thing rising in
+ * front of it is what the eye is meant to follow.
+ *
+ * It settles rather than bouncing — an overshoot on opacity would be a flicker.
+ */
+export function Fade({
+  to = 1,
+  style,
+  children,
+}: {
+  /** The opacity it settles at. */
+  to?: number;
+  style?: StyleProp<ViewStyle>;
+  children?: ReactNode;
+}) {
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.timing(enter, {
+      toValue: to,
+      duration: 220,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [enter, to]);
+
+  return <Animated.View style={[{ opacity: enter }, style]}>{children}</Animated.View>;
 }
 
 /**

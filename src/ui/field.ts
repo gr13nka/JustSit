@@ -15,8 +15,62 @@ import { SWAY_LEAN_DEG } from './sway';
  * one screen. A dot is then a small mark in a dense field rather than a button
  * with an inch of paper around it, which is what makes the garden read as one
  * drawing instead of as a list of what you have done.
+ *
+ * It is still the widest a garden gets, and still what the *pitch* is measured
+ * against — see `field` — but it is no longer how wide every garden is. A
+ * garden is a size the user chose, and `shapeFor` cuts each size the bed that
+ * suits it.
  */
 export const COLUMNS = 12;
+
+/**
+ * The widest a garden shares its lattice with the mala ladder.
+ *
+ * Nine divides 9, 27 and 54 exactly, so every rung below a mala comes out a
+ * full rectangle — 9x1, 9x3, 9x6 — rather than a block with a ragged last row.
+ * A hundred and eight keeps the twelve it has always had, which is both the
+ * shape that fits nine rows on a phone and the shape every migrated garden is
+ * already drawn in.
+ */
+const LADDER_COLUMNS = 9;
+
+/**
+ * From here up, a garden is a mala and takes the full lattice. It is written as
+ * a threshold rather than as "108 exactly" so that a garden grown past a mala by
+ * the quiet path does not suddenly narrow.
+ */
+const MALA_FROM = 100;
+
+/** How a garden of a given size is laid out: so many dots across, so many down. */
+export type Shape = {
+  cols: number;
+  rows: number;
+};
+
+/**
+ * The bed a garden of `size` is cut to.
+ *
+ * Three widths and no more, because a bed's width is not a free parameter: it
+ * decides whether the garden reads as a shape you could hold in your head. The
+ * starter bed is a single row, however few dots it holds — three in a row is a
+ * bed, three in a square is a mistake. Everything from there to a mala takes
+ * nine, which the ladder divides exactly. A mala takes twelve.
+ *
+ * The *pitch* is the same at every width (`field` measures it against `COLUMNS`
+ * whatever the garden), so a narrower bed is a narrower bed and never a coarser
+ * one — which is what lets a 9 sitting beside a 108 be seen to be a ninth of it.
+ *
+ * A last row may come up short. Only an arbitrary size can do that, and only
+ * the quiet "grow this garden" path can make one; a ragged final row is a fair
+ * drawing of a garden whose owner asked for 40 dots.
+ */
+export function shapeFor(size: number): Shape {
+  const dots = Math.max(1, Math.floor(size));
+  const cols =
+    dots <= 3 ? dots : dots >= MALA_FROM ? COLUMNS : LADDER_COLUMNS;
+
+  return { cols, rows: Math.ceil(dots / cols) };
+}
 
 /** The page every plant is drawn on. */
 export const CANVAS = 48;
@@ -101,9 +155,22 @@ export const GROUND = 0.8;
 const BLOB_SHARE = 2.7 / 28;
 
 /**
- * A plant's ink across its own page, as a fraction of it. The doodles span
- * x=8.6..39.4 of the 48, so a plant is a good deal narrower than the canvas
- * measured out for it — which is the slack `PLANT_ZOOM` spends.
+ * How far a drawing's ink actually reaches on its own page, as fractions of the
+ * canvas: `half` sideways from the centre, `rise` upward from the root it
+ * stands on. Both are measured against the page rather than the ink's own box,
+ * so they compose with `PLANT_ZOOM` and with each other.
+ *
+ * The garden takes these as *bounds* over every species, below, because any
+ * plant may land in any cell and the lattice is laid out before anyone knows
+ * which. Anything standing one named species beside another wants that species'
+ * own numbers instead — `Plant.tsx` measures them off the drawings.
+ */
+export type Ink = { half: number; rise: number };
+
+/**
+ * A plant's ink across its own page, as a fraction of it. The widest doodle
+ * spans x=8.6..39.4 of the 48, so a plant is a good deal narrower than the
+ * canvas measured out for it — which is the slack `PLANT_ZOOM` spends.
  */
 const INK_HALF = 15.4 / CANVAS;
 
@@ -139,6 +206,18 @@ export const SWAY_REACH = Math.max(
 export type Field = {
   /** The side of one cell, and so the pitch of the lattice. */
   cell: number;
+  /** How many cells across this garden is laid out — `shapeFor`'s answer. */
+  cols: number;
+  /**
+   * How wide the lattice is actually drawn: `cell * cols`.
+   *
+   * Never the width it was measured at. A bed narrower than twelve is drawn
+   * narrow and centred in the room it was given, rather than being stretched to
+   * fill it — spreading nine dots across a phone would make the pitch a
+   * property of the size, and the whole point of a constant pitch is that it is
+   * not.
+   */
+  span: number;
   /** The side of an empty dot's canvas. */
   dot: number;
   /** The side of a plant's canvas. */
@@ -158,8 +237,14 @@ export type Field = {
  * `sproutPeak` is how far past full height the burst throws a plant, which is
  * a fact about the motion rather than about the field — but it decides how much
  * room the top row needs, so it is asked for rather than assumed.
+ *
+ * `cols` is how wide *this* garden is, from `shapeFor`. It changes what gets
+ * drawn and never how big a cell is: the pitch stays measured against `COLUMNS`
+ * at every size, so the marks in a three-dot bed are exactly the marks in a
+ * mala. A garden that sized its own cells would make a small bed read as a
+ * coarse one, and the shelf could no longer show a 9 to be a ninth of a 108.
  */
-export function field(width: number, sproutPeak: number): Field {
+export function field(width: number, sproutPeak: number, cols: number = COLUMNS): Field {
   // Twelve cells plus the room a leaning plant needs either side of the field,
   // then floored to a half point, and the grid is drawn at exactly what twelve
   // of them come to. Twelve fractional widths can total a hair over a fractional
@@ -199,5 +284,5 @@ export function field(width: number, sproutPeak: number): Field {
   // lower of the two is asked for rather than assumed.
   const below = Math.max(0, foot - cell, ground + BLOB_SHARE * dot - cell) + wander;
 
-  return { cell, dot, plant, lift, drop, above, below };
+  return { cell, cols, span: cell * cols, dot, plant, lift, drop, above, below };
 }

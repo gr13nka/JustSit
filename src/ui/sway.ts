@@ -11,33 +11,14 @@
  * should happen rather than here.
  */
 
-import { hash32 } from '../domain/hash';
+import { hash32, scramble } from '../domain/hash';
 
-/**
- * A final avalanche over `hash32`, because FNV-1a on its own is not scrambled
- * enough to seed a phase with — in either half of the word.
- *
- * Its last act is `h = (h ^ c) * prime`, so two keys whose last character
- * differs by one come out differing by about `prime`. In the TOP bits that is a
- * near-monotone ramp; in the BOTTOM bits it is an arithmetic progression of
- * `prime mod 2^k` — for the low twelve bits, exactly 403/4096 per slot. Neither
- * is random. Taking the low bits was the first attempt at fixing this and it
- * only swapped one ramp for another: consecutive plants came out 35° apart in
- * phase, every time, which is a travelling wave dressed up as a seed and is
- * precisely what the phase is supposed to break up.
- *
- * This is murmur3's finalizer, whose whole job is that one flipped input bit
- * changes half the output bits. `hash32` itself stays frozen — the garden's
- * scatter and the burst's start times depend on it answering the same forever.
+/*
+ * `scramble` — murmur3's finalizer over `hash32` — lives in `domain/hash.ts`,
+ * because every seed sliced out of a key whose last character varies needs it
+ * and this was not the only place that learned so the hard way. The reasoning
+ * is written down there.
  */
-function scramble(h: number): number {
-  h ^= h >>> 16;
-  h = Math.imul(h, 0x85ebca6b);
-  h ^= h >>> 13;
-  h = Math.imul(h, 0xc2b2ae35);
-  h ^= h >>> 16;
-  return h >>> 0;
-}
 
 /**
  * How long the one shared clock takes to come round — and so how long the

@@ -1,5 +1,14 @@
 import { ART_SHARE, SCATTER } from '../../domain/plots';
-import { CANVAS, COLUMNS, field, GROUND, PLANT_ZOOM, ROOT_SHARE, ROOT_Y } from '../field';
+import {
+  CANVAS,
+  COLUMNS,
+  field,
+  GROUND,
+  PLANT_ZOOM,
+  ROOT_SHARE,
+  ROOT_Y,
+  shapeFor,
+} from '../field';
 
 /** Real screens, roughly: an iPhone SE, a CMF Phone 1, and an awkward one. */
 const WIDTHS = [335, 371, 412, 500.75];
@@ -135,5 +144,70 @@ describe('field', () => {
 
   it('draws the same field every time — nothing here is rolled at runtime', () => {
     expect(field(371, 1.63)).toEqual(field(371, 1.63));
+  });
+});
+
+describe('shapeFor', () => {
+  it('keeps a mala twelve across and nine deep', () => {
+    // Every garden on a phone today is a 108 laid out twelve wide. Cutting it
+    // any other way would re-flow gardens people have been keeping for months,
+    // since a plant's cell is its index within its own garden.
+    expect(shapeFor(108)).toEqual({ cols: 12, rows: 9 });
+  });
+
+  it('lays the ladder below a mala out as full rectangles', () => {
+    // Nine divides all three, which is the whole reason it is the width: a rung
+    // with a ragged last row would read as an accident rather than as a bed.
+    expect(shapeFor(9)).toEqual({ cols: 9, rows: 1 });
+    expect(shapeFor(27)).toEqual({ cols: 9, rows: 3 });
+    expect(shapeFor(54)).toEqual({ cols: 9, rows: 6 });
+  });
+
+  it('makes the starter bed a strip, however few dots it holds', () => {
+    // Three in a row is a bed. Three in a square is a mistake, and one dot
+    // alone in a second row is worse.
+    expect(shapeFor(3)).toEqual({ cols: 3, rows: 1 });
+    expect(shapeFor(2)).toEqual({ cols: 2, rows: 1 });
+    expect(shapeFor(1)).toEqual({ cols: 1, rows: 1 });
+  });
+
+  it('holds every dot it was asked for, ragged last row and all', () => {
+    // Only the quiet "grow this garden" path can ask for a size off the ladder,
+    // and a garden of 40 is still a garden of 40.
+    for (const size of [4, 5, 12, 40, 53, 99, 100, 107, 150, 216]) {
+      const { cols, rows } = shapeFor(size);
+      expect(cols * rows).toBeGreaterThanOrEqual(size);
+      expect(cols * (rows - 1)).toBeLessThan(size);
+    }
+  });
+
+  it('never narrows a garden grown past a mala', () => {
+    expect(shapeFor(117).cols).toBe(COLUMNS);
+    expect(shapeFor(216).cols).toBe(COLUMNS);
+  });
+});
+
+describe("field, at a garden's own width", () => {
+  it('draws a narrower bed at exactly the same pitch', () => {
+    // The pitch is what lets a 9 be seen to be a ninth of a 108. A bed that
+    // sized its own cells would spread three dots across a phone and the two
+    // gardens would stop being comparable at all.
+    const wide = field(371, 1.63, 12);
+    const bed = field(371, 1.63, 3);
+
+    expect(bed.cell).toBe(wide.cell);
+    expect(bed.dot).toBe(wide.dot);
+    expect(bed.plant).toBe(wide.plant);
+    expect(bed.lift).toBe(wide.lift);
+  });
+
+  it('draws the lattice at its own width, leaving the rest for centring', () => {
+    const bed = field(371, 1.63, 3);
+    expect(bed.span).toBe(bed.cell * 3);
+    expect(bed.span).toBeLessThan(371);
+
+    const mala = field(371, 1.63);
+    expect(mala.cols).toBe(COLUMNS);
+    expect(mala.span).toBe(mala.cell * COLUMNS);
   });
 });

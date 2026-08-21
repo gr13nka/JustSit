@@ -1,6 +1,7 @@
 import DateTimePicker, {
   DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -11,15 +12,23 @@ import { requestPermission, setDailyReminder } from '../../src/session/notificat
 import { hairline, radius, space } from '../../src/theme/tokens';
 import { THEME_ORDER, THEMES, ThemeId } from '../../src/theme/themes';
 import { useColor } from '../../src/theme/useColor';
-import { updateSettings, useProgress, useSessions, useSettings } from '../../src/store';
+import {
+  resetProgress,
+  updateSettings,
+  useNotes,
+  useProgress,
+  useSessions,
+  useSettings,
+} from '../../src/store';
 import { Card } from '../../src/ui/Card';
 import { DevPanel } from '../../src/ui/DevPanel';
 import { ArrowRight } from '../../src/ui/icons';
 import { Rule } from '../../src/ui/Rule';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
+import { TimedConfirm } from '../../src/ui/TimedConfirm';
 import { useOrganicCorners } from '../../src/ui/useOrganicCorners';
-import { formatDate, formatTotal, fromHhMm, toHhMm } from '../../src/ui/time';
+import { formatTotal, fromHhMm, toHhMm } from '../../src/ui/time';
 
 /**
  * Small enough to read as a mark beside the words rather than a control of its
@@ -32,11 +41,12 @@ export default function YouScreen() {
   const progress = useProgress();
   const settings = useSettings();
   const sessions = useSessions();
+  const notes = useNotes();
   const stage = stageAt(progress.stage);
 
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const archive = allPlots(sessions).filter((p) => p.isComplete).reverse();
+  const plots = allPlots(sessions, progress.gardens);
 
   const onPickTime = async (event: DateTimePickerEvent, date?: Date) => {
     setPickerOpen(false);
@@ -142,19 +152,96 @@ export default function YouScreen() {
           </View>
         </Card>
 
-        {archive.length > 0 && (
-          <Card style={styles.card}>
-            <Text variant="label">Finished plots</Text>
-            {archive.map((plot) => (
-              <View key={plot.index} style={styles.archiveRow}>
-                <Text variant="body">Plot {plot.index + 1}</Text>
-                <Text variant="caption">
-                  {formatDate(plot.startedAt!)} — {formatDate(plot.completedAt!)}
-                </Text>
-              </View>
-            ))}
-          </Card>
-        )}
+        {/*
+          The archive used to be a list of dates here, which said the one thing
+          about a garden that was never true of it — how long it took — and left
+          out the only thing that is, which is its shape. It is a screen of its
+          own now, and this is the way to it.
+        */}
+        <Card style={styles.card}>
+          <Text variant="label">Gardens</Text>
+          <Pressable
+            onPress={() => router.push('/gardens')}
+            style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}>
+            <Text variant="body">
+              {plots.length} {plots.length === 1 ? 'garden' : 'gardens'}
+            </Text>
+            <View style={styles.action}>
+              <Text variant="caption" color="ink">
+                See them
+              </Text>
+              <ArrowRight color={color.inkSoft} size={ARROW_SIZE} />
+            </View>
+          </Pressable>
+        </Card>
+
+        {/*
+          The other collection this app keeps, and the only one that is words.
+          Reachable at nought, because "you have not written anything" is a fact
+          about the screen rather than a reason to hide it.
+        */}
+        <Card style={styles.card}>
+          <Text variant="label">Notes</Text>
+          <Pressable
+            onPress={() => router.push('/notes')}
+            style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}>
+            <Text variant="body" color={notes.length === 0 ? 'inkSoft' : 'ink'}>
+              {notes.length === 0
+                ? 'Nothing yet'
+                : `${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`}
+            </Text>
+            <View style={styles.action}>
+              <Text variant="caption" color="ink">
+                Read them
+              </Text>
+              <ArrowRight color={color.inkSoft} size={ARROW_SIZE} />
+            </View>
+          </Pressable>
+        </Card>
+
+        {/*
+          The one irreversible thing a user can do, and it is last because it is
+          the only thing on this screen nobody came looking for. There is no
+          dialog — this app has never shown one — so the question is asked in
+          the row the word was standing in, and the sentence above it is the
+          whole warning: plain, in the app's voice, saying what goes and what
+          stays rather than asking whether you are sure.
+        */}
+        <Card style={styles.card}>
+          <Text variant="label">Reset</Text>
+          <Text variant="body" color="inkSoft">
+            Clears every sitting, garden and note, and starts again at stage one.
+            Settings stay.
+          </Text>
+          <TimedConfirm label="Reset" question="Are you sure?" onConfirm={resetProgress} />
+        </Card>
+
+        {/*
+          Last, because it is the only thing on this screen that is not for the
+          person the app is for. It is a card like any other rather than a
+          gesture nobody would find by accident: a switch that has to be
+          discovered is one nobody can turn off again either.
+
+          What it unlocks can make a mess of a garden — a hundred seeded
+          sittings are still sittings — so it sits below the reset that is the
+          way back from one, and says plainly what it is.
+        */}
+        <Card style={styles.card}>
+          <Text variant="label">Developer</Text>
+          <Pressable
+            onPress={() => updateSettings({ devMode: !settings.devMode })}
+            style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}>
+            <Text variant="body" color={settings.devMode ? 'ink' : 'inkSoft'}>
+              {settings.devMode ? 'On' : 'Off'}
+            </Text>
+            <View style={styles.action}>
+              <Text variant="caption" color="ink">
+                {settings.devMode ? 'Turn off' : 'Turn on'}
+              </Text>
+              <ArrowRight color={color.inkSoft} size={ARROW_SIZE} />
+            </View>
+          </Pressable>
+        </Card>
 
         <DevPanel />
       </ScrollView>
@@ -269,10 +356,6 @@ const styles = StyleSheet.create({
   /** Ink settling, the same as a button's — no scale, no shadow. */
   pressed: {
     opacity: 0.6,
-  },
-  archiveRow: {
-    marginTop: space.sm,
-    gap: 2,
   },
   themes: {
     flexDirection: 'row',

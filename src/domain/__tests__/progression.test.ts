@@ -18,6 +18,7 @@ function progress(patch: Partial<Progress> = {}): Progress {
     stageStartedAt: NOW - 30 * DAY,
     lastOfferedAt: null,
     seenTipIds: [],
+    gardens: [3],
     ...patch,
   };
 }
@@ -29,8 +30,7 @@ function sat(n: number, stage = 1): Session[] {
     durationMs: 600_000,
     completedAt: NOW - (n - i) * DAY + 600_000,
     stage,
-    plant: 'grass',
-    slot: i,
+    plants: [{ key: 'grass', slot: i }],
   }));
 }
 

@@ -3,8 +3,11 @@ import { Session } from '../store/types';
 /**
  * Local calendar day, not UTC. A session at 11pm and one at 1am are different
  * days to the person who sat them, whatever the timezone offset says.
+ *
+ * Exported because the reminder's wording is chosen by the day too, and "what
+ * counts as a day here" is a decision this app should only make once.
  */
-function dayKey(ts: number): string {
+export function dayKey(ts: number): string {
   const d = new Date(ts);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
@@ -36,6 +39,23 @@ export function currentStreak(
   }
 
   return streak;
+}
+
+/**
+ * Whether a sitting has already been completed today.
+ *
+ * Deliberately not `currentStreak(sessions) > 0`, which is a different and much
+ * softer question: a streak stays alive all day on yesterday's strength, so it
+ * is true from the moment you wake up. This asks only what the garden asks —
+ * has anything grown today — and it is the whole basis of the two marks that
+ * answer it, so it must not be true before it is earned.
+ */
+export function satToday(
+  sessions: readonly Session[],
+  now: number = Date.now()
+): boolean {
+  const today = dayKey(now);
+  return sessions.some((s) => dayKey(s.completedAt) === today);
 }
 
 /** Distinct days on which the user sat. A gentler number than total sessions. */

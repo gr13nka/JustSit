@@ -3,7 +3,7 @@ import Svg, { Path } from 'react-native-svg';
 import { isKnownPlant, PlantKey } from '../domain/plants';
 import { ColorName } from '../theme/themes';
 import { useColor } from '../theme/useColor';
-import { CANVAS, ROOT_Y } from './field';
+import { CANVAS, Ink, ROOT_Y } from './field';
 import { PEN_DOODLE } from './pen';
 import { ringPath } from './ring';
 
@@ -240,6 +240,67 @@ const MARKS = Object.fromEntries(
 ) as Record<PlantKey, Mark[]>;
 
 /**
+ * How far each species' ink reaches on its own page, read off the drawing.
+ *
+ * Measured rather than written down beside the paths, the same way `isShape`
+ * decides which marks take a fill: a species added later, or a plant redrawn,
+ * comes out right without anyone having to remember this exists. It runs once
+ * at load, because where a drawing's ink ends cannot change while the app runs.
+ *
+ * These are the *species'* numbers, not the garden's. `field.ts` holds bounds
+ * over all twelve, because any plant may land in any cell and the lattice is
+ * laid out before anyone knows which. Standing two named plants beside each
+ * other is the other question, and the difference between the two is not small:
+ * a reed's ink is a third the width of a grass's, so spacing a pair of reeds by
+ * the bound leaves them a plant's width apart — three separate drawings rather
+ * than a patch of something, which is the one thing a bundle must not look like.
+ *
+ * Control points are counted along with the ends, so a curve that bulges toward
+ * one is measured as if it reached it. That errs wide, which is the safe way to
+ * be wrong here: plants come out a shade airier than they need to be rather
+ * than overlapping more than they were meant to.
+ */
+const INK = Object.fromEntries(
+  (Object.keys(SPECIES) as PlantKey[]).map((key) => {
+    const numbers = MARKS[key].flatMap(
+      (mark) => mark.d.match(COORDINATE)?.map(Number) ?? []
+    );
+    const xs = numbers.filter((_, i) => i % 2 === 0);
+    const ys = numbers.filter((_, i) => i % 2 === 1);
+
+    return [
+      key,
+      {
+        // From the centre of the page, which is where the drawings are placed.
+        half: Math.max(CANVAS / 2 - Math.min(...xs), Math.max(...xs) - CANVAS / 2) / CANVAS,
+        // From the root, which is what a plant is pivoted and stood on.
+        rise: (ROOT_Y - Math.min(...ys)) / CANVAS,
+      },
+    ];
+  })
+) as Record<PlantKey, Ink>;
+
+/** One species' reach, falling back with the drawing when a key is unknown. */
+export function inkOf(plant: string): Ink {
+  return INK[isKnownPlant(plant) ? plant : FALLBACK];
+}
+
+/**
+ * The bright a species blooms in, or null where it only grows.
+ *
+ * Read off the drawing like everything else about a species, so a plant that is
+ * redrawn — or one added later — is described correctly by anything asking, and
+ * nobody has to remember a second list. The thumbnail marks on the shelf are
+ * what ask: a tally is drawn in green because green means something grew, and a
+ * fleck of the species' own pen is the whole of what distinguishes a daisy's
+ * row from a fern's at a fifth of an inch.
+ */
+export function bloomOf(plant: string): ColorName | null {
+  const key = isKnownPlant(plant) ? plant : FALLBACK;
+  return SPECIES[key].bloom?.pen ?? null;
+}
+
+/**
  * Renders one plant, in the doodle pen: cubic béziers on a 48-unit canvas. The
  * wobble is in the path data, not in a runtime effect — a plant that shimmered
  * would be a second thing moving on a screen whose whole job is to hold still.
@@ -250,11 +311,26 @@ const MARKS = Object.fromEntries(
  * see-through by sitting on paper, not by being coloured in — so the fill is
  * the ground, and colour stays an edge.
  *
+ * Which is why `ground` is a prop rather than a constant. The fill is not a
+ * property of the drawing; it is whatever the drawing happens to be standing
+ * on, and the completion screen's chosen offer stands on the marker rather than
+ * on the page. It stays a departure about *opacity* and not about colour — the
+ * two grounds are the only values it will take, so a plant can never be filled
+ * with a pen.
+ *
  * `plant` is whatever a stored session says it is, so a key this version does
  * not know draws the grass fallback rather than throwing. A garden is not worth
  * losing to a renamed species.
  */
-export function Plant({ plant, size = 24 }: { plant: string; size?: number }) {
+export function Plant({
+  plant,
+  size = 24,
+  ground = 'paper',
+}: {
+  plant: string;
+  size?: number;
+  ground?: Extract<ColorName, 'paper' | 'paperDeep'>;
+}) {
   const color = useColor();
   const key = isKnownPlant(plant) ? plant : FALLBACK;
 
@@ -266,7 +342,7 @@ export function Plant({ plant, size = 24 }: { plant: string; size?: number }) {
           d={mark.d}
           {...PEN_DOODLE}
           stroke={color[mark.pen]}
-          fill={mark.shape ? color.paper : 'none'}
+          fill={mark.shape ? color[ground] : 'none'}
         />
       ))}
     </Svg>

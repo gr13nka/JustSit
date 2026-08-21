@@ -9,9 +9,10 @@ import {
   configureNotificationHandler,
   ensureChannels,
 } from '../src/session/notifications';
+import { useReminderRotation } from '../src/session/useReminderRotation';
 import { fontAssets } from '../src/theme/fontAssets';
 import { useColor } from '../src/theme/useColor';
-import { useHydrated } from '../src/store';
+import { useHydrated, useSettings } from '../src/store';
 import { WebInsets } from '../src/ui/webInsets';
 
 SplashScreen.preventAutoHideAsync();
@@ -31,6 +32,15 @@ export default function RootLayout() {
     configureNotificationHandler();
     void ensureChannels();
   }, []);
+
+  /**
+   * Here rather than on the You screen because the wording has to be refreshed
+   * whenever the app comes back, and the screen that sets the time is one you
+   * visit twice a year. Reads null until hydration lands, which is a launch
+   * with no reminder set and is handled as one.
+   */
+  const { reminderAt } = useSettings();
+  useReminderRotation(reminderAt);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -66,6 +76,8 @@ export default function RootLayout() {
           }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="session" />
+          <Stack.Screen name="gardens" />
+          <Stack.Screen name="notes" />
           <Stack.Screen name="onboarding" />
         </Stack>
       </WebInsets>

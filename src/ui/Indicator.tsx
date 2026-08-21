@@ -17,20 +17,30 @@ export function Indicator({
   icon: Icon,
   value,
   label,
-  grew = false,
+  grew,
 }: {
   icon: (props: IconProps) => React.ReactElement;
   value: number;
   /** What the drawing means, for anyone who cannot see it. */
   label: string;
-  /** Pen-green, for the figure that counts growth rather than merely reporting. */
-  grew?: boolean;
+  /**
+   * How far green — the app's "something grew" colour — reaches into the mark.
+   *
+   * `figure` greens the number alone and leaves the drawing as the label it is:
+   * the leaf counts sittings, and every one of them grew something, so that
+   * figure is green for good. `mark` greens the drawing and the number
+   * together, and is spent on one thing — the sun on a day already sat. Green
+   * means something grew, and today something did, so the whole mark says it.
+   *
+   * Absent, the indicator reports and does not comment.
+   */
+  grew?: 'figure' | 'mark';
 }) {
   const color = useColor();
 
   return (
     <View style={styles.row} accessibilityLabel={`${label}: ${value}`}>
-      <Icon color={color.inkSoft} size={ICON} />
+      <Icon color={grew === 'mark' ? color.penGreen : color.inkSoft} size={ICON} />
       <Text variant="title" color={grew ? 'penGreen' : 'ink'}>
         {value}
       </Text>

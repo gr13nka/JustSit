@@ -53,9 +53,12 @@ export default function StartScreen() {
       </View>
 
       {/*
-        The app's only wobbly button. This is the one place a hand commits to
-        something — every other action is a consequence of this one — and the
-        variant stops meaning anything if a second screen borrows it.
+        Drawn, because this is where a hand commits to something. The pen goes
+        on exactly that and nothing else — starting a sitting here, starting
+        altogether in onboarding, taking a plant on the completion screen,
+        agreeing to fill a bed on the ask — and what rations it is the verb
+        rather than a count: "Choose a time" is a setting and "Not now" is a way
+        out, so neither gets it. Two drawn buttons are never on one screen.
 
         It sits above the dial rather than inside the centred block, so "how
         long" and "go" are next to each other at the foot of the screen, where a

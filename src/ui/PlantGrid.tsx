@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
 import { hash32 } from '../domain/hash';
-import { nextDot, Plot, PLOT_SIZE, slotOffset } from '../domain/plots';
-import { COLUMNS, field } from './field';
+import { Grown, nextDot, Plot, slotOffset } from '../domain/plots';
+import { field, shapeFor } from './field';
 import { BURST_SPREAD_MS, Pulse, Sprout, SPROUT_PEAK, Sway } from './motion';
 import { EmptySlot, Plant } from './Plant';
 
@@ -31,14 +31,22 @@ export function PlantGrid({
   onBegin,
   burst,
   sway,
+  noted,
+  onInspect,
 }: {
   plot: Plot;
   /**
    * Begin a sitting. Takes no dot, because there is no longer one to take: a
    * garden fills in order, so only the next dot answers a touch at all and
    * where the plant lands is settled when the sitting finishes.
+   *
+   * Absent when this plot is being *looked at* rather than carried on — an
+   * older garden opened off the shelf. Nothing then answers a touch, and the
+   * next-dot ring goes with it rather than being suppressed separately: the
+   * ring marks where you would carry on, so a garden you cannot carry on has
+   * nothing for it to mark.
    */
-  onBegin: () => void;
+  onBegin?: () => void;
   /**
    * The shared 0..1 clock from `useBurst`, if this plot should sprout when it
    * is shown. Only what has grown takes part: the empty dots are the ground the
@@ -52,19 +60,44 @@ export function PlantGrid({
    * the ground, and ground does not move in wind.
    */
   sway?: Animated.Value;
+  /**
+   * The dots whose sitting left a note, and what to do when one is held.
+   *
+   * Two props for one idea, because they are needed at different moments: the
+   * set is read while the field is being laid out, to decide which plants
+   * answer a hold at all, and the callback only when one is. A plant with
+   * nothing behind it is not merely inert — it has no press feedback either,
+   * because a plant that lit up and then did nothing would be advertising a
+   * thing that is not there.
+   *
+   * The grid does not know what a note is. It is told which dots are marked and
+   * it hands back the plant that was held; the screen owns the lookup, as it
+   * owns every other read of the store.
+   */
+  noted?: ReadonlySet<number>;
+  onInspect?: (grown: Grown) => void;
 }) {
   const [width, setWidth] = useState(0);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
+  // How wide this garden is cut. Gardens are sizes their owners chose, so a bed
+  // of three and a mala are different shapes at the same pitch.
+  const { cols } = shapeFor(plot.size);
+
   // Sizes, the ground line, and what the overhang costs the grid in padding —
   // all of it derived in one pure place so a dot and a plant cannot end up
   // standing on different lines.
-  const { cell, dot, plant, lift, drop, above, below } = field(width, SPROUT_PEAK);
+  const { cell, span, dot, plant, lift, drop, above, below } = field(
+    width,
+    SPROUT_PEAK,
+    cols
+  );
 
   // Which dot to circle. Slots are absolute, so this compares against the same
-  // number the grid is laying out.
-  const next = nextDot(plot);
+  // number the grid is laying out — and there is none to circle at all in a
+  // garden that is only being looked at.
+  const next = onBegin ? nextDot(plot) : null;
 
   // Measured on the wrapper rather than on the grid, so the width the grid is
   // given never feeds back into the width it is measured at.
@@ -73,12 +106,15 @@ export function PlantGrid({
       <View
         style={[
           styles.grid,
-          { width: cell * COLUMNS, paddingTop: above, paddingBottom: below },
+          { width: span, paddingTop: above, paddingBottom: below },
         ]}>
         {cell > 0 &&
-          Array.from({ length: PLOT_SIZE }, (_, i) => {
-            const slot = plot.index * PLOT_SIZE + i;
-            const session = plot.cells[i];
+          Array.from({ length: plot.size }, (_, i) => {
+            // The garden knows where its own first dot is. Slots stay absolute
+            // across every garden, but the gardens are no longer all one size,
+            // so this can no longer be worked out by multiplying.
+            const slot = plot.start + i;
+            const planted = plot.cells[i];
             const { dx, dy } = slotOffset(slot);
 
             const style = [
@@ -90,14 +126,16 @@ export function PlantGrid({
               },
             ];
 
-            // A plant is a record of something that happened; there is nothing to
-            // do to it. Only the empty dots ahead of you are worth touching.
-            if (session) {
+            // A plant is a record of something that happened, and a tap still
+            // does nothing to it: the only dot that answers one is the next.
+            // What a plant may answer is a *hold*, and only if the sitting that
+            // grew it left a note — see `noted` above.
+            if (planted) {
               // The scatter, the lift, the sway and the sprout all want
               // `transform`, so they get a view each: the cell holds its offset
               // and never animates, the lift is static and belongs to the
               // drawing, and neither animation has to carry any of it.
-              const drawn = <Plant plant={session.plant} size={plant} />;
+              const drawn = <Plant plant={planted.key} size={plant} />;
 
               const grown = burst ? (
                 <Sprout progress={burst} delayMs={burstDelay(slot)}>
@@ -107,28 +145,53 @@ export function PlantGrid({
                 drawn
               );
 
-              return (
-                <View key={i} style={style}>
-                  <View style={{ transform: [{ translateY: -lift }] }}>
-                    {/*
-                      Outside the sprout, so a plant still growing leans by the
-                      same angle and therefore a smaller distance. The other way
-                      round its lean is unscaled and a squashed plant swings as
-                      wide as a full one.
-                    */}
-                    {sway ? (
-                      <Sway
-                        progress={sway}
-                        slot={slot}
-                        col={slot % COLUMNS}
-                        row={Math.floor(slot / COLUMNS)}>
-                        {grown}
-                      </Sway>
-                    ) : (
-                      grown
-                    )}
-                  </View>
+              const standing = (
+                <View style={{ transform: [{ translateY: -lift }] }}>
+                  {/*
+                    Outside the sprout, so a plant still growing leans by the
+                    same angle and therefore a smaller distance. The other way
+                    round its lean is unscaled and a squashed plant swings as
+                    wide as a full one.
+                  */}
+                  {sway ? (
+                    // Where in *this* garden the plant stands, not where in the
+                    // sequence: the wind crosses the bed you are looking at,
+                    // and a bed nine wide has nine columns for it to cross.
+                    <Sway
+                      progress={sway}
+                      slot={slot}
+                      col={i % cols}
+                      row={Math.floor(i / cols)}>
+                      {grown}
+                    </Sway>
+                  ) : (
+                    grown
+                  )}
                 </View>
+              );
+
+              // A plant is still a record and there is still nothing to do to
+              // it — a tap does nothing here, as it does everywhere else in the
+              // field. Holding one is a different question: not "carry on", but
+              // "what was I thinking", and only the plants that have an answer
+              // are asked it.
+              if (!onInspect || !noted?.has(slot)) {
+                return (
+                  <View key={i} style={style}>
+                    {standing}
+                  </View>
+                );
+              }
+
+              return (
+                <Pressable
+                  key={i}
+                  accessibilityRole="button"
+                  accessibilityLabel="Read what you wrote here"
+                  onLongPress={() => onInspect(planted)}
+                  style={({ pressed }) => [style, pressed && styles.pressed]}>
+                  {standing}
+                </Pressable>
               );
             }
 
@@ -143,7 +206,7 @@ export function PlantGrid({
             // touched; a garden that fills in order has exactly one place to
             // carry on from, and offering the others would be offering a choice
             // that is not there.
-            if (slot !== next) {
+            if (slot !== next || !onBegin) {
               return (
                 <View key={i} style={style}>
                   {drawn}

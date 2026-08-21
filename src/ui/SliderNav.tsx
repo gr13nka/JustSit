@@ -32,6 +32,17 @@ const GAP = 2;
 const PAD = 6;
 
 /**
+ * How much of the page the bar covers, above whatever the safe area already
+ * reserves.
+ *
+ * Exported because the bar floats: nothing below it is laid out around it, so
+ * anything that must not be covered — a card raised over the garden — has to be
+ * told. Derived here rather than guessed there, since the bar's height is the
+ * sum of numbers only this file has.
+ */
+export const NAV_HEIGHT = ITEM_HEIGHT + 2 * PAD + space.sm;
+
+/**
  * What expo-router hands a custom tab bar. Read off the navigator's own props
  * rather than imported: the type lives in a package expo-router vendors, and
  * reaching into its build output would tie this file to a path that is not

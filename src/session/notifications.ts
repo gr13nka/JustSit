@@ -1,6 +1,8 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { REMINDER_TITLE, reminderBody } from './reminderLines';
+
 /**
  * All local notifications. There are exactly two kinds, and neither is a
  * growth mechanic:
@@ -162,6 +164,12 @@ export async function cancelScheduled(id: string | null): Promise<void> {
  *
  * The wording stays quiet on purpose — an invitation, never a threat about a
  * streak. An app about attention should not be competing for it.
+ *
+ * A DAILY trigger repeats content frozen at the moment it was scheduled, so the
+ * body chosen here is the body every morning gets until something schedules it
+ * again. `useReminderRotation` is what does, and why the line is picked by the
+ * day rather than at random: calling this twice in one morning must not produce
+ * two different reminders.
  */
 export async function setDailyReminder(hhmm: string | null): Promise<void> {
   const N = load();
@@ -175,8 +183,8 @@ export async function setDailyReminder(hhmm: string | null): Promise<void> {
   await N.scheduleNotificationAsync({
     identifier: DAILY_REMINDER_ID,
     content: {
-      title: 'A few minutes?',
-      body: 'Your cushion is where you left it.',
+      title: REMINDER_TITLE,
+      body: reminderBody(),
     },
     trigger: {
       type: N.SchedulableTriggerInputTypes.DAILY,

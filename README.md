@@ -3,10 +3,11 @@
 A meditation app that teaches B. Alan Wallace's *The Attention Revolution* slowly,
 and grows a hand-drawn garden as you go.
 
-The design goal is a **quiet** app. Almost every decision trades engagement
-mechanics for calm: no streak anxiety, no failure copy, no ambient sound, no
-badges. The one thing that accumulates is the garden, and it only ever shows
-completed sittings.
+The design goal is a **quiet** app, and quiet is about voice rather than
+austerity. It grows, it offers, it counts days and keeps what you wrote down;
+what it never does is raise its voice about any of it: no congratulation, no
+failure copy, no ambient sound, no badges. The garden only ever shows completed
+sittings.
 
 ## Running it
 
@@ -57,14 +58,16 @@ carry them across.
 
 | | |
 |---|---|
-| **Planting** | One plant per completed session. Quit early and nothing grows — no message, no guilt. |
-| **Garden** | Plots of 108 (the mala bead count). Fill one and it archives; a fresh plot opens. |
+| **Planting** | A completed sitting offers three plants; you choose the one that grows. A longer sitting may offer a rarer plant, or a few common ones instead. Quit early and nothing grows — no message, no guilt. |
+| **Garden** | Gardens of a size you choose: a bed of 3 to start, then 9, 27, 54 or 108 (a mala) each time one fills — or grow the one you have. Finished gardens keep their place on the shelf. |
 | **Curriculum** | Wallace's ten stages. The app offers to advance after ~20 sessions across 3+ weeks; **you** confirm whether the next stage describes your mind. Declining is respected for a fortnight. |
 | **Tips** | One card before each sitting, in order, drawn from your current stage. |
 | **Duration** | Your stage pre-selects a length; every option stays tappable. |
 | **Themes** | Three palettes — Ink, Butter, Prose — chosen in the You tab. Taste only: nothing about the practice changes. |
 | **Sound** | One bell in, one bell out. Nothing between. |
-| **Reminders** | One daily notification, off until you set a time. |
+| **Reminders** | One daily notification, off until you set a time; its line changes from day to day. |
+| **Days** | On a day you sat, the streak's sun turns green and Батон naps beside the garden. Miss a day and nothing is said. |
+| **Notes** | A thought caught mid-sitting becomes a note; long-press the plant that grew to read it. |
 
 ## Where things live
 
@@ -72,14 +75,16 @@ carry them across.
 app/                 screens (expo-router)
   (tabs)/            Garden · You
   session/           start → tip → run → complete → advance   (outside the tab bar)
+  gardens/           the shelf, one garden, and the ask for the next
+  notes/             the notes and one note
   onboarding.tsx
 src/
   theme/themes.ts    ← every colour in the app, in three palettes
   theme/tokens.ts    space, radius, organic corners
   theme/typography.ts
   store/             the only module that touches persistence
-  domain/            pure, tested: stages, tips, progression, plots, plants, stats
-  session/           timer, bells, notifications
+  domain/            pure, tested: stages, tips, progression, plots, plants, stats, notes
+  session/           timer, bells, notifications, reminder lines
   ui/                shared components
 ```
 
@@ -105,7 +110,7 @@ final art. If painted PNGs ever replace them: drop transparent @3x files into
 `Plant.tsx` to render an `<Image>`. Identity and rendering are kept in separate
 files precisely so this is a one-file change.
 
-Adding species later is always safe: a session stores the plant key it resolved
+Adding species later is always safe: a session stores the plants it grew, chosen
 at completion, so plants that already grew never change.
 
 Note PNGs can't be tinted in code — each plant carries the colours you drew it
@@ -128,6 +133,9 @@ reflects real elapsed time.
 
 ## Dev shortcuts
 
-The You tab has a `__DEV__`-only panel (stripped from release builds): seed
-sessions, jump stages, and arm the advancement offer — because the interesting
-states of this app are the slow ones.
+The You tab has a developer panel — always in a dev build, and in a release build
+once you turn on **Developer** at the foot of the You tab: seed sittings, jump
+stages, arm the advancement offer, and make every sitting end after five seconds
+while still counting as the length you chose — because the interesting states of
+this app are the slow ones. The **Reset** card above it starts the garden again
+and keeps your settings.

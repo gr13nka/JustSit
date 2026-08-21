@@ -16,10 +16,19 @@ JustSit is a meditation app that teaches B. Alan Wallace's *The Attention
 Revolution* slowly, and grows a hand-drawn garden as you sit. Expo + React
 Native, TypeScript, local-only — no account, no server, no payment.
 
-The governing design goal is a **quiet** app. Nearly every product decision
-trades engagement mechanics for calm. If a change would add streak pressure,
-failure copy, badges, or a second way to watch the clock, it is wrong for this
-codebase even if it works.
+The governing design goal is a **quiet** app, and quiet is about voice rather
+than austerity. It grows, it offers, it counts days, it keeps what you wrote
+down; what it never does is raise its voice about any of that. Engagement is
+allowed here where the user is the one choosing — how big the next garden is,
+which of three plants a sitting grew, whether to write anything at all.
+
+The guardrails are what keep it from becoming a game, and none of them is
+negotiable. **No congratulation:** nothing here tells you you did well. **No
+failure state:** a missed day is silence, nothing withers, and no copy mentions
+what you did not do. **Rarity is never labelled** — a tier is scarcity in
+`plants.ts` and appears nowhere in the interface. **One bell in, one out,
+nothing between.** And **a plant never moves or changes** once it is in the
+ground. A second way to watch the clock is still wrong.
 
 ## Commands
 
@@ -43,13 +52,16 @@ Before claiming work is done, run both `npm run typecheck` and `npm test`, and
 app/                 screens only (expo-router, file-based)
   (tabs)/            Garden · You
   session/           start → tip → run → complete → advance  (outside the tab bar)
+  gardens/           the shelf · one garden · the ask         (outside the tab bar)
+  notes/             the pile · one note                      (outside the tab bar)
   onboarding.tsx     welcome → reminder → stage one, shown once
 src/
   theme/             themes.ts (all colour), tokens.ts (space/shape),
                      typography.ts (type scale)
   store/             the ONLY module that touches persistence
-  domain/            pure + tested: stages, progression, plots, plants, stats
-  session/           useSession (clock), bells, notifications
+  domain/            pure + tested: stages, progression, plots, plants, notes,
+                     stats, hash
+  session/           useSession (clock), bells, notifications, reminder lines
   ui/                shared components, incl. the type-scale-aware <Text>
 ```
 
@@ -61,10 +73,11 @@ or sessions, that logic belongs in `src/domain/`.
 That is what makes it testable without a device, and it is why the suite covers
 exactly the logic that is painful to check by hand.
 
-**Data flow:** `src/store` holds three objects (`sessions`, `progress`,
-`settings`) in Zustand, persisted to AsyncStorage as one JSON blob. Everything
-else is *derived* — plots, streaks, which tip is next, whether to offer a stage.
-Nothing derived is ever stored.
+**Data flow:** `src/store` holds four collections (`sessions`, `notes`,
+`progress`, `settings`) in Zustand, persisted to AsyncStorage as one JSON blob.
+Everything else is *derived* — plots, streaks, which tip is next, whether to
+offer a stage, what a sitting was worth, which plant carries which note. Nothing
+derived is ever stored.
 
 **Colour is read, not imported.** `settings.theme` names one of three palettes
 in `src/theme/themes.ts`, and every component gets the live one from
@@ -78,15 +91,19 @@ colour props live in an inline style and only structure stays in the sheet.
 Screens import from `src/store` only. **Nothing outside `src/store/index.ts` may
 import the underlying `useStore`.**
 
-- Reads (reactive): `useSessions` · `useProgress` · `useSettings` · `useHydrated`
-- Writes: `recordCompletedSession` · `setStage` · `noteAdvanceOffered` ·
-  `markTipSeen` · `updateSettings` · `completeOnboarding`
+- Reads (reactive): `useSessions` · `useNotes` · `useProgress` · `useSettings` ·
+  `useHydrated`
+- Writes, the garden: `recordCompletedSession` · `chooseOffer` ·
+  `chooseGardenSize` · `resizeGarden`
+- Writes, the notebook: `addNote` · `updateNote` · `deleteNote`
+- Writes, the rest: `setStage` · `noteAdvanceOffered` · `markTipSeen` ·
+  `updateSettings` · `completeOnboarding` · `resetProgress`
 - Escape hatches (tests + dev panel only): `getState` · `__replaceState` · `__reset`
 
 `src/store/persistence.ts` is the seam for swapping AsyncStorage for
-`expo-sqlite` later. Bump `STORAGE_VERSION` and add a `migrate` branch for any
-shape change — users have real gardens on their phones, and a bad migration
-loses them permanently.
+`expo-sqlite` later. `STORAGE_VERSION` is **3**; bump it and add a `migrate`
+branch for any shape change — users have real gardens on their phones, and a bad
+migration loses them permanently.
 
 ## Invariants — break these and the app is subtly wrong
 
@@ -103,30 +120,75 @@ on the way out and fires instead. The AppState handler schedules on leaving and
 cancels on returning. Change one half without the other and you get a double
 chime or silence.
 
-**A plant's identity *and its place* are stored, not derived.** `Session.plant`
-holds the key resolved at completion; `plantFor()` runs once per session, ever.
-That is what makes adding species to `PLANT_KEYS` safe later — existing plants
-never change, even though the same seed would now hash differently.
+**A sitting's plants — the species *and* the dots — are stored, never derived.**
+`Session.plants` is a list of `{key, slot}`, one entry per plant, written when
+the offer is chosen and never rewritten afterwards. Both halves have to be
+stored, for different reasons: the species, because adding to `PLANT_KEYS` would
+make the same seed resolve elsewhere and existing plants must never change; the
+dot, because position used to *be* array order, and deriving it again would
+silently rearrange gardens that are on people's phones. That is also why
+`Plot.cells` stays a sparse array and `nextDot` looks for the first *hole*
+rather than the dot after the last plant — in a garden that has only ever filled
+in order those are the same dot, and in an older one they are not.
 
-`Session.slot` is the same idea applied to position. A garden fills in order, so
-`nextFreeSlot` decides where a plant lands — asked at the moment a sitting
-finishes, never passed in. The slot is absolute across the whole garden — plot is
-`slot / PLOT_SIZE`, cell within it is `slot % PLOT_SIZE`.
+Where the plants go is not carried through the sitting, and there is no
+parameter for it. `recordCompletedSession` takes `startedAt` and `durationMs`
+and nothing else: a garden fills in order, so the first plant takes the first
+free dot and a bundle carries on from there. A `slot` travelling from the tap to
+the bell would be a request that had survived twenty minutes and might name a
+dot something else had since grown in — the reason it existed was free planting,
+and free planting is gone.
 
-It is still **stored and never derived**, and linear planting makes that more
-important rather than less. Gardens grown while the user picked their own dot
-have holes anywhere in them, and those gardens are on people's phones: position
-used to be array order, and deriving it again would silently rearrange them. It
-is also why `Plot.cells` stays a sparse array and `nextDot` looks for the first
-hole rather than the dot after the last plant — in a garden that has only ever
-filled in order those are the same dot, and in an older one they are not.
+It writes the first offer immediately, so a session never exists without plants:
+kill the app on the completion screen and the sitting is still in the ground, at
+the cost of it being the offer nobody picked.
+`chooseOffer` is the only thing that ever rewrites them, and only for the newest
+sitting — its plants are the tail of the used slots, so replacing them cannot
+land on a dot something else has grown in. It refuses silently rather than
+throwing, because it runs on the one screen that has something to show for the
+last twenty minutes.
+
+**What a sitting was worth is derived, and none of it is stored.**
+`offersForSession` answers from the session and the sittings before it, so the
+trio on the completion screen survives the app being killed underneath it, and
+there is one answer to "what was this sitting worth" rather than a stored one
+and a computed one to be kept in step. Its two derived inputs are read from
+*different* moments, and each from the only one that makes it mean anything —
+see the milestone note under the product rules.
+
+**The garden is a *sequence* of gardens, at sizes the user chose.**
+`progress.gardens` holds those sizes in order; the last entry is the one being
+filled and the only one that may still change, so a garden somebody finished a
+year ago cannot be resized out from under its plants. Slots stay absolute across
+the whole sequence, exactly as they were when every garden was 108 — which
+garden a slot falls in is found by walking the sizes rather than by dividing,
+and that is the only part of the old arithmetic that changed. `nextFreeSlot`
+answers null when the current garden is full, and null is not a failure: it is
+the ask.
 
 **New fields need a default, not a migration.** `mergePersisted` in
 `store/persistence.ts` merges `progress` and `settings` over their defaults on
 every launch, because zustand's default merge is shallow and would otherwise
 hand an old blob's `settings` straight through with the new key `undefined`.
-`migrate` is only for real shape changes — `slot` was one, and its `v1 → v2` step
-replays array order so existing gardens come back exactly as they were.
+`notes` is the clean case. It shipped *as part of* version 3 rather than after
+it, so no migration step had to invent one: a v1 or v2 blob simply has no notes,
+and the default supplies the empty list on the way in.
+
+`migrate` is only for real shape changes, and there are two. `v1 → v2` gave
+every session the `slot` its array position used to mean. `v2 → v3` wrapped
+`plant` and `slot` into the one-plant `plants` list they always were, and
+rebuilt `gardens` from the highest slot in use — all of them 108, including the
+open one, which stays a 108 rather than being retrofitted to a size its owner
+never chose. The steps run in sequence, so someone who skipped a release still
+lands on today's shape without a special case.
+
+Guard by *shape* rather than by presence for anything the app maps over. Three
+fields do it — `gardens`, `notes`, and each session's `plants` — and every one
+takes the default when what arrives is not an array, because a list the app
+iterates must be a list. That is belt and braces beside the migration rather
+than a second implementation of it: the migration is what makes an old blob
+right, and this is what stops a blob nobody anticipated taking the garden down
+with it.
 
 **`seenTipIds` is one flat list across all ten stages,** so tip ids must be
 globally unique (`s3-07`, not `07`). A test enforces this; a duplicate would
@@ -147,25 +209,67 @@ only from `onComplete`. There is no partial-credit path and there must not be
 one — the garden is honest precisely because it only shows completed sittings.
 Leaving early shows no message and no confirmation dialog.
 
+A *note* caught during one stays, which is not an exception to that. The plant
+is what finishing earned; the thought was the user's as soon as they had it. Its
+link to the sitting is therefore a lookup that may never resolve, and that is
+the correct outcome rather than a dangling one — see `domain/notes.ts`.
+
+**One sitting keeps one note.** A second thought caught in the same sitting is
+appended to it on a new line, never filed as a second note. That is what lets
+`noteForSession` answer with a note rather than a list, and it is what makes
+holding a plant give back everything you were thinking while it grew — two
+cards behind one plant would be a plant that only half remembers. The join is
+`sittingStartedAt`, which is the same instant for both thoughts.
+
 ## Product rules encoded in the code
 
 | Rule | Where |
 |---|---|
-| One plant per completed session | `store.recordCompletedSession` |
-| Plots of 108 (mala bead count); the plot is derived, the plant's slot is stored | `domain/plots.ts` |
+| One completed sitting, one choice of three; the first is planted at once and a tap swaps it | `store.recordCompletedSession`, `store.chooseOffer` |
+| Length buys quantity, and past ten minutes the trade is one rare against two mids against three commons | `domain/plants.offersFor` |
+| Three single commons under three minutes; the sitting that *makes* a seventh consecutive day puts a rare on the table, whatever its length | `domain/plants.ts` (`shapesFor`) |
+| Gardens are sizes the user chose — 3 to start, then 9 · 27 · 54 · 108; 108 is the mala and the largest | `domain/plots.ts` |
 | A garden fills in order; only the next dot answers a touch | `domain/plots.ts` → `ui/PlantGrid.tsx` → `app/session/start.tsx` |
+| The app proposes the next garden one rung up; **the user confirms** | `domain/plots.proposedGarden`, `app/gardens/ask.tsx` |
+| Only the garden being filled may be resized; shrinking stops at what has grown | `domain/plots.withResizedGarden` |
 | Whole minutes by default; seconds are opt-in | `settings.hideSeconds`, `ui/Clock.tsx` |
 | Advance offered at ≥20 sessions **and** ≥21 days at stage; a decline is respected for 14 days | `domain/progression.ts` |
 | The app proposes a stage; **the user confirms** | `app/session/advance.tsx` |
 | Stage suggests a duration; every option stays tappable | `domain/stages.ts`, `ui/DurationDial.tsx` |
 | Tips move forward in written order, then cycle | `domain/progression.nextTip` |
 | One bell in, one out, nothing between | `session/bells.ts` |
-| One daily reminder, off by default, no streak nagging | `session/notifications.ts` |
+| One daily reminder, off by default; the line rotates by the day, and none of the six mentions what you did not do | `session/reminderLines.ts` |
+| A day already sat: the sun gone green, drawing and figure both, and a sleeping cat — and nothing else | `domain/stats.satToday`, `app/(tabs)/index.tsx` |
+| A thought caught mid-sitting is kept, and nothing ever counts them | `domain/notes.ts`, `ui/NoteSheet.tsx` |
 | The two figures are corner indicators, not cards — no label, no unit | `ui/Indicator.tsx`, `app/(tabs)/index.tsx` |
 | Theme is taste, never behaviour: it changes values, never what the app does | `settings.theme`, `theme/themes.ts` |
 
 Wallace's criterion for advancing is the state of your mind, not attendance. The
 thresholds decide only when it is *reasonable to ask*.
+
+The offer arithmetic never rewards chopping a sitting up: three two-minute sits
+come to three commons, which is exactly the most a twenty-minute sit can plant.
+You cannot out-plant a long sitting by sitting badly more often — you can only
+match it, and only in commons. A bundle is always one species, because two of
+the same plant is a patch of something and two different plants is a shopping
+list.
+
+**The weekly milestone counts *this* sitting, and both shortcuts to it are
+wrong.** `offersFor`'s `streak` is the streak the sitting *completes*, so the
+seventh day of a run arrives as 7 and the rare falls on the day it is earned.
+Reading the streak as of before the sitting gives six that morning and pays out
+on the *eighth* day — a week of unbroken practice rewarded a day late, silently,
+with the arithmetic still looking right. Adding one to that six is worse rather
+than better: a second sitting on day six is preceded by a streak that already
+counts today, so `+1` reads as seven and pays a day early. It is therefore
+re-derived rather than adjusted — `currentStreak([...earlier, session],
+session.completedAt)`, which counts a second sitting on a day as the nothing it
+adds. A test pins both cases.
+
+Each of the two derived inputs is read from the one moment that makes it mean
+anything, and they are not the same moment. The streak counts this sitting,
+because it is what the sitting completes. The garden's remaining room is read as
+of *before* it, because counting itself would shrink the offer being made.
 
 ## Design discipline
 
@@ -179,15 +283,22 @@ colour and more ink.
 marked by shape — a fill, a 1.5px border, organic corners — and by the app's one
 `accent`, which is ink in the Ink theme and brick in the other two. The accent
 appears in exactly four places: the primary button's fill, the wobbly button's
-fill, the breathing ring, and the screen switcher's travelling marker. Note
-which slider that is: navigation earns the accent because where you are in the
-app is worth the app's one loud colour, while the duration dial — a choice made
-*inside* a screen — takes `Slider`'s `tone="quiet"` and a `paperDeep` marker.
-Committing to something is Meditate's job, and it is the accent. Green
-means *something grew* — plant strokes, and the garden's session count. The pen
-brights (`penBlue/penOrange/penPink`) have exactly two licences: a plant's bloom
-(the reward-garden colour moment), and the first-run hero's night sky
-(`SittingFigure`). If a pen bright shows up in ordinary chrome, that's a bug.
+fill, the breathing ring, and the screen switcher's travelling marker. It is
+four *kinds* of mark and not four screens — the wobbly button is on several now,
+and it is still one place. Note which slider earns it: navigation does, because
+where you are in the app is worth the app's one loud colour, while a choice made
+*inside* a screen takes `Slider`'s `tone="quiet"` and a `paperDeep` marker — the
+duration dial, and the garden ladder on the ask, which is the same control
+making the same kind of decision. Green means *something grew*, and it reaches
+four marks: plant strokes, the garden's session count, the shelf's tally
+strokes, and the sun on a day already sat — the sun in **both** halves, drawing
+and figure, which is the one place green takes a whole mark rather than a
+number. It has earned it: today something grew. The pen brights
+(`penBlue/penOrange/penPink`) have exactly two licences: a plant's bloom (the
+reward-garden colour moment), and the first-run hero's night sky
+(`SittingFigure`). The shelf's fleck is drawn in the species' own bright, which
+makes it the first licence at another size rather than a third. If a pen bright
+shows up in ordinary chrome, that's a bug.
 **No hex literal may appear outside `src/theme/themes.ts`.**
 
 **Three themes, and they vary values, not structure.** Ink (cream paper, accent
@@ -209,25 +320,37 @@ back to the body face.
 
 **Hand-drawn touches are rationed.** Exactly four kinds exist: the wobbly
 `Rule`, organic corner asymmetry (`organicCorners` — always seeded, never
-random), hand-drawn arrows (`ArrowRight`, `ArrowLeft` — the way back out of a
-sitting), and the `wobbly` button. The active
+random), hand-drawn arrows (`ArrowRight` points at a row you can open;
+`ArrowLeft` is the only mark this app uses for "out of here", in `BackHeader`
+and on the way out of a sitting), and the `wobbly` button. The active
 tab's scribble underline was the fifth and is gone: the sliding selector's
 marker says "you are here" now, and an interface needs one way of saying it.
 Hand-drawn check marks are sanctioned by the style but not yet drawn; nothing
 beyond those is.
 
-**The `wobbly` button is for committing, and that is the whole rule.** It was
-Meditate and only Meditate; onboarding's **Begin** has it too, being the first
-thing in the app you agree to. What keeps it rationed is the verb rather than a
-count: starting a sitting and starting altogether are commitments, while
-"Choose a time" is a setting and "Not now" is a way out, so neither gets the
-pen. Two drawn buttons are never on screen together, and since each side's bow
-is a fraction of its own length they come out at different widths — one hand at
-two sizes, which is why `box.ts` can stay unseeded. The garden's next-dot ring is not a fifth kind — it is the
-timer's ring at another size, which is the whole reason that geometry sits in
-`ring.ts` rather than in the component that first wanted it. Every *code-drawn* path is cubic béziers with round caps and baked-in
-wobble: no `Circle`, no `Rect`, no ruler-straight lines, no perfect arcs. The
-icons no longer need the rule — they were drawn by an actual hand.
+The pencil on the run screen is the one exception and is a **placeholder**. It
+is the only icon still drawn in code, and the only one stroked — four cubics on
+`PEN_DOODLE`, so it reads as the same hand at the same weight until a drawn one
+comes off the art loop. When it does it joins the traced set and nothing outside
+`icons.tsx` changes.
+
+**The `wobbly` button is for committing, and that is the whole rule.** It is
+Meditate; onboarding's **Begin**, being the first thing in the app you agree to;
+the completion screen's **Done**, which puts a plant in the ground for good; and
+the ask's **Begin it** / **Grow it**, which is the largest thing this app asks
+anybody to agree to. What keeps it rationed is the verb rather than a count:
+"Choose a time" is a setting, "Not now" and "End" are ways out, and "or grow
+this garden instead" is a second path, so none of them gets the pen. Two drawn
+buttons are never on screen together, and the flow is what guarantees it rather
+than a rule to remember: Meditate leads to Done, Done leads to Begin it. Since
+each side's bow is a fraction of its own length they come out at different
+widths — one hand at two sizes, which is why `box.ts` can stay unseeded. The
+garden's next-dot ring is not a fifth kind — it is the timer's ring at another
+size, which is the whole reason that geometry sits in `ring.ts` rather than in
+the component that first wanted it. Every *code-drawn* path is cubic béziers
+with round caps and baked-in wobble: no `Circle`, no `Rect`, no ruler-straight
+lines, no perfect arcs. The icons no longer need the rule — they were drawn by
+an actual hand.
 
 Fill is spent three ways and no others. Two marks are filled *instead* of being
 stroked — the empty slot's dot (`Plant.tsx`'s `EmptySlot`) and the wobbly
@@ -242,6 +365,21 @@ about colour — the fill is always the ground, never a pen, so a garden of soli
 colour would be a second and much larger change. Which paths qualify is read off
 the drawings (`isShape`: a path that closes is a shape, one that does not is a
 stroke), so re-tracing the plants cannot silently get it wrong.
+
+*Which* ground is a prop rather than a constant, and that is the same rule
+rather than a fourth one: the fill is whatever the drawing happens to be
+standing on. `Plant`'s `ground` takes `paper` or `paperDeep` and nothing else —
+the chosen offer stands on its marker, a note card's glyph stands on the card —
+so a plant can never be filled with a pen.
+
+Everywhere else `paperDeep` appears it is a *surface* rather than a drawing's
+fill, which the kit has always sanctioned: the card, the note sheet, the nav
+bar, the quiet slider's marker, the chosen offer's marker, a garden card on the
+shelf. The one card that inverts it is the **ghost** on the ask screen — a
+hairline outline and no fill, because a paper-deep card standing empty would
+read as a garden already open, which is exactly the thing not yet decided. The
+outline is `inkFaint` and solid rather than dashed: React Native's dashed
+borders misbehave against organic radii.
 
 The pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
 heroes at 7 on 200, and hand-drawn UI marks (`Rule`) at hairline–2 on their own
@@ -273,8 +411,17 @@ Ink is two shapes, which is more than a theme is allowed to be. The silhouette
 says it in all three.
 
 **Батон, the sleeping loaf cat, holds the quiet places** — the reminder step of
-onboarding and the empty garden — and nowhere else. He never cheers; the app's
-no-congratulation voice outranks mascot charm.
+onboarding, the empty garden, the foot of the field on a day already sat, and
+the first half-row the shelf leaves empty (awake there, `pose="idle"`). Nowhere
+else, and the notes screen is deliberately left bare: a fifth place would make
+him decoration rather than the cat who is where nothing else should be.
+
+He is always **placed, never earned**. The shelf seats him where the masonry
+leaves a gap, and if every row is full he gets one of his own rather than being
+dropped — a screen he is missing from is a screen that looks like it is judging
+you. The sat-day nap is the nearest he comes to a reward, and it is why it has
+no counterpart: an absent cat is not a reproach, and a sad one would be. He
+never cheers; the app's no-congratulation voice outranks mascot charm.
 
 Use `<Text variant="...">` from `src/ui/Text.tsx` rather than declaring
 `fontFamily`/`fontSize` inline, so the app's voice stays in `typography.ts`.
@@ -298,8 +445,13 @@ means *something grew*, and elapsed time has not grown anything.
 **At most one primary button per screen.** Any second action is `variant="quiet"`.
 
 **Motion lives in `src/ui/motion.tsx`, and almost none of it loops.** An
-*entrance* (`Sprout`, `Rise`) marks a first appearance; a *settle*
-(`usePressSettle`) is feedback for a touch. Everything animates transform and
+*entrance* (`Sprout`, `Rise`, `Fade`) marks a first appearance; a *settle*
+(`usePressSettle`) is feedback for a touch. `Rise` takes a `from`, because a
+card on a page wants a nudge and the note sheet genuinely arrives from off the
+bottom of the screen — one number is better than a second component. `Fade` is
+its sibling for what must *not* move: a veil that slid would be a sheet of paper
+laid over the screen rather than the screen going quiet, and the thing rising in
+front of it is what the eye should follow. Everything animates transform and
 opacity only, so every driver is native. Three things loop and all three are
 named exceptions, because in each the loop is the point rather than a
 transition: the breathing ring, which owns its own; `Pulse`, which breathes the
@@ -311,9 +463,10 @@ claim any loop here makes, so it is worth saying what earns it. It reports
 nothing and asks for nothing: it does not accumulate, congratulate or keep
 score, it is identical whether you sat today or not, and it stops the moment you
 leave the tab. A garden moves in wind — that is the entire statement, and it is
-the same one the burst makes about growth. The pen's rule holds too, because the
-lean is a *shear*: a shear's determinant is exactly 1, so unlike a scale channel
-it cannot break the rule that a doodle changes shape and never mass.
+the same one the burst makes about growth. The pen's rule holds too: the lean is
+half a *shear* and half a turn about the root (`SWAY_BEND`), and both have a
+determinant of exactly 1 — so unlike a scale channel neither can break the rule
+that a doodle changes shape and never mass.
 
 Its arithmetic is `src/ui/sway.ts`, pure and tested on the `ring.ts` precedent,
 and three things about it cost real time to rediscover.
@@ -361,6 +514,11 @@ layers are broader** (wavelengths 36, 52 and 82 cells against a garden twelve
 across), so the long waves move the whole garden together while the quick one
 ripples through it — which is what stops the quickest reading as a stripe.
 
+The column and row a plant leans by are its place **within its own bed**, not
+its place in the sequence: the wind crosses the garden you are looking at, and a
+bed nine wide has nine columns for it to cross. The *seed* is still the absolute
+slot, because a plant's personal offset is a fact about the plant.
+
 Coherence has to be higher with layers than without: each carries its own share
 of the seeded half, so three dilute it. At the single-layer setting of 0.68,
 neighbours agreed with each other only 4% more than plants at opposite ends of
@@ -396,15 +554,32 @@ small enough to notice only once you are already looking at the garden, and that
 nothing about it accumulates, congratulates, or keeps score: miss a week and it
 is doing exactly what it does now.
 
-**The field is twelve across, so 108 lands on nine rows and a whole plot fits
-one screen.** It used to be six across, where a cell was 60pt wide and a dot was
-a 5.5pt blob adrift in it, and the plot ran two and a half screens deep. Dense,
+**The field is twelve across at its widest, so 108 lands on nine rows and a mala
+fits one screen.** It used to be six across, where a cell was 60pt wide and a
+dot was a 5.5pt blob adrift in it, and the plot ran two and a half screens deep. Dense,
 the dots read as one texture the grown marks sit in rather than as a list of
 buttons — which is what the garden is for. Two costs, both accepted: the tap
 target is a 30pt cell rather than a 60pt one, and `field.ts` floors
 the cell to a half point and draws the grid at exactly twelve of them, because
 twelve fractional widths can total a hair over a fractional container and throw
 the last cell onto a row of its own.
+
+**Twelve is no longer how wide every garden is — `shapeFor` cuts each size its
+own bed.** Three widths and no more: the starter bed is a single row however few
+dots it holds, four to ninety-nine take nine, and a mala takes twelve. Nine is
+the ladder's width because it divides 9, 27 and 54 exactly, so every rung below
+a mala comes out a full rectangle rather than a block with a ragged last row;
+108 keeps its twelve, which is both what fits nine rows on a phone and what
+every migrated garden is already drawn in, so `slot % cols` cannot re-flow one.
+The threshold is written as "from 100 up" rather than "108 exactly", so a garden
+grown past a mala by the quiet path does not suddenly narrow.
+
+The **pitch is constant at every width**: `field` measures the cell against
+`COLUMNS` whatever the garden, then draws the lattice at `cell * cols`, centred
+in the room it was given rather than stretched to fill it. That is what lets a 9
+beside a 108 be *seen* to be a ninth of it, and it is the same claim the shelf's
+one shared mark makes at thumbnail size. A last row may come up short, but only
+for an arbitrary size, which only the quiet "grow this garden" path can make.
 
 That tap target used to be cheap — a hundred dots each started a sitting where
 you touched, and a mis-tap spent nothing because the slot was only committed when
@@ -472,8 +647,13 @@ is comes from `nextDot`, the first hole in the plot, so it agrees with where
 
 Since planting became linear it is also **the button** — the one mark in the
 field that answers a touch — which is a better job than the one it was drawn for
-and needs no change to the drawing. It is also what quietly fixed an overlap: a
-plant's head stands about 12.5pt above its own cell, so a plant in the row
+and needs no change to the drawing. Which is also why a garden opened off the
+shelf has no ring: `PlantGrid`'s `onBegin` is optional, and dropping it drops
+the ring with it rather than suppressing it separately. The ring marks where you
+would carry on, so a garden you cannot carry on has nothing for it to mark.
+
+Linear planting also quietly fixed an overlap. A plant's head stands about
+12.5pt above its own cell, so a plant in the row
 *below* an empty dot used to reach up over that dot's ring, and `zIndex: 1` meant
 the ring won and looked wrong. That case is a hole with a plant after it, which
 only free planting could make. Filling in order, everything past the next dot is
@@ -514,6 +694,11 @@ cost one driver. `app/(tabs)/index.tsx` restarts it from `useFocusEffect` — th
 tab stays mounted, so a mount effect would fire exactly once in the life of the
 app. Delays are seeded from the slot (`hash32('burst-' + slot)`), never random:
 a field that re-rolled its timings would be a different drawing each visit.
+
+A garden opened off the shelf bursts once, from a plain `useEffect`, and sways
+from `useSway(true)` rather than from an `active` flag. It is a stack screen
+rather than a tab, so a mount really is an arrival and the unmount really is a
+departure — the tab needs `shown` precisely because neither is true of it.
 
 The whole field takes about a second and a half — 1000ms per doodle scattered
 across 450 — and each one is **squash and stretch**, not a fade-up. `GROWTH` in
@@ -556,10 +741,12 @@ then restore and `diff` against a backup to prove you did. On a device, issuing
 `adb shell input swipe` and `screencap` back to back in one command is fast
 enough to land inside the burst without slowing anything down.
 
-**One sliding selector, used twice.** `src/ui/Slider.tsx` owns where the marker
-is and how it travels; the caller owns what each item draws and what the row
-sits in. The screen switcher (`SliderNav`) floats in a bar over the page; the
-duration picker floats on bare paper. Items are a fixed width by contract, which is
+**One sliding selector, used three times.** `src/ui/Slider.tsx` owns where the
+marker is and how it travels; the caller owns what each item draws and what the
+row sits in. The screen switcher (`SliderNav`) floats in a bar over the page and
+is the only one that earns the accent; the duration picker and the ask's garden
+ladder both float on bare paper and take `tone="quiet"`, because a length and a
+size are both choices made *inside* a screen. Items are a fixed width by contract, which is
 what keeps the travel to a single `translateX` and therefore on the native
 driver — and means there is nothing to measure and no frame where the marker is
 in the wrong place. It is silent: the kit allows this one navigation a sound,
@@ -579,6 +766,52 @@ available at every stage and five greyed-out numbers would say otherwise.
 The chosen length is printed nowhere else. A large figure above the button said
 exactly what the dial's own marker says, in a place you cannot change it.
 
+**The completion screen borrows that language and not the control.** Three
+offers sit on bare paper for the dial's reason, and selection is carried twice
+over again — a `paperDeep` organic-corner marker, and the chosen plants standing
+6% out of the row — while the unchosen ones never fade, because every offer is
+available. What it cannot borrow is `Slider`, whose contract is a fixed item
+width: one, two and three plants are three widths, so the marker is per offer
+and arrives in place rather than sliding.
+
+`src/ui/offerRow.ts` is that row's arithmetic, pure on the `field.ts`
+precedent, and two things in it are worth knowing. Each box **hugs its own
+ink** — a poppy stands nearly twice as high above its root as a grass, and one
+box drawn to the tallest would put a slab behind a short offer. The reach is
+measured off the paths (`Plant.tsx`'s `inkOf`), the way `isShape` reads the
+fills, so a redrawn plant cannot silently get it wrong; `field.ts`'s `Ink` is
+the *bound* over all twelve, which is right for a lattice laid out before anyone
+knows what lands in it and wrong for three named species standing together. And
+a bundle shrinks by `1/√count`, holding its total ink *area* to a single
+plant's — a bundle is the same amount of drawing rearranged, not three times as
+much of it, and an offer drawn bigger would be an offer being recommended.
+
+**The shelf is the app's whole progress figure, and it carries no percentage,
+no total, no pace and no projection.** `src/ui/shelf.ts` — pure, the same
+precedent — packs the gardens into rows of at most two, oldest first and never
+reordered, so a mala simply takes the row it lands on and the half-rows that
+leaves are what the shelf is read by. Every card shares **one mark size**, which
+is the only claim the screen makes: that a 108 is twelve times a 9.
+
+The marks are tallies and not plants — one stroke in the green that means
+something grew, with a fleck of the species' own pen where it blooms — because a
+plant is a dozen béziers and a shelf can hold six hundred dots you are only
+scrolling past. A whole card is **one** `<Svg>` with a transform per mark, since
+a hundred and eight native views is the cost the tally exists to avoid. And a
+card's meta line says roughly *when* a garden ran and never how long it took: a
+sitting can grow two or three plants, so the same size fills in wildly different
+times, and printing that would be inventing a pace.
+
+**The notes screen is a two-column masonry, estimated rather than measured.**
+`src/ui/masonry.ts` deals each card into whichever column has least, weighing it
+by how many lines of body it shows and clamping at what the card actually draws.
+Measuring for real would cost a frame with the cards in the wrong places, and a
+pile of notes has to look evenly packed rather than be provably optimal. Nothing
+lines up across the columns, which is the point: the eye takes them one at a
+time instead of reading down a list. There is no search, no tag and no folder —
+a note is kept so that it could be let go of, and filing them would be the
+opposite of that.
+
 ## Toolchain traps already hit
 
 These cost real time. Don't rediscover them.
@@ -594,7 +827,30 @@ raises a full-screen overlay. `src/session/notifications.ts` detects Expo Go via
 `configureNotificationHandler()` inside a `useEffect`.
 
 Consequence: in Expo Go the daily reminder and the backgrounded-session
-notification silently no-op. Both work in a development build.
+notification silently no-op. Both work in a development build, which is
+therefore the only place the reminder — rotation included — can be tried at all.
+
+**A `DAILY` trigger freezes its content** at the moment it is scheduled, so a
+reminder set once would read out the same sentence every morning for a year —
+which is exactly what the six rotating lines exist to avoid. The only fix is to
+schedule it again, and `useReminderRotation` does that from the root layout on
+mount and on every return to the foreground; `reminderBody` picks by the local
+day, so a reschedule is a no-op on a day already scheduled for and a new line on
+any other. The limit that leaves is real rather than a bug: the line you get is
+the one chosen the last time you *opened* the app, not the one for the morning
+it arrives. Go a fortnight without opening it and you get a fortnight of the
+same sentence — the right trade, since the alternative is an app queueing up
+fourteen separate chances to nag you. The rotation never cancels; turning the
+reminder off stays with the screen that also has to ask permission.
+
+**An absolutely positioned child is inset by its parent's padding on a phone and
+not in a browser.** Yoga and CSS disagree about which box an absolute child is
+placed against, so anything measured off a padded container lands in two
+different places on the two targets this app is judged on — and `Screen` pads
+every screen. The run screen's pencil is therefore laid out in a *row* beside
+`End` and positioned only within that row. This is a constraint and not a
+styling preference: the web preview is where layout is decided, and a layout
+that only agrees with itself there is worse than no preview.
 
 **Fonts ship as Latin subsets in `assets/fonts/`, not from npm.** M PLUS
 Rounded 1c carries CJK coverage — the full face is ~3.3MB *per weight*, so three
@@ -606,6 +862,11 @@ to its ranges if the app ever grows Cyrillic text. The earlier lesson still
 stands underneath: never import an `@expo-google-fonts` package by its root —
 the root `require`s every weight.
 
+That subset is also why `src/ui/time.ts` pins `toLocaleDateString` to `'en'`.
+Every string in this app is English, so a month name taken from the phone's
+locale would not merely read oddly beside "Your gardens" — on a Russian handset
+it would come back as tofu, and only on that handset.
+
 **A `transformOrigin` must be an array, never a string, if it is not a whole
 percent.** React Native parses a string origin with
 `/(top|bottom|left|right|center|\d+(?:%|px)|0)/g` — integer digits, no decimal
@@ -613,7 +874,9 @@ point. `'50% 89.58333333333334%'` therefore does not fail; it matches
 `58333333333334%` out of the middle and pivots the view fifty-eight trillion
 percent down its own height, which throws it past the horizon. `ROOT_SHARE` is
 43/48, so every plant animation lands on exactly this. The array form skips that
-parser: `src/ui/field.ts`'s `ROOT_ORIGIN`, which `Sprout` and `Sway` both use.
+parser: `src/ui/field.ts`'s `ROOT_ORIGIN`, which `Sprout` and `Sway` both use,
+and `OfferMark`'s, which is the same trap in points rather than percentages —
+any origin that is not a whole percent has to be written as an array.
 
 It is worth knowing how completely this hides. There is no error, no warning,
 and no layout change — a transform does not affect layout, so the cells, the
@@ -652,15 +915,16 @@ than `src/session/` — a pure function must not sit in a file that imports
 `expo-audio`.
 
 **An empty garden and the onboarding screen is what `__reset()` looks like.**
-The dev panel's Reset clears `settings` back to `initialSettings`, and
-`onboardedAt: null` is what redirects to onboarding — so a wiped garden after
-pressing it is the button working, not hydration failing. Check that before
-going looking for a persistence bug.
+The dev panel's Reset clears `sessions`, `notes`, `progress` and `settings` back
+to their initials, and `onboardedAt: null` is what redirects to onboarding — so
+a wiped garden after pressing it is the button working, not hydration failing.
+Check that before going looking for a persistence bug.
 
 The upgrade path itself is pinned by `src/store/__tests__/hydration.test.ts`,
-which boots the store cold against a real version-1 blob and asserts the garden
-comes back with its slots, its settings, and no onboarding redirect. If that
-suite is green, hydration is not your problem.
+which boots the store cold against real version-1 and version-2 blobs and
+asserts each garden comes back with its plants, the gardens they were grown in,
+its settings, and no onboarding redirect — plus an empty notebook at every
+version ever written. If that suite is green, hydration is not your problem.
 
 ## Parked ideas
 
@@ -693,6 +957,10 @@ mark would draw a second, even line around something that is not even. They
 still take their colour from the live theme, which is the whole reason this is
 path data and not PNGs.
 
+The seventh mark, the run screen's **pencil**, has not been through that loop —
+it is stroked in code on `PEN_DOODLE`. When a drawn one comes off `npm run art`
+it becomes another `Mark`, and nothing outside `icons.tsx` changes.
+
 The loop is one command — `npm run art` — and it is documented in `art/README.md`,
 with the drawing guidelines in `art/DRAWING.md`:
 `drawing-sheets.mjs` prints a jig, you draw on it, `trace-art.py` registers the
@@ -719,8 +987,12 @@ geometry so scans drawn on it stay reproducible.
 each with a fixed bloom colour that is a property of the species, never of the
 session. They are next in line to be traced, and `PEN_DOODLE` retires with them.
 Identity (`src/domain/plants.ts`) is kept separate from rendering precisely so
-that stays a one-file change. `SittingFigure` and `Baton` follow the pen contract
-and come from the Karakuli kit's hand.
+that stays a one-file change, and everything else a species is asked about is
+*measured off the paths* rather than written down beside them — which shapes are
+filled (`isShape`), how far the ink reaches (`inkOf`), what it blooms in
+(`bloomOf`). A re-trace therefore cannot leave a stale second list behind.
+`SittingFigure` and `Baton` follow the pen contract and come from the Karakuli
+kit's hand.
 
 **Bells are still placeholder** — synthesised inharmonic bowl tones. Regenerate
 with `node scripts/generate-placeholder-bells.mjs`, or replace
@@ -762,9 +1034,40 @@ truth, so never hand-edit the native project. `android.package` is
 `com.justsit.app`, which is *not* Expo Go's package: the two have separate
 storage, and a garden grown in one is invisible to the other.
 
-The **You tab has a `__DEV__`-only panel** (seed sessions, jump stages, arm the
+The **You tab has a developer panel** (seed sessions, jump stages, arm the
 advance offer, reset). Use it — the interesting states of this app are the slow
-ones, and waiting three weeks for a stage offer is not a test strategy.
+ones, and waiting three weeks for a stage offer is not a test strategy. Seeding
+runs past the end of a garden, which no real sitting can: the app stops and asks
+what size to grow next, and there is nobody there to answer, so the panel opens
+a 108 each time the current bed fills. One plant per seeded sitting, in the
+first free dot — the shape a ten-minute sitting takes when its single-plant
+offer is accepted. `+3` fills the starter bed exactly, which puts the ask one
+tap away.
+
+**It is behind `__DEV__` *or* `settings.devMode`, and the second gate is the
+one that matters here.** Everything this section is about — both notification
+paths, the hidden status bar — needs a release APK, where `__DEV__` is false by
+construction and the panel used to simply not exist. So it is a stored setting
+too, turned on from a "Developer" card at the foot of the You tab, and the
+consequence is that the panel now ships: it is no longer folded out of a release
+build by a constant Metro can see through. `__reset` takes `devMode` with it,
+being one of the settings a fresh install does not have, so the panel's own
+Reset puts the panel away on a phone; the card is still there to turn it back
+on.
+
+**With the mode on, a sitting's clock runs five seconds and is recorded at the
+length that was chosen.** That split is the whole point and it is one line in
+`src/session/devClock.ts`: `useSession` is handed the short clock and derives
+from wall time exactly as always, while `recordCompletedSession` is handed the
+chosen duration, so the bell, the completion screen, a long sitting's trio of
+offers and the stage it might propose all arrive after five seconds and all
+behave as they would after twenty minutes. A sitting that filed itself as five
+seconds would grow three commons and nothing that depends on length could be
+tried at all. The clock counts the five seconds honestly — 0:05 with seconds
+shown, and a flat "1" with them hidden, which is the rounding the app already
+does. The panel says the mode is on for the same reason, because a shortened
+sitting is the one shortcut that changes what the app *does* rather than what is
+in it.
 
 ## Judging layout: the web preview
 
@@ -905,9 +1208,10 @@ that is exactly what `Animated.interpolate` can read off a single looping
 cannot drive natively for 108 cells, and the bill would arrive after the tuning.
 The sway wrapper sits **outside** the sprout, so the composite is `skewX·scaleY`
 and a half-grown plant leans half as far in pixels at the same angle; inverted,
-a squashed plant swings as wide as a full one. And the lean is a **shear**,
-whose determinant is exactly 1 — so unlike a scale channel it cannot break the
-rule that a doodle changes shape and never mass. Everything is periodic over one
+a squashed plant swings as wide as a full one. And the lean is half a **shear**
+and half a turn about the root (`bend`, 0.5 in both), each of determinant
+exactly 1 — so unlike a scale channel neither can break the rule that a doodle
+changes shape and never mass. Everything is periodic over one
 turn of the clock by construction — in the bench a whole number of sways under
 one gust, in the app a whole number of cycles per layer — so the loop closes
 without a seam rather than being checked for one.
@@ -920,9 +1224,12 @@ were just as wrong: they are an arithmetic progression of `prime mod 2^k`, which
 for twelve bits is exactly 403/4096 per slot, so consecutive plants came out 35°
 apart in phase, every time, in reading order — a travelling wave wearing a
 seed's clothes. A uniformity histogram cannot catch that, because a ramp is
-perfectly uniform. `sway.ts` runs murmur3's finalizer over the hash before using
-it as a phase; `hash32` itself stays frozen, since the garden's scatter and the
-burst's start times depend on it answering the same forever.
+perfectly uniform. Murmur3's finalizer is what fixes it, and it lives in
+`domain/hash.ts` as `scramble` rather than in the one file that learned it
+first: everything slicing bits out of a key runs it now — the sway's phases, the
+species drawn for an offer, the reminder's line of the day. `hash32` itself
+stays frozen, since the garden's scatter and the burst's start times depend on
+it answering the same forever.
 
 **The `shape` knob is a Möbius warp of the cycle, and the obvious formulation
 was wrong.** Sway asymmetry — fast through upright one way, slow the other — is

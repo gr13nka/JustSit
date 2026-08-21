@@ -1,5 +1,5 @@
 import { Session } from '../../store/types';
-import { currentStreak, daysSat, totalSatMs } from '../stats';
+import { currentStreak, daysSat, satToday, totalSatMs } from '../stats';
 
 const DAY = 86_400_000;
 /** A fixed local noon, so day-boundary arithmetic is never ambiguous. */
@@ -13,10 +13,9 @@ function satOn(daysAgo: number, durationMs = 600_000): Session {
     durationMs,
     completedAt: at,
     stage: 1,
-    plant: 'grass',
-    // Irrelevant here — these are questions about when someone sat, not where
-    // the plant went — but it has to be something.
-    slot: daysAgo,
+    // Irrelevant here — these are questions about when someone sat, not what
+    // grew — but it has to be something.
+    plants: [{ key: 'grass', slot: daysAgo }],
   };
 }
 
@@ -60,6 +59,39 @@ describe('currentStreak', () => {
       { ...satOn(0), id: 'b', completedAt: earlyToday },
     ];
     expect(currentStreak(s, NOON)).toBe(2);
+  });
+});
+
+describe('satToday', () => {
+  it('is false with an empty garden', () => {
+    expect(satToday([], NOON)).toBe(false);
+  });
+
+  it('is true once today has a completed sitting', () => {
+    expect(satToday([satOn(0)], NOON)).toBe(true);
+  });
+
+  it('is false on a day not yet sat, however long the streak', () => {
+    // The distinction from `currentStreak`, which is 2 here and stays 2 all
+    // day. Green means something grew, and today nothing has.
+    expect(satToday([satOn(1), satOn(2)], NOON)).toBe(false);
+    expect(currentStreak([satOn(1), satOn(2)], NOON)).toBe(2);
+  });
+
+  it('finds a sitting from today among older ones in any order', () => {
+    expect(satToday([satOn(4), satOn(0), satOn(2)], NOON)).toBe(true);
+  });
+
+  it('turns over at local midnight, not at UTC midnight', () => {
+    const justBefore = new Date(2026, 6, 27, 23, 59, 30).getTime();
+    const justAfter = new Date(2026, 6, 28, 0, 0, 30).getTime();
+    const lateLastNight = [{ ...satOn(0), completedAt: justBefore }];
+
+    // 30 seconds either side of the same local midnight: still yesterday's
+    // sitting from today, and today's from the moment the day ticks over.
+    expect(satToday(lateLastNight, justBefore)).toBe(true);
+    expect(satToday(lateLastNight, justAfter)).toBe(false);
+    expect(satToday([{ ...satOn(0), completedAt: justAfter }], justAfter)).toBe(true);
   });
 });
 
