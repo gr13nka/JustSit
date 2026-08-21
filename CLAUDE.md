@@ -1378,5 +1378,72 @@ costs plants in proportion to depth squared and carrying it to the horizon would
 want about three hundred thousand of them. Constant *screen* pitch is affordable
 everywhere and buries the near field. The demo takes the `max`.
 
+**A fourth palette is a sky, and it runs on the clock.** `T` cycles
+Ink → Butter → Prose → **Sky**, which is macOS's *From dawn to dusk* done in this
+hand: a graded sky over the field, the app's own traced `sun` icon travelling an
+arc, and after dark `SittingFigure`'s crescent and sparkles in `penBlue` — the
+one licence this file already grants those marks. It opens at the real local
+hour; `←`/`→` shift an hour and `F` runs a day in a minute.
+
+Calling it a palette rather than a mode is the whole reason it was cheap. A
+palette here is exactly "the ground the drawing sits on", so **one function,
+`palette()`**, answers what the renderer needs — pens, `ground`, `hazeTo`,
+`horizon`, and a `sky` that is null for the three paper themes. Nothing else in
+the file learns that a day exists. The paper themes were verified byte-identical
+before and after by diffing PNGs with the hint removed; that is worth redoing
+after any change here, because a "pure refactor" of colour is exactly the kind
+that silently is not.
+
+Six things that were not obvious:
+
+- **`hazeTo` is what makes it one picture.** Distance used to fade toward paper.
+  In Sky it fades toward the horizon's own colour, so far grass dissolves into
+  the sunset rather than into a pale band standing in front of it.
+- **The ground has to fade on the same curve.** With a flat fill below the
+  horizon, the sky's hot band stopped dead and the field began as flat dark — a
+  ruled line across the picture. The fix is a second gradient whose stops are
+  *derived*: screen y maps to a depth through the same projection that placed the
+  plants, and that depth goes through the same Beer's law. Grass and the ground
+  under it then dissolve together, which is why the seam disappears instead of
+  merely softening. It needs `f` and `near` published out of `buildField()`,
+  alongside `horizonY`.
+- **The shape fill needed the same treatment.** A closed path was filled with
+  flat paper, which was right when ground and distance were the same colour.
+  Against a coloured sky a flat dark fill inside an orange-hazed stroke reads as
+  a hole punched in the drawing.
+- **A hairline appeared along the horizon after dark, from two causes at once.**
+  The horizon sat on a fractional pixel, so the sky rect and the ground rect each
+  anti-aliased against the flat fill underneath — and after dark that fill is
+  near-black against a lit horizon. And the ground gradient stopped 10% short of
+  the horizon colour, because it had borrowed `HAZE_MAX` from the plants. That
+  cap exists so far grass never dissolves completely and the horizon keeps its
+  texture; the ground plane needs the opposite, since at infinite distance it
+  *is* the horizon. Round the horizon to whole pixels, overlap the two rects by
+  one, and let the ground reach `hazeTo` exactly.
+- **The moon crosses the sky the same way the sun does.** Both rise in the east
+  and set in the west; only their timing differs. Running the moon back the other
+  way reads as wrong even to someone not thinking about it.
+- **RGB lerp between keyframes goes through mud.** Purple pre-dawn to cream
+  morning passes through dead grey, and amber to aubergine through brown. Two
+  extra keyframes at 07:00 and 19:24 fix it. This is the sort of thing a palette
+  sheet catches in one look and a running demo hides for days — render the
+  keyframes as a strip before wiring them in.
+
+Sky costs nothing: it measures *cheaper* than the paper themes (6.7ms against
+7.6ms) because its horizon sits lower and there is less field to draw. The
+palette tables rebuild on a quantised time step, 480 to a day, never per frame.
+
+The hint does not auto-hide, and it names the palette (`Ink`, or `Sky 21:15`).
+Both halves are there for the same reason: `←`/`→` and `F` do nothing visible on
+a paper theme, because there is no hour there to change, and an hour's scrub
+through the flat middle of the afternoon moves the sky so little that the key
+looks broken anyway. Naming the state is cheaper than either — and a page whose
+whole surface is keyboard should not dismiss its own key list on the first key
+pressed.
+
+One drift risk the tooling does not cover: the moon and stars are pasted from
+`SittingFigure.tsx`, and `lab-data.py` lifts species, themes and icons only. The
+sun is safe — it comes from `DATA.icons`.
+
 As with the bench and the web preview: decide here, confirm on the phone. This
 one is a desktop page and nothing in it ships.
