@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-Re-lift the drawings, palettes and icons out of the app and into anim-lab.html.
+Re-lift the drawings, palettes and icons out of the app and into tools/.
 
-The bench is a copy — it has to be, since a file:// page cannot import
-TypeScript and a build step is what would let it rot. This is what keeps the
-copy honest: run it after redrawing a plant, adding a species, or moving a
-colour, and the bench is current again.
+The pages under tools/ are copies — they have to be, since a file:// page cannot
+import TypeScript and a build step is what would let them rot. This is what
+keeps the copies honest: run it after redrawing a plant, adding a species, or
+moving a colour, and every page is current again.
 
     python3 tools/lab-data.py
 
-It rewrites one line of tools/anim-lab.html (`const DATA = ...;`) and nothing
-else, so anything tuned in the bench's own code survives.
+It rewrites one line of each target (`const DATA = ...;`) and nothing else, so
+anything tuned in a page's own code survives. Add a page here when it needs the
+app's drawings; the anchor line is the whole contract between them.
 """
 import json
 import re
@@ -18,7 +19,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LAB = ROOT / 'tools' / 'anim-lab.html'
+TARGETS = [
+    ROOT / 'tools' / 'anim-lab.html',    # the motion bench
+    ROOT / 'tools' / 'field-demo.html',  # the field
+]
 
 
 def strip_comments(text):
@@ -85,11 +89,11 @@ def icons():
 data = {'species': species(), 'themes': themes(), 'icons': icons()}
 line = 'const DATA = ' + json.dumps(data, separators=(',', ':')) + ';'
 
-html = LAB.read_text()
-patched, n = re.subn(r'^const DATA = .*;$', lambda _: line, html, count=1, flags=re.M)
-if n != 1:
-    sys.exit('anim-lab.html has no `const DATA = …;` line to replace.')
-LAB.write_text(patched)
-
-print(f'{LAB.relative_to(ROOT)}: {len(data["species"])} species, '
-      f'{len(data["themes"])} themes, {len(data["icons"])} icons')
+for target in TARGETS:
+    html = target.read_text()
+    patched, n = re.subn(r'^const DATA = .*;$', lambda _: line, html, count=1, flags=re.M)
+    if n != 1:
+        sys.exit(f'{target.name} has no `const DATA = …;` line to replace.')
+    target.write_text(patched)
+    print(f'{target.relative_to(ROOT)}: {len(data["species"])} species, '
+          f'{len(data["themes"])} themes, {len(data["icons"])} icons')

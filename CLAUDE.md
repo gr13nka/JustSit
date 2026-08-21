@@ -949,3 +949,127 @@ shipped geometry a plant already reaches about 1px past its cell at rest, and a
 3.5° lean makes that 4.9px against 1.5px of room, so the outer columns get
 shaved. **Make room** shows what fixing it costs: the cell gives the width up
 (30 → 28.5pt at 9°), and the output block prints the closed form.
+
+## Seeing the wind: the field demo
+
+`tools/field-demo.html` is a huge perspective field of grass in the app's hand,
+with the app's wind blowing across it. Open it straight off disk — no server, no
+build step, no network.
+
+```sh
+open tools/field-demo.html
+python3 tools/lab-data.py    # re-lift the drawings after redrawing one
+```
+
+It exists because **the garden is too small to show its own wind.** `sway.ts`
+blows three travelling waves over the field, and the shortest of them has a
+wavelength of 36 cells against a garden twelve across — so at the app's size the
+whole plot leans more or less together and the layered model has never been
+visible. Give it a hundred columns of world and you watch crests cross the
+field, quieten as the layers drift out of phase, and swell again. It is the only
+place that model can be judged rather than trusted.
+
+It is a **copy**, the `anim-lab.html` precedent, and `lab-data.py` now patches
+both pages' `const DATA = …;` line — add a page to its `TARGETS` when it needs
+the app's drawings. Two things it deliberately does not take from `src/`:
+
+**The grid arithmetic.** `COLUMNS`, `PLANT_ZOOM`, `ART_SHARE`, `SCATTER`,
+`GROUND`, `SWAY_REACH` and `field()` all answer "how do I fit a twelve-column
+lattice into a phone's width", which is not a question a field asks. Plants are
+placed by perspective projection: `near` is *derived* so the closest row stands
+on the bottom edge of the window, which is what lets one set of numbers hold at
+any window shape. What it does take is the part that is about the drawings —
+`CANVAS`, `ROOT_Y`, the pen, `isShape`, and the palettes.
+
+**The knot table.** `SWAY_KNOTS` exists because `Animated.interpolate` needs a
+table to stay on the native driver. Canvas has no such constraint, so the demo
+evaluates `layerAt` directly every frame — cheaper than the tables at a few
+thousand plants, with no startup cost and no piecewise-linear corners at all.
+The one thing kept per plant is the normalising scale, since finding a loop's
+peak still means sampling it once.
+
+It renders to **one canvas with `Path2D` per species**, not to DOM nodes.
+`anim-lab.html` gives each plant a `<div><svg>` and writes `style.transform` at
+it, which is right for 108 cells and hopeless for a few thousand: every write
+invalidates an SVG subtree. At the shipped density it is ~3,500 plants at about
+8ms a frame.
+
+**The ground is not flat**, and it costs almost nothing that it isn't. Height
+enters the same term the camera does — a point standing `h` up is seen from
+`EYE_H - h` — so terrain is one subtraction in the projection and no change at
+all to scale, sorting or the wind. Painting still sorts by depth rather than by
+screen position, which is what makes a near ridge cover the dip behind it even
+though the dip sits lower in the frame. Two things had to be right: the relief
+is damped to nothing at the camera, since you are standing on this ground and a
+crest rising between the eye and the bottom of the window would leave a bald
+strip of paper along the bottom edge; and the wavelengths are set against how
+much world is actually in frame. At fifty metres they were wider than the
+visible field at every depth, so the ground tilted as one piece and read as
+flat — about twenty-five metres is where a swell starts looking like a swell.
+
+**Frame cost is paid per device pixel, which is why it measured fine and felt
+slow.** The same window on a retina display is four times the work. Three
+changes took it from 18.3ms to 7.9ms at the same plant count on the same
+emulated 2× display:
+
+- **The backing store is capped at 1.5×, not 2×.** On soft round strokes over
+  warm paper the difference is not findable, and it is 44% of the fill. Of
+  everything here, sharpness is what this page can most afford to spend.
+- **The Möbius warp is a table.** The frame loop wants it three times per plant,
+  and `atan2` wrapped in two `sin` and a `cos` was tens of thousands of
+  transcendentals a frame for a curve that is the same shape every time. The
+  table is built by *calling* the copied `layerAt`, never by writing the
+  expression out twice, so the two cannot drift; 2048 steps leaves an error near
+  a millionth of a degree on a thirteen-degree lean. This is **not** the app's
+  `SWAY_KNOTS` — that samples each plant's own summed loop and its count is a
+  fidelity setting, while this samples the one shared waveform underneath all of
+  them, where the count is free.
+- **One `setTransform` instead of seven calls.** The composite is multiplied out
+  in JS. Worth it only because it is per plant per frame; the comment carries
+  the seven calls it stands for, because that form is the readable one.
+
+And it **governs itself**, because no fixed density is right on two machines.
+A run of frames over budget gives up resolution first and only then thins the
+grass — resolution being the one that does not change what is on screen. It
+steps down only, after a run rather than a spike, so it settles instead of
+hunting. `__field.quality()` in the console says where it landed.
+
+Two traps in measuring this, both of which cost time: headless Chromium throttles
+`requestAnimationFrame` to about 3fps, so a governor keyed on consecutive slow
+frames will never trigger there however slow the page is; and driving `draw()` in
+a synchronous loop instead reports ~200ms a frame, because canvas work cannot
+pipeline with the GPU that way. The honest measurement is `stats.ms` sampled
+under real rAF, and even that is software rasterisation. Compare runs against
+each other, never against an absolute target.
+
+Three findings there cost real time and are worth keeping:
+
+**Slicing `hash32` without scrambling banded the field.** The column index is the
+last character of the key, and `hash32`'s last act is `h = (h ^ c) * prime`, so
+consecutive columns come out a fixed distance apart — a ramp in the top bits, an
+arithmetic progression in the bottom. Species picked off the raw word swept
+along each row instead of scattering, and the field came back with runs of
+tulips lying in stripes. `sway.ts` already documents this for phase seeds; it
+applies to *any* bits taken from a key whose last character varies. Scramble
+first.
+
+**Blooms have to be far rarer than they sound.** 13% flowers read as a flower
+meadow with grass in the gaps, because a daisy is a loud orange rosette wider
+than the grass is tall and carries several times its share by eye. About 4% is
+what "here and there" actually looks like. Count is the wrong unit; the
+screenshot is the right one.
+
+**A field needs height, tone and gaps or it reads as mown.** Uniform scale and a
+single green came back looking generated. Per-plant height (0.70–1.32) and four
+tones of the one pen — mixed toward `ink` or `paper`, both colours the theme
+already owns — plus a two-wave thinning that lets paper show through are what
+turn a texture into a drawing.
+
+Density is two regimes with a crossover, and both are needed: constant *world*
+pitch is what a real field has and is what makes the near ground honest, but it
+costs plants in proportion to depth squared and carrying it to the horizon would
+want about three hundred thousand of them. Constant *screen* pitch is affordable
+everywhere and buries the near field. The demo takes the `max`.
+
+As with the bench and the web preview: decide here, confirm on the phone. This
+one is a desktop page and nothing in it ships.
