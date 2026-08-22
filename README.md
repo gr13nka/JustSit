@@ -1,141 +1,71 @@
+<div align="center">
+
 # JustSit
 
-A meditation app that teaches B. Alan Wallace's *The Attention Revolution* slowly,
-and grows a hand-drawn garden as you go.
+![Expo SDK 57](https://img.shields.io/badge/Expo-SDK%2057-8b8b8b?style=flat-square)
+![iOS and Android](https://img.shields.io/badge/platform-iOS%20%C2%B7%20Android-8b8b8b?style=flat-square)
+![Data stays on the phone](https://img.shields.io/badge/data-on%20your%20phone-8b8b8b?style=flat-square)
+[![MIT licence](https://img.shields.io/badge/license-MIT-26241f?style=flat-square)](LICENSE)
 
-The design goal is a **quiet** app, and quiet is about voice rather than
-austerity. It grows, it offers, it counts days and keeps what you wrote down;
-what it never does is raise its voice about any of it: no congratulation, no
-failure copy, no ambient sound, no badges. The garden only ever shows completed
-sittings.
+**A meditation app that never congratulates you.**
 
-## Running it
+Wallace's ten stages of shamatha, taught slowly. Finish a sitting and something grows.
 
-```sh
-npm start          # then scan the QR code with Expo Go
-npm run web        # the same app in a browser, for judging layout
-npm test           # the unit suite over the pure logic
-npm run typecheck
-```
+[Docs](docs/GUIDE.md) · [Design notes](CLAUDE.md) · [Parked ideas](TO-DOS.md)
 
-`npm run web` is a preview target, not a platform — no web build ships. It exists
-because every screen here centres its middle block with `flex: 1`, so the layout
-breathes differently at 667pt of height than at 911, and a browser is the only
-place to see all of those at once. See CLAUDE.md for the screen sizes worth
-checking and what had to be handled for the preview to tell the truth.
+<img src="docs/images/hero.png" alt="The garden, a sitting running, and the three plants a finished sitting offers" width="100%">
 
-### Expo Go vs a standalone build
+</div>
 
-Sitting, bells, the garden, tips and progression all work in Expo Go.
+## The garden
 
-**Notifications do not.** Expo pulled push support out of Expo Go in SDK 53, and
-on Android the module now throws the moment it is imported — which, at module
-scope, takes down the whole route tree. `src/session/notifications.ts` therefore
-detects Expo Go and never requires the module there, so two things quietly
-no-op:
+<img src="docs/images/garden.apng" alt="A hundred hand-drawn plants growing at once" width="420">
 
-- the daily reminder
-- the safety-net notification when a sitting ends while the app is backgrounded
-  (the in-app bell still rings whenever the app is in the foreground)
+Every plant is one finished sitting. Leave one early and nothing grows. Nothing is
+said about that either.
 
-Both work normally in a real build. With an Android phone plugged in and USB
-debugging accepted:
+## Quick start with an agent
+
+> Read `CLAUDE.md` first. It is long and it is the spec. Run `npm test` and
+> `npm run typecheck` to see where things stand, then open `TO-DOS.md`, pick the
+> entry you think is cheapest to land, and tell me which one and why before you
+> write anything.
+
+## Quick start
 
 ```sh
-./build-android.sh      # typecheck, tests, release APK, install, launch
+npm install
+npm start        # then scan the QR code with Expo Go
 ```
 
-That installs a self-contained app — the JS bundle is embedded, so it runs with
-the laptop unplugged and never looks for Metro. Expo signs the release with its
-fixed debug keystore, so rebuilding installs over the old app and leaves your
-garden intact. It is not signed for the Play Store.
+Notifications are the one thing Expo Go cannot do.
+[Why, and the build that can →](docs/GUIDE.md#expo-go-vs-a-standalone-build)
 
-The installed app is a different Android package from Expo Go, with its own
-storage: sittings recorded in Expo Go stay in Expo Go, and there is no way to
-carry them across.
+## Ten stages, one card at a time
 
-## How it works
+<img src="docs/images/stages.png" alt="A tip card reading: stage three, mindfulness of breathing" width="420">
 
-| | |
-|---|---|
-| **Planting** | A completed sitting offers three plants; you choose the one that grows. A longer sitting may offer a rarer plant, or a few common ones instead. Quit early and nothing grows — no message, no guilt. |
-| **Garden** | Gardens of a size you choose: a bed of 3 to start, then 9, 27, 54 or 108 (a mala) each time one fills — or grow the one you have. Finished gardens keep their place on the shelf. |
-| **Curriculum** | Wallace's ten stages. The app offers to advance after ~20 sessions across 3+ weeks; **you** confirm whether the next stage describes your mind. Declining is respected for a fortnight. |
-| **Tips** | One card before each sitting, in order, drawn from your current stage. |
-| **Duration** | Your stage pre-selects a length; every option stays tappable. |
-| **Themes** | Three palettes — Ink, Butter, Prose — chosen in the You tab. Taste only: nothing about the practice changes. |
-| **Sound** | One bell in, one bell out. Nothing between. |
-| **Reminders** | One daily notification, off until you set a time; its line changes from day to day. |
-| **Days** | On a day you sat, the streak's sun turns green and Батон naps beside the garden. Miss a day and nothing is said. |
-| **Notes** | A thought caught mid-sitting becomes a note; long-press the plant that grew to read it. |
+The tips restate the practice rather than quoting it. The app offers the next stage
+after twenty sittings across three weeks. Whether that stage describes your mind is
+yours to decide.
+[The rules, in a table →](docs/GUIDE.md#how-it-works)
 
-## Where things live
+## Every garden you kept
 
-```
-app/                 screens (expo-router)
-  (tabs)/            Garden · You
-  session/           start → tip → run → complete → advance   (outside the tab bar)
-  gardens/           the shelf, one garden, and the ask for the next
-  notes/             the notes and one note
-  onboarding.tsx
-src/
-  theme/themes.ts    ← every colour in the app, in three palettes
-  theme/tokens.ts    space, radius, organic corners
-  theme/typography.ts
-  store/             the only module that touches persistence
-  domain/            pure, tested: stages, tips, progression, plots, plants, stats, notes
-  session/           timer, bells, notifications, reminder lines
-  ui/                shared components
-```
+<img src="docs/images/gardens.png" alt="A shelf of finished gardens at 3, 9, 27 and 108 plants" width="330">
 
-The visual language is Karakuli — warm paper, one round-nib pen, colour that is
-earned — at its most austere setting. The rules live in CLAUDE.md's "Design
-discipline" section, which is the authoritative copy; the two worth knowing
-before touching anything:
+You pick the size each time one fills: 3 to start, then 9, 27, 54 or 108. A mala is
+the largest there is.
+[Where the arithmetic lives →](docs/GUIDE.md#where-things-live)
 
-- **No hex literal outside `src/theme/themes.ts`,** and colour is read through
-  `useColor()` rather than imported — a `StyleSheet.create` is frozen at import
-  and cannot repaint. Touchability is marked by shape and by the app's single
-  accent (ink, or brick in the two loud themes); everything else colourful is
-  the garden's green, plus a fixed pen-bright bloom per species.
-- **Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read
-  for information; Shantell Sans is a voice for one-line felt moments and never
-  carries a paragraph.
+## Docs
 
-## The art
+Everything else is in **[docs/GUIDE.md](docs/GUIDE.md)**:
+[running it](docs/GUIDE.md#running-it) ·
+[how it works](docs/GUIDE.md#how-it-works) ·
+[the art](docs/GUIDE.md#the-art) ·
+[dev shortcuts](docs/GUIDE.md#dev-shortcuts).
 
-**Plants** are hand-drawn pen doodles in `src/ui/Plant.tsx` and may be the
-final art. If painted PNGs ever replace them: drop transparent @3x files into
-`assets/plants/`, list their keys in `src/domain/plants.ts`, and rewrite
-`Plant.tsx` to render an `<Image>`. Identity and rendering are kept in separate
-files precisely so this is a one-file change.
+## License
 
-Adding species later is always safe: a session stores the plants it grew, chosen
-at completion, so plants that already grew never change.
-
-Note PNGs can't be tinted in code — each plant carries the colours you drew it
-in, and would stop following the theme the way the drawn plants do. Worth
-keeping them in a range that sits well on all three papers, the lightest of
-which is Prose's near-white and the warmest Butter's.
-
-**Bells are still placeholders** — synthesised bowl tones. Regenerate with
-`node scripts/generate-placeholder-bells.mjs`, or just replace
-`assets/audio/bell-in.wav` and `bell-out.wav` with real recordings.
-
-## The one thing most likely to break
-
-Session timing is derived from wall-clock on every tick and on every return to
-the foreground — never counted down. JavaScript timers stop when the app is
-backgrounded, so a counted timer silently loses exactly the time you spent away.
-If you touch `src/session/useSession.ts`, re-check: start a 10-minute sitting,
-background the app for 3 minutes, come back, and confirm the remaining time
-reflects real elapsed time.
-
-## Dev shortcuts
-
-The You tab has a developer panel — always in a dev build, and in a release build
-once you turn on **Developer** at the foot of the You tab: seed sittings, jump
-stages, arm the advancement offer, and make every sitting end after five seconds
-while still counting as the length you chose — because the interesting states of
-this app are the slow ones. The **Reset** card above it starts the garden again
-and keeps your settings.
+MIT. Drawn in Karakuli; the practice is B. Alan Wallace's.

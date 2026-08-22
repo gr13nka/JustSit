@@ -926,6 +926,22 @@ asserts each garden comes back with its plants, the gardens they were grown in,
 its settings, and no onboarding redirect — plus an empty notebook at every
 version ever written. If that suite is green, hydration is not your problem.
 
+## Where the docs live
+
+`README.md` is a landing page: a slogan, the pictures, and the two quick starts.
+Everything reference-shaped — the commands, the Expo Go caveat, the product
+table, the tree, the dev panel — lives in `docs/GUIDE.md`, and the README links
+its anchor. Depth goes to the guide; this file stays the spec.
+
+Its images are in `docs/images/`, captured off `npm run web` with the
+`craft-readme` skill. Reshoot rather than hand-edit them.
+
+The garden's burst is an **APNG and not a GIF**, which is not a preference. A
+GIF has 256 colours, and this app spends most of them on the anti-aliasing of
+one green pen over cream paper — quantised, the pink blooms came back orange and
+every stroke dithered. Full colour costs about 2.5MB against a GIF's 1.5MB, and
+GitHub animates both from a repo path.
+
 ## Parked ideas
 
 `TO-DOS.md` holds ideas that were raised and deliberately not built, with what
