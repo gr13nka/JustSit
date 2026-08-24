@@ -826,9 +826,21 @@ raises a full-screen overlay. `src/session/notifications.ts` detects Expo Go via
 `Constants.executionEnvironment` and never requires the module there. Keep
 `configureNotificationHandler()` inside a `useEffect`.
 
-Consequence: in Expo Go the daily reminder and the backgrounded-session
-notification silently no-op. Both work in a development build, which is
-therefore the only place the reminder — rotation included — can be tried at all.
+Consequence, and it is **Android-only**: in Expo Go on Android the daily
+reminder and the backgrounded-session notification silently no-op, so a
+development build is the only place the reminder — rotation included — can be
+tried on that platform.
+
+**Expo Go on iOS is not affected**, and that asymmetry is deliberate rather than
+luck. The throw lives in `expo-notifications/build/warnOfExpoGoPushUsage.js` and
+is gated on `Platform.OS === 'android'`; on iOS it degrades to a `console.warn`.
+`UNSUPPORTED` is written to match — `(IN_EXPO_GO && Platform.OS === 'android') ||
+Platform.OS === 'web'` — so iOS Expo Go requires the module and schedules real
+local notifications. What makes that safe is that nothing here ever asks for a
+push token: `getExpoPushTokenAsync` and `getDevicePushTokenAsync` are the only
+callers of that guard, and neither appears anywhere in `app/` or `src/`. Traced
+through the installed module rather than watched on a handset — confirm on a
+phone before trusting it.
 
 **A `DAILY` trigger freezes its content** at the moment it is scheduled, so a
 reminder set once would read out the same sentence every morning for a year —
@@ -1084,6 +1096,44 @@ shown, and a flat "1" with them hidden, which is the rounding the app already
 does. The panel says the mode is on for the same reason, because a shortened
 sitting is the one shortcut that changes what the app *does* rather than what is
 in it.
+
+### iOS
+
+**No iOS build can be produced or run on this machine, and the ceiling is the
+hardware rather than the setup.** SDK 57 wants Xcode 26.4+ and an iOS 16.4
+deployment target. This is a `MacBookPro11,5` — Mid-2015 Intel — whose last
+supported macOS is Monterey 12 and therefore whose last supported Xcode is 14.2.
+The only simulator runtime installed is iOS 16.2, *below* the deployment target,
+so even an `.app` built elsewhere could not be launched here. There is no
+CocoaPods and Ruby is 2.6. Don't attack this again: QEMU is no way round it
+either, because the iOS Simulator is not an emulator — it runs host-ABI binaries
+against reimplemented frameworks on macOS — and emulating real iOS needs code
+signing and has no GPU.
+
+What does work is **Expo Go on a physical iPhone**, which needs no native build,
+no Apple Developer account and no change to the repo:
+
+```sh
+npx expo export --platform ios     # bundle-only pre-flight, no phone needed
+npm start                          # then enter the LAN exp:// URL in Expo Go
+```
+
+`expo export` is the cheap half of that loop and worth running first: it
+compiles the whole iOS bundle, so an iOS-only resolution failure surfaces as a
+bundling error rather than as a red screen on a handset. It passes — 1394
+modules, the first time this codebase had ever been bundled for iOS.
+
+Two things Expo Go cannot answer on iOS, both for the reason it cannot on
+Android: the `hidden: true` status-bar *plugin* config needs a real build (the
+`<StatusBar hidden />` component still works), and the app runs under Expo Go's
+bundle identifier rather than its own.
+
+If a native build is ever genuinely needed, the route is an **EAS cloud
+simulator build** — `ios.simulator` in `eas.json`, which needs neither an Apple
+Developer account nor code signing — run on a Mac new enough for Xcode 26, or
+streamed through Appetize. That route needs `ios.bundleIdentifier` set in
+`app.json` first: it is absent today, and `expo prebuild` would otherwise write
+a guess into the file rather than ask.
 
 ## Judging layout: the web preview
 

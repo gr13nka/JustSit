@@ -39,22 +39,39 @@ breathes differently at 667pt of height than at 911, and a browser is the only
 place to see all of those at once. See CLAUDE.md for the screen sizes worth
 checking and what had to be handled for the preview to tell the truth.
 
+### Running it on iOS
+
+Expo Go on an iPhone needs no build at all: `npm start`, then enter the
+`exp://<your-lan-ip>:8081` URL in Expo Go on a phone sharing the Mac's Wi-Fi.
+`npx expo export --platform ios` compiles the iOS bundle without a phone, which
+is the quickest way to prove a change has not broken the platform.
+
+A *native* iOS build is a different matter: SDK 57 requires Xcode 26.4+ and a
+Mac new enough to run it, and there is no `ios/` directory or
+`ios.bundleIdentifier` in this repo yet. The cheapest route when one is needed
+is an EAS cloud simulator build, which needs no Apple Developer account.
+
 ### Expo Go vs a standalone build
 
 Sitting, bells, the garden, tips and progression all work in Expo Go.
 
-**Notifications do not.** Expo pulled push support out of Expo Go in SDK 53, and
-on Android the module now throws the moment it is imported — which, at module
-scope, takes down the whole route tree. `src/session/notifications.ts` therefore
-detects Expo Go and never requires the module there, so two things quietly
-no-op:
+**Notifications do not — on Android.** Expo pulled push support out of Expo Go in
+SDK 53, and on Android the module now throws the moment it is imported — which,
+at module scope, takes down the whole route tree.
+`src/session/notifications.ts` therefore detects Expo Go on Android and never
+requires the module there, so two things quietly no-op:
 
 - the daily reminder
 - the safety-net notification when a sitting ends while the app is backgrounded
   (the in-app bell still rings whenever the app is in the foreground)
 
-Both work normally in a real build. With an Android phone plugged in and USB
-debugging accepted:
+**On iOS none of that applies.** The throw is gated on `Platform.OS ===
+'android'`, so Expo Go on an iPhone loads the module and schedules real local
+notifications — which is safe here because nothing in this app ever asks for a
+push token. Both paths should be testable in Expo Go on iOS.
+
+Both work normally in a real Android build. With an Android phone plugged in and
+USB debugging accepted:
 
 ```sh
 ./build-android.sh      # typecheck, tests, release APK, install, launch
