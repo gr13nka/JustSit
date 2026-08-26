@@ -1,4 +1,4 @@
-<!docty pe html>
+<!doctype html>
 <meta charset="utf-8">
 <title>JustSit — a field</title>
 <!--
@@ -577,7 +577,11 @@ function buildField() {
   const f = (W / 2) / Math.tan((HFOV_DEG * Math.PI) / 360);
   // Published, because draw() needs the same horizon to hang a sky off and two
   // copies of `H * HORIZON` are two things that can disagree.
-  const horizonY = H * palette().horizon;
+  /* Rounded, and that is not tidiness. On a fractional boundary the sky rect
+     and the ground rect each anti-alias against the flat fill beneath them, and
+     what shows through is a hairline of raw `ground` — cool against a warm dawn,
+     near-black against a lit night. Whole pixels, no seam. */
+  const horizonY = Math.round(H * palette().horizon);
 
   // Derived, not chosen: the depth at which the ground meets the bottom edge.
   const near = (f * EYE_H) / (H - horizonY);
@@ -742,6 +746,16 @@ function heroMark(path, m, x, y, r, colour, alpha) {
   ctx.restore();
 }
 
+/* How far a body must climb before it is at full strength, as a share of its
+   own arc. Each fades by its OWN elevation rather than by the light level, so
+   it rises out of the horizon and sets back into it instead of appearing
+   halfway up the sky and vanishing there. That is what stops the hand-over at
+   dusk reading as one body teleporting across to the other side: while they
+   swap, both are near the horizon and both are near zero, so what you see is
+   one setting and the other rising. */
+const RISE_FADE = 0.14;
+const risen = (up) => Math.max(0, Math.min(1, up / RISE_FADE));
+
 function drawSky(W, H) {
   const s = pal.sky;
   const hz = view.horizonY;
@@ -756,19 +770,21 @@ function drawSky(W, H) {
     for (let i = 0; i < STAR_AT.length; i++) {
       const [fx, fy, w] = STAR_AT[i];
       heroMark(STAR_PATHS[i % STAR_PATHS.length], STARS[i % STARS.length],
-        W * fx, hz * fy, hz * 0.055 * w, ink, night * 0.55 * w);
+        W * fx, hz * fy, hz * 0.018 * w, ink, night * 0.55 * w);
     }
     const m = moonArc(hourNow());
     if (!m.out) {
-      heroMark(MOON_PATH, MOON, W * m.across, hz - m.up * hz * 0.6, hz * 0.11, ink, night * 0.8);
+      heroMark(MOON_PATH, MOON, W * m.across, hz - m.up * hz * 0.6,
+        hz * 0.037, ink, night * 0.85 * risen(m.up));
     }
   }
   ctx.globalAlpha = 1;
 
   const arc = sunArc(hourNow());
   if (!arc.out) {
-    const r = hz * 0.42;
+    const r = hz * 0.14;
     const k = r / (CANVAS / 2);
+    ctx.globalAlpha = risen(arc.up);
     ctx.save();
     ctx.translate(W * arc.across, hz - arc.up * hz * 0.62);
     ctx.scale(k, k);
@@ -776,15 +792,18 @@ function drawSky(W, H) {
     ctx.fillStyle = rgbOf(s.sun);
     for (const path of SUN_PATHS) ctx.fill(path);
     ctx.restore();
+    ctx.globalAlpha = 1;
   }
 }
 
-/* The moon takes the sun's arc turned round: it rises where the sun set. */
+/* The sun's arc again, run over the night instead of the day — the same way
+   across, not the reverse. Sun and moon both rise in the east and set in the
+   west; what differs is when, not which direction. */
 function moonArc(hour) {
   const span = 24 - SUNSET + SUNRISE;
   const n = ((hour - SUNSET + 24) % 24) / span;
   return {
-    across: 1 - (SUN_INSET + (1 - 2 * SUN_INSET) * n),
+    across: SUN_INSET + (1 - 2 * SUN_INSET) * n,
     up: Math.sin(Math.PI * n),
     out: n < 0 || n > 1,
   };
@@ -851,7 +870,7 @@ function draw(now) {
      and lineJoin are already round. */
   if (pal.sky) {
     ctx.fillStyle = groundGrad;
-    ctx.fillRect(0, view.horizonY, W, H - view.horizonY);
+    ctx.fillRect(0, view.horizonY - 1, W, H - view.horizonY + 1);
     drawSky(W, H);
   }
 
@@ -1001,6 +1020,10 @@ function buildSkyGrad() {
      projection that placed the plants, and that depth goes through the same
      Beer's law. So the ground under the grass and the grass itself are dissolving
      on one curve, which is why the seam disappears rather than merely softening. */
+  /* No HAZE_MAX here, unlike the plants'. That cap exists so far grass never
+     dissolves completely and the horizon keeps its texture; the ground plane
+     needs the opposite — at infinite distance it *is* the horizon colour, and
+     stopping 10% short of it is what puts a step at the join. */
   const ground = asRgb(pal.ground), hazeTo = asRgb(pal.hazeTo);
   const gg = ctx.createLinearGradient(0, hz, 0, H);
   const N = 12;
@@ -1008,7 +1031,7 @@ function buildSkyGrad() {
     const t = i / N;
     const d = (f * EYE_H) / Math.max(0.5, t * (H - hz));
     const haze = Math.min(1, 1 - Math.exp(-Math.max(0, d - near) / HAZE_DIST));
-    gg.addColorStop(t, rgbOf(mix(ground, hazeTo, haze * HAZE_MAX)));
+    gg.addColorStop(t, rgbOf(mix(ground, hazeTo, haze)));
   }
   groundGrad = gg;
 }
