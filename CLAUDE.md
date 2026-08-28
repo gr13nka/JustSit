@@ -454,11 +454,12 @@ bottom of the screen — one number is better than a second component. `Fade` is
 its sibling for what must *not* move: a veil that slid would be a sheet of paper
 laid over the screen rather than the screen going quiet, and the thing rising in
 front of it is what the eye should follow. Everything animates transform and
-opacity only, so every driver is native. Three things loop and all three are
+opacity only, so every driver is native. Four things loop and all four are
 named exceptions, because in each the loop is the point rather than a
 transition: the breathing ring, which owns its own; `Pulse`, which breathes the
 garden's next dot to the same four-in six-out count so the app has one breath
-rather than two that nearly match; and `Sway`, the garden's idle lean.
+rather than two that nearly match; `Sway`, the garden's idle lean; and `Ripple`,
+which is the only one of the four that ever stops for good.
 
 **`Sway` is a whole screen that never stops moving**, which is the largest
 claim any loop here makes, so it is worth saying what earns it. It reports
@@ -549,12 +550,50 @@ and its top stands `ROOT_Y - 5` above the root it pivots on) rather than chosen.
 Every term is proportional to the cell, which is what stops "how wide is a cell
 when its own margin depends on the cell" from needing to iterate.
 
-`Pulse` is the nearer of the two to something this app does not do. The ring
-reports — a sitting is running — while a pulsing dot invites, and inviting is a
-step towards an engagement mechanic. What keeps it honest is that the swing is
+`Pulse` is the loop that both invites and runs forever, which is the nearest
+this app comes to something it does not do. The ring reports — a sitting is
+running — while a pulsing dot invites, and inviting is a step towards an
+engagement mechanic. What keeps it honest is that the swing is
 small enough to notice only once you are already looking at the garden, and that
 nothing about it accumulates, congratulates, or keeps score: miss a week and it
 is doing exactly what it does now.
+
+**`Ripple` is the fourth loop, and what earns it is that it retires.**
+`src/ui/Ripple.tsx` sends one copy of the locator ring outward from the next dot
+every 3.6 seconds, and only on a garden nobody has ever sat in — `PlantGrid`
+takes a `hint`, the garden tab passes `sessions.length === 0`, and the first
+plant in the ground ends it for the life of the app. That is the whole argument.
+It cannot accumulate, it has nothing to congratulate, it keeps no score, and
+there is no state it can reach in which it is asking for a second sitting: the
+second sitting is the state in which it does not exist. An instruction that
+deletes itself once obeyed is the opposite of an engagement mechanic, which is
+what lets a *fourth* loop into a file whose first line is that almost none of it
+loops.
+
+What it is for is the one screen the app cannot explain in words. The drawn ring
+picks a dot out of the lattice, which is a different job from saying what the
+dot is *for*, and on a first launch nothing else on the page says it either. So
+it **replaces `Pulse`** rather than running beside it: the dot already wears a
+ring and already breathes, and a third motion on one mark is a mark shouting.
+
+Three things about it are load-bearing. **One ring, never two** — overlapping
+rings would keep something on that dot at every instant, and a mark that never
+rests is a demand; with one, the last 1080ms of every beat has nothing on screen
+at all, and that silence is the difference between breathing and blinking.
+**The ring is scaled, not redrawn**, because transform and opacity are the only
+things anything here animates — so its stroke thickens as it grows, which is
+backwards for a ripple, and opacity is what does the thinning instead. Ink laid
+down goes as width times opacity: the locator's is 1.6 × 1, the echo leaves at
+1.0 × 0.32 — a fifth of it — and is last visible at 1.98 × 0.03, a twenty-seventh.
+The width doubles across the life while the ink falls five and a half times, so
+by the point the line is fatter than the mark it came off there is nothing left
+of it to look fat. And **how far it travels is derived** — it stops where the dot's own canvas
+stops, which is `ART_SHARE`'s existing guarantee that half that canvas plus a
+full scatter is exactly half a cell, so the echo reaches the edge of its own cell
+and can never touch a neighbouring dot.
+
+Its loop **wraps an `Animated.sequence`**, and that is not a style choice — see
+the frozen-loop trap below.
 
 **The field is twelve across at its widest, so 108 lands on nine rows and a mala
 fits one screen.** It used to be six across, where a cell was 60pt wide and a
@@ -1212,11 +1251,12 @@ it to tell the truth:
 - **The garden's sway does not animate on web at all** — the browser draws a
   frozen field and gives no hint that it is frozen. `Animated.loop` on a bare
   `timing` takes the `_startNativeLoop` path, which no-ops when the native
-  animated module is missing; `Pulse` wraps a `sequence`, which has no such path
-  and falls back to the JS loop, so the next-dot ring breathes there and nothing
-  else moves. A single screenshot looks perfectly correct, which is the trap: it
-  cost a whole round of diagnosis to notice the difference between a still frame
-  and a still garden. Judge the sway on a device, or in `anim-lab.html`, which
+  animated module is missing; `Pulse` and `Ripple` both wrap a `sequence`, which
+  has no such path and falls back to the JS loop, so the next-dot ring breathes
+  and ripples there and nothing else moves — which is also why any new loop here
+  is written as a sequence whether or not it needs the steps. A single screenshot
+  looks perfectly correct, which is the trap: it cost a whole round of diagnosis
+  to notice the difference between a still frame and a still garden. Judge the sway on a device, or in `anim-lab.html`, which
   runs its own RAF loop and is unaffected.
 - **`expo-notifications` is not loaded on web**, added to the same `UNSUPPORTED`
   guard that keeps it out of Expo Go on Android.

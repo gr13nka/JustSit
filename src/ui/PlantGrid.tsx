@@ -6,6 +6,7 @@ import { Grown, nextDot, Plot, slotOffset } from '../domain/plots';
 import { field, shapeFor } from './field';
 import { BURST_SPREAD_MS, Pulse, Sprout, SPROUT_PEAK, Sway } from './motion';
 import { EmptySlot, Plant } from './Plant';
+import { Ripple } from './Ripple';
 
 /**
  * A plot: what has grown, then the empty slots still ahead.
@@ -29,6 +30,7 @@ function burstDelay(slot: number): number {
 export function PlantGrid({
   plot,
   onBegin,
+  hint,
   burst,
   sway,
   noted,
@@ -47,6 +49,20 @@ export function PlantGrid({
    * nothing for it to mark.
    */
   onBegin?: () => void;
+  /**
+   * Whether the next dot should say what it is for, and not merely where it is.
+   *
+   * True on a garden nobody has ever sat in, where the drawn ring picks a dot
+   * out of the lattice but nothing on the page says that touching it is how the
+   * app is used. It buys the one animation in here that retires: `Ripple`
+   * replaces the breath while it runs, because the dot already wears a ring and
+   * already breathes, and a third motion on one mark is a mark shouting.
+   *
+   * The grid is told rather than asked to work it out. Whether a garden is
+   * somebody's first is a fact about the sittings, and the grid does not read
+   * the store — the same division that hands it `noted` already made.
+   */
+  hint?: boolean;
   /**
    * The shared 0..1 clock from `useBurst`, if this plot should sprout when it
    * is shown. Only what has grown takes part: the empty dots are the ground the
@@ -98,6 +114,12 @@ export function PlantGrid({
   // number the grid is laying out — and there is none to circle at all in a
   // garden that is only being looked at.
   const next = onBegin ? nextDot(plot) : null;
+
+  // What moves a dot down onto the same ground line the plants stand on. Only
+  // the drawing moves — the cell stays where the lattice put it, so what you tap
+  // is still the square you are looking at. One object for the whole field,
+  // since the drop is a property of the cell size and not of a slot.
+  const dropped = { transform: [{ translateY: drop }] };
 
   // Measured on the wrapper rather than on the grid, so the width the grid is
   // given never feeds back into the width it is measured at.
@@ -195,11 +217,9 @@ export function PlantGrid({
               );
             }
 
-            // The dot moves down to the same ground line the plants stand on.
-            // Only the drawing moves — the cell stays where the lattice put it,
-            // so what you tap is still the square you are looking at.
+            // The dot itself. Where it stands is `dropped`; all it decides here
+            // is whether it is the one the garden would carry on from.
             const mark = <EmptySlot size={dot} next={slot === next} />;
-            const drawn = <View style={{ transform: [{ translateY: drop }] }}>{mark}</View>;
 
             // The rest of the unplanted field is scenery. It used to be a
             // hundred buttons, one per dot, because a sitting grew wherever you
@@ -209,7 +229,7 @@ export function PlantGrid({
             if (slot !== next || !onBegin) {
               return (
                 <View key={i} style={style}>
-                  {drawn}
+                  <View style={dropped}>{mark}</View>
                 </View>
               );
             }
@@ -226,7 +246,21 @@ export function PlantGrid({
                 // the ink, and neighbouring cells no longer compete for a touch.
                 hitSlop={cell / 2}
                 style={({ pressed }) => [style, styles.above, pressed && styles.pressed]}>
-                <Pulse>{drawn}</Pulse>
+                {/*
+                  Which of the two runs is the whole of the handoff. A garden
+                  with nothing in it is being told what the dot is for; one with
+                  a plant in it has been told, and gets the breath from then on.
+                  Never both — the dot already wears a ring, and a third motion
+                  on one mark is a mark shouting.
+
+                  The drop stays outside them, which the ripple requires rather
+                  than merely prefers: it lays its ring over its children
+                  absolutely, and an absolute child is placed against the box a
+                  transform on those children has already left.
+                */}
+                <View style={dropped}>
+                  {hint ? <Ripple size={dot}>{mark}</Ripple> : <Pulse>{mark}</Pulse>}
+                </View>
               </Pressable>
             );
           })}

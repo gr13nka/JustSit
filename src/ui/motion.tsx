@@ -16,12 +16,19 @@ import { SWAY_CYCLE_MS, swayTrack } from './sway';
  *
  * Two layers, and they mean different things. An *entrance* marks a first
  * appearance — a screen arriving, a garden being shown — and plays once.
- * A *settle* is feedback for a touch. Neither repeats. Three things in the app
- * do loop and all three are deliberate: the timer's breathing ring, which owns
- * its own, and `Pulse` and `Sway` below. In each the loop is the point rather
- * than a transition — the first says a sitting is running, the second says the
- * garden carries on here, and the third says the garden is a living thing
- * rather than a chart of one.
+ * A *settle* is feedback for a touch. Neither repeats. Four things in the app
+ * do loop and all four are deliberate: the timer's breathing ring, which owns
+ * its own; `Pulse` and `Sway` below; and `Ripple`, which lives in its own file
+ * because it belongs to one dot on one screen. In each the loop is the point
+ * rather than a transition — the first says a sitting is running, the second
+ * says the garden carries on here, the third says the garden is a living thing
+ * rather than a chart of one, and the fourth says which dot to touch on a
+ * garden nobody has touched yet.
+ *
+ * That fourth is the only one that ever stops for good, and that is what buys
+ * it: it runs on an empty garden and never again once a plant is in the ground.
+ * An instruction that deletes itself once obeyed is the opposite of the thing a
+ * loop is usually put on a screen to do.
  *
  * `Sway` is the one that had to argue hardest for itself, being a whole screen
  * that never stops moving in an app whose case is that it is quiet. What earns
@@ -261,12 +268,17 @@ const EXHALE_MS = 6000;
  * is a label: it tells you where the garden carries on, but a still field gives
  * you no reason to look. The breath is what turns that into an invitation.
  *
- * It is the second looping animation in the app and that is a real exception,
- * taken knowingly: this one nudges rather than informs, which is nearer an
- * engagement mechanic than anything else here. What keeps it honest is its
+ * It was the second looping animation in the app and it is still the one that
+ * both invites and runs forever, which is the nearest this app comes to
+ * something it does not do — `Ripple` nudges harder and is forgiven because it
+ * retires; this one never does. What keeps it honest instead is its
  * size. The swing is small enough that you notice it only once you are already
  * looking at the garden, and nothing about it accumulates, congratulates or
  * keeps score — miss a week and it is doing exactly what it does now.
+ *
+ * It is not always what is on that dot. On a garden nobody has ever sat in,
+ * `Ripple` runs in its place — the dot needs saying what it is for before it
+ * needs a breath, and two of them on one mark would be one too many.
  *
  * Transform and opacity only, so it stays on the native driver and never
  * competes with the wall clock a sitting runs on. One driver, because only one

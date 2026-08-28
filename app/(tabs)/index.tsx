@@ -73,14 +73,23 @@ export default function GardenScreen() {
   const sat = satToday(sessions, visitedAt);
 
   /**
+   * Nobody has ever sat here.
+   *
+   * Two marks turn on it and they are saying the same thing in two registers —
+   * Батон holding a page with nothing on it, and the next dot explaining itself
+   * rather than merely being findable. Named once so they cannot drift into two
+   * slightly different ideas of which garden is the first one.
+   */
+  const untouched = sessions.length === 0;
+
+  /**
    * Where Батон is, if he is anywhere.
    *
    * He holds two quiet places and they cannot collide: a garden nobody has
    * ever sat in can never also be a day somebody has. Deciding it once, here,
    * is what makes that structural rather than merely true today.
    */
-  const baton: 'above' | 'below' | null =
-    sessions.length === 0 ? 'above' : sat ? 'below' : null;
+  const baton: 'above' | 'below' | null = untouched ? 'above' : sat ? 'below' : null;
 
   /** The idle sway, one clock for all 108. Still while you are elsewhere. */
   const sway = useSway(shown);
@@ -187,6 +196,7 @@ export default function GardenScreen() {
           <PlantGrid
             plot={plot}
             onBegin={beginSitting}
+            hint={untouched}
             burst={progress}
             sway={sway}
             noted={marked}

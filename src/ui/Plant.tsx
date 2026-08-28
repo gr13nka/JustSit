@@ -370,7 +370,8 @@ const DOT =
  * shrinking the cell from 60pt to 30pt took the plants from clear to small and
  * the dot from small to invisible. A field you cannot see is not a promise.
  */
-const DOT_CANVAS = '10 10 28 28';
+const DOT_SIDE = 28;
+const DOT_CANVAS = `10 10 ${DOT_SIDE} ${DOT_SIDE}`;
 
 /** The blob's centre, and so the ring's — the middle of that canvas. */
 const DOT_CENTRE = 24;
@@ -416,6 +417,32 @@ const RING_WIDTH = 1.6;
  * so it wants one character rather than a family of them.
  */
 const RING_LEAN = `rotate(-9 ${DOT_CENTRE} ${DOT_CENTRE}) translate(${DOT_CENTRE} ${DOT_CENTRE}) scale(1.07 0.93) translate(${-DOT_CENTRE} ${-DOT_CENTRE})`;
+
+/**
+ * The locator ring, as everything needed to draw it somewhere else.
+ *
+ * One export rather than five loose constants, because they are one fact: this
+ * is how that circle is struck on the dot's canvas. `Ripple` draws the same mark
+ * expanding, and a second copy of these numbers is exactly how an echo comes
+ * adrift from the thing it is meant to be an echo of — a nudge to `RING_LEAN`
+ * here would leave the ripple turning at the old tilt, and nothing would fail.
+ *
+ * `reach` is the only member that is not simply lifted from above: it is how far
+ * the canvas itself goes from its centre, which is what an expanding copy has to
+ * measure its travel against.
+ */
+export const LOCATOR = {
+  /** The canvas the dot and the ring share. */
+  canvas: DOT_CANVAS,
+  /** Its centre, which is theirs. */
+  centre: DOT_CENTRE,
+  /** The radius the ring is struck at, bulge included. */
+  radius: RING_RADIUS,
+  /** The tilt that keeps it from reading as a compass circle. */
+  lean: RING_LEAN,
+  /** How far that canvas reaches from its centre, in the same units. */
+  reach: DOT_SIDE / 2,
+} as const;
 
 /**
  * A slot with nothing in it yet — the dot you touch to start a sitting there.
