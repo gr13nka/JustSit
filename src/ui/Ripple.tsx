@@ -33,20 +33,32 @@ import { ringPath } from './ring';
  *
  * One ring, never two, and that is the load-bearing part. Two rings overlapping
  * would keep something on the dot at every instant, and a mark that never rests
- * is a demand. With one, the beat spends its last second with nothing on screen
+ * is a demand. With one, the beat spends its last 900ms with nothing on screen
  * at all — the difference between breathing and blinking, and the reason the
  * table below stops well short of the end of the clock.
+ *
+ * Everything else about it is loud on purpose. It was first tuned quiet from
+ * screenshots of the web preview, and that was the wrong direction to tune from:
+ * a browser is honest about proportion and overstates *amount*, so a mark that
+ * looks sufficient there arrives on a phone smaller and lighter than it looked.
+ * On glass the first pass was simply not noticed, which for the one mark whose
+ * job is to be noticed is total failure. Judge amount conservatively upward from
+ * a browser, and settle it in the hand.
  */
 
 /**
  * One whole beat: the ring's life *and* the silence after it, on one clock.
  *
  * The silence is inside this rather than beside it, which is what keeps the two
- * halves impossible to get out of step — the table's last frame is at 0.7, so a
- * little over a second of every beat has nothing drawn in it, whatever this
- * number is changed to.
+ * halves impossible to get out of step — the table's last frame is at 0.7, so
+ * three tenths of every beat has nothing drawn in it whatever this number is
+ * changed to. At 3000 that is 2100ms of ring and 900ms of paper.
+ *
+ * Shorter than it was, because a mark nobody has noticed yet gets its chances
+ * one beat at a time, and 3.6 seconds between them was a long wait on a screen
+ * a first-time user is not yet sure is a screen they can touch.
  */
-const RIPPLE_MS = 3600;
+const RIPPLE_MS = 3000;
 
 /**
  * How wide the echo's line is struck, against the locator's own `RING_WIDTH` of
@@ -58,28 +70,60 @@ const RIPPLE_MS = 3600;
  * native, and a stroke re-struck at a new radius every frame would be arithmetic
  * running in JavaScript beside a wall clock somebody is sitting to.
  *
- * So opacity is what does the thinning, and the numbers are what make that hold.
- * Ink laid down goes as width times opacity. The locator's is 1.6 × 1 = 1.6. The
- * echo leaves the dot at 1.0 × 0.32 = 0.32, a fifth of it, and every frame after
- * that lays down less than the one before even though the line is getting fatter
- * — 1.44 × 0.22, 1.7 × 0.15, 1.88 × 0.08, and last at 1.98 × 0.03 = 0.06, a
- * twenty-seventh of the locator. The width doubles across the life; the ink
- * falls by five and a half times. By the point the stroke is fatter than the
- * mark it came off, there is nothing left of it to look fat.
+ * So opacity is what does the thinning, and the one thing that has to hold is
+ * that the echo never out-inks the mark it came off — the locator has to stay
+ * the primary mark, or the dot has two rings and no centre. Ink laid down goes
+ * as rendered width times opacity, and the rendered width is `RIPPLE_WIDTH`
+ * times the scale of the frame, so the whole life reads:
+ *
+ *     out   scale   stroke   opacity     ink
+ *     0.16   1.32     1.85      0.55    1.02     (locator: 1.6 × 1 = 1.6)
+ *     0.45   1.90     2.66      0.34    0.90
+ *     0.70   2.40     3.36      0.20    0.67
+ *     0.88   2.76     3.86      0.10    0.39
+ *     0.98   2.96     4.14     0.035    0.15
+ *
+ * The heaviest frame is the first, at about two thirds of the locator's ink, and
+ * every frame after it lays down less than the one before even though the line
+ * is getting steadily fatter — the stroke more than doubles across the life
+ * while the ink falls by seven. By the point it is two and a half times the mark
+ * it came off, there is under a tenth of its ink left to look fat with.
  */
-const RIPPLE_WIDTH = 1;
+const RIPPLE_WIDTH = 1.4;
 
 /**
- * How far out it travels, as a multiple of the locator's radius — derived, so
- * that the one guarantee it has to keep cannot quietly stop being true.
+ * How far out it travels, as a multiple of the locator's radius.
  *
- * It stops where the dot's own canvas stops. `ART_SHARE` is worked out so that
- * half that canvas plus a full scatter comes to exactly half a cell, so a ripple
- * that ends there ends at the edge of the cell it started in, however the hash
- * threw the dot. It is nowhere near a neighbouring dot, which sits a further
- * half cell away behind its own scatter.
+ * This was `LOCATOR.reach / LOCATOR.radius` — the edge of the dot's own canvas,
+ * which `ART_SHARE` makes exactly half a cell — and that derivation was elegant
+ * and answering the wrong question. Staying inside its own cell is not something
+ * the echo owes anybody: the ripple only ever runs on a garden with no sittings
+ * in it, so every neighbouring cell it crosses holds paper and one faint blob.
+ * The real constraint is that it must not reach the **blob**, and the canvas
+ * edge is a far stricter bound than that — which is what was keeping it small.
+ *
+ * So it is tuned, and here is the clearance it is tuned against, in cells (one
+ * canvas unit is `ART_SHARE / DOT_SIDE` = 0.03 of a cell):
+ *
+ * - two dots sit one cell apart, and `SCATTER` can throw each 0.08 toward the
+ *   other, so the worst separation of centres is **0.84**;
+ * - the neighbour's blob reaches 2.7 units from its centre, so the last 0.081
+ *   of that is spoken for and the echo has **0.759** to play with;
+ * - the echo's outermost ink is `1.07 × (7 + RIPPLE_WIDTH / 2)` units per unit
+ *   of scale — the ring's radius, plus half its own stroke, both carried out by
+ *   `RING_LEAN`'s long axis, which is the one pointing at the row neighbour —
+ *   or **0.247 × scale** cells.
+ *
+ * That puts the ceiling at 3.07. Three is under it by 0.017 of a cell at full
+ * travel, and by 0.027 at the last frame that is actually visible. Thin, so it
+ * is written down: widening `RIPPLE_WIDTH` or `SCATTER` eats that margin, and
+ * the collision it would cause is a faint ring grazing a dot rather than
+ * anything that fails.
+ *
+ * Half again the travel it had, which is half the answer to a mark nobody
+ * noticed. The other half is the opacity in the table below.
  */
-const RIPPLE_SCALE = LOCATOR.reach / LOCATOR.radius;
+const RIPPLE_SCALE = 3;
 
 /**
  * The shape of one beat, frame by frame: `at` is how far through the beat this
@@ -93,20 +137,28 @@ const RIPPLE_SCALE = LOCATOR.reach / LOCATOR.radius;
  * at; the opacity meanwhile falls off the front of that, so it is finished at
  * 0.98 of the travel rather than at the end of it. Reaching zero exactly at the
  * edge would put the last, faintest, fattest frame at the widest the ring ever
- * gets, which is the one frame worth not drawing.
+ * gets, which is the one frame worth not drawing — and the widest frame is also
+ * the one with least room before the next dot's blob.
+ *
+ * The peak is 0.55 and it is meant to be seen from across the room. Half that
+ * was the first setting and it read as a smudge on the paper rather than as a
+ * mark moving; what is being said here is *this is the button*, which is not a
+ * thing to whisper once and hope for. It still falls away fast — the decay is
+ * steep enough that the ink is monotone despite the stroke fattening, and the
+ * frame that carries the message is the first one.
  *
  * It ends at 0.7 and the clock runs to 1. That remainder is the silence, and it
  * is the point rather than slack left over: `extrapolate: 'clamp'` holds both
- * channels where the last frame left them, so for the last 1080ms of every
- * 3600ms there is no ring on the screen at all.
+ * channels where the last frame left them, so for the last 900ms of every 3000ms
+ * there is no ring on the screen at all.
  */
 const RIPPLE = [
   { at: 0, opacity: 0, out: 0 },
-  { at: 0.06, opacity: 0.32, out: 0.15 },
-  { at: 0.18, opacity: 0.22, out: 0.44 },
-  { at: 0.32, opacity: 0.15, out: 0.7 },
-  { at: 0.46, opacity: 0.08, out: 0.88 },
-  { at: 0.6, opacity: 0.03, out: 0.98 },
+  { at: 0.06, opacity: 0.55, out: 0.16 },
+  { at: 0.18, opacity: 0.34, out: 0.45 },
+  { at: 0.32, opacity: 0.2, out: 0.7 },
+  { at: 0.46, opacity: 0.1, out: 0.88 },
+  { at: 0.6, opacity: 0.035, out: 0.98 },
   { at: 0.7, opacity: 0, out: 1 },
 ] as const;
 

@@ -8,14 +8,13 @@ import { currentStreak, satToday } from '../../src/domain/stats';
 import { space } from '../../src/theme/tokens';
 import { Note, useNotes, useProgress, useSessions } from '../../src/store';
 import { Baton } from '../../src/ui/Baton';
-import { LeafIcon, SunIcon } from '../../src/ui/icons';
+import { SunIcon } from '../../src/ui/icons';
 import { Indicator } from '../../src/ui/Indicator';
 import { useBurst, usePullToReplay, useSway } from '../../src/ui/motion';
 import { NoteReader, NoteSheet } from '../../src/ui/NoteSheet';
 import { PlantGrid } from '../../src/ui/PlantGrid';
 import { Screen } from '../../src/ui/Screen';
 import { NAV_HEIGHT } from '../../src/ui/SliderNav';
-import { Text } from '../../src/ui/Text';
 
 /** Small enough to read as a mark on the page, not as an illustration. */
 const BATON_SIZE = 110;
@@ -119,32 +118,40 @@ export default function GardenScreen() {
   };
 
   /**
-   * The caption says how far the bed has got, and only answers a touch when it
-   * is full.
-   *
-   * A full bed has no next dot for the ring to circle, so nothing on the screen
-   * would lead anywhere — which is exactly the state somebody is in who killed
-   * the app on the completion screen instead of pressing Done. The caption is
-   * then the one mark left that can be touched, and it goes where Done would
-   * have gone. With room still in the bed there is nowhere else to be, so it is
-   * a line of type and nothing more.
+   * The bed has no room left, which is the one state in which the field itself
+   * answers a touch. See where it is wrapped below.
    */
   const full = nextDot(plot) === null;
 
-  /** How far the bed has got. The same line either way — only the touch moves. */
-  const caption = (
-    <Text variant="caption" style={styles.plotLabel}>
-      {plot.plants.length} of {plot.size}
-    </Text>
+  /**
+   * The field. Named rather than written twice, so the two branches below can
+   * differ only in whether anything is wrapped around it — a grid spelled out
+   * on both sides of a ternary is a grid that can come to disagree with itself.
+   */
+  const field = (
+    <PlantGrid
+      plot={plot}
+      onBegin={beginSitting}
+      hint={untouched}
+      burst={progress}
+      sway={sway}
+      noted={marked}
+      onInspect={inspect}
+    />
   );
 
   return (
     <View style={styles.root}>
       <Screen edges={['top']}>
         {/*
-          The two figures, pinned to the corners. They used to be a pair of cards
-          below the plot, which made the smallest fact on the screen the biggest
-          thing on it.
+          The figure, pinned to the corner. It used to be a pair of cards below
+          the plot, which made the smallest fact on the screen the biggest thing
+          on it, and until recently a pair of marks up here.
+
+          The leaf that stood in the other corner has gone. It counted sittings,
+          and with one continuous bed the field itself is that count — a number
+          beside a drawing of the same number, in the corner reserved for the
+          thing the garden cannot say.
         */}
         <View style={styles.figures}>
           {/*
@@ -152,35 +159,25 @@ export default function GardenScreen() {
             which is the one place the whole mark takes the colour. Green means
             something grew, and today something has. On any other day it is ink,
             and says nothing about that either way.
-          */}
-          <Indicator
-            icon={SunIcon}
-            value={streak}
-            label="Current streak, in days"
-            grew={sat ? 'mark' : undefined}
-          />
-          <Indicator
-            icon={LeafIcon}
-            value={sessions.length}
-            label="Sittings so far"
-            grew="figure"
-          />
-        </View>
 
-        <View style={styles.header}>
-          <Text variant="title">Your garden</Text>
-          {full ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Grow the garden"
-              onPress={() => router.push('/garden/grow')}
-              hitSlop={space.sm}
-              style={({ pressed }) => pressed && styles.pressed}>
-              {caption}
-            </Pressable>
-          ) : (
-            caption
-          )}
+            It is also the way to the days themselves. A streak is the one
+            number here that is about the calendar rather than the bed, so the
+            mark that reports it is the mark that opens the screen it came from
+            — nothing new is added to the page to say so.
+          */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Your days"
+            onPress={() => router.push('/streak')}
+            hitSlop={space.sm}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <Indicator
+              icon={SunIcon}
+              value={streak}
+              label="Current streak, in days"
+              grew={sat ? 'mark' : undefined}
+            />
+          </Pressable>
         </View>
 
         {/*
@@ -204,15 +201,41 @@ export default function GardenScreen() {
               <Baton size={BATON_SIZE} />
             </View>
           )}
-          <PlantGrid
-            plot={plot}
-            onBegin={beginSitting}
-            hint={untouched}
-            burst={progress}
-            sway={sway}
-            noted={marked}
-            onInspect={inspect}
-          />
+          {/*
+            The field, and on a full bed the field is also the way on.
+
+            Nothing on the screen says so, because nothing needs to: a bed with
+            no room has exactly one thing you can do with it, so a touch
+            anywhere meaning that one thing costs nothing and adds no mark. It
+            is a route that only exists while it is the only route — the moment
+            there is room again the ring is back, the wrapper is gone, and the
+            rule that only the next dot answers a touch is intact.
+
+            It has to exist at all because of a real corner. Finishing a sitting
+            normally lands on the completion screen, whose Done goes here on its
+            own; killing the app there instead leaves a full field with no ring,
+            nothing to touch, and no way forward — rare, and permanent, which is
+            worse than rare. A line of copy would be the app explaining itself,
+            and an automatic redirect would fight the back gesture off the grow
+            screen and could loop somebody who wanted to look at their garden.
+
+            While it is up, a screen reader sees one button rather than the
+            plants inside it, so holding a plant to read its note is out of
+            reach until the bed grows. That is the right way round: the notes
+            have their own screen, and this is the only state in the app you
+            cannot otherwise leave.
+          */}
+          {full ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Grow the garden"
+              onPress={() => router.push('/garden/grow')}
+              style={({ pressed }) => pressed && styles.pressed}>
+              {field}
+            </Pressable>
+          ) : (
+            field
+          )}
           {/*
             On a day already sat he naps at the foot of the field, and that is the
             entire acknowledgement — no copy, no figure, nothing that accumulates.
@@ -258,20 +281,15 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
+  /**
+   * The corner the figure is pinned into. A row still, though it holds one
+   * mark: the corner is the arrangement, and a second thing the garden cannot
+   * say would go in the other end of it.
+   */
   figures: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: space.xs,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: space.sm,
-    paddingBottom: space.md,
-    gap: space.xs,
-  },
-  plotLabel: {
-    letterSpacing: 0.5,
   },
   scroll: {
     // Clears the floating nav, which the plot now runs underneath.

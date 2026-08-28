@@ -1,16 +1,14 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { currentPlot, Plot } from '../../src/domain/plots';
+import { currentPlot, nextGardenSize } from '../../src/domain/plots';
 import { space } from '../../src/theme/tokens';
 import { growGarden, useProgress, useSessions } from '../../src/store';
 import { BackHeader } from '../../src/ui/BackHeader';
 import { Button } from '../../src/ui/Button';
-import { MiniField } from '../../src/ui/MiniField';
-import { Plant } from '../../src/ui/Plant';
+import { GrowingBed, GROUND_FIRM_MS } from '../../src/ui/GrowingBed';
 import { Screen } from '../../src/ui/Screen';
-import { markToFit } from '../../src/ui/tally';
 import { Text } from '../../src/ui/Text';
 
 /**
@@ -19,38 +17,31 @@ import { Text } from '../../src/ui/Text';
  * A commitment, not a quest. Nothing is promised for having finished — no
  * badge, no title, no "well done" — and there is nothing to choose either: the
  * bed grows by one rung of the ladder, because any other size would re-flow the
- * plants already in it. What is on the screen is the bed that just filled, and
- * agreeing to keep going.
- */
-
-/** The largest a plant in the finished bed is drawn. */
-const BED_PLANT = 62;
-
-/** How much of their ink two plants in the bed share, so a bed reads as a bed. */
-const BED_OVERLAP = 0.16;
-
-/**
- * Past this, the bed is drawn as tally marks rather than as plants.
+ * plants already in it. What is on the screen is the bed that just filled, the
+ * ground it would gain, and agreeing to keep going.
  *
- * A bed that just filled is the only warm thing on this screen, so it is worth
- * real drawings while there are few enough of them to read. A mala's worth is a
- * hundred and eight SVGs, which is neither affordable nor legible.
+ * It is also the one place in the app that celebrates, and the licence is spent
+ * on the *event*: the bed comes up out of the ground and more ground opens
+ * beside it. `GrowingBed` is where that happens and where the rules it is kept
+ * to are written down; what is drawn there is the garden itself, at the size it
+ * is about to be, rather than a picture of one.
  */
-const BED_PLANTS_MAX = 6;
-
-/** The bed, when it is drawn as tally marks instead. */
-const BED_MARK_MAX = 9;
-const BED_HEIGHT = 76;
-
 export default function GrowScreen() {
   const sessions = useSessions();
   const { gardenSize } = useProgress();
-  const plot = currentPlot(sessions, gardenSize);
 
-  // Measured rather than assumed: the bed is drawn to the room the phone gives
-  // it, and it cannot be sized until the phone has said how wide that is.
-  const [width, setWidth] = useState(0);
-  const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
+  /**
+   * The bed at the size it is about to be, which is what this screen draws.
+   *
+   * Laid out one rung up from the start, so the room being offered is on the
+   * page before it is agreed to. Because the bed that filled has no holes in
+   * it, every empty dot in this plot is exactly the new ground — the offer
+   * needs no second number and nothing has to be told which dots it is.
+   */
+  const bed = currentPlot(sessions, nextGardenSize(gardenSize));
+
+  /** Whether the offer has been taken. It cannot be untaken. */
+  const [taken, setTaken] = useState(false);
 
   /**
    * The one way off this screen, whether the answer was yes or nothing.
@@ -67,10 +58,39 @@ export default function GrowScreen() {
    */
   const leave = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)'));
 
-  const grow = () => {
-    growGarden();
-    leave();
-  };
+  /**
+   * Agreeing to the ground, and then going.
+   *
+   * The press holds the screen for exactly as long as the ghosts take to firm,
+   * and it holds it for that and nothing else. There is nothing left to watch:
+   * the extension is the *offer*, so it has already played, and what the press
+   * adds is the ghosts becoming ground. Leaving on the tap would make that
+   * invisible, which would turn the ghosts into a promise the app does not
+   * keep; holding any longer would leave somebody on a screen whose one
+   * question they have answered. A second touch was the other candidate and is
+   * wrong for a reason that is not about pacing: the drawn button is what
+   * commits, there is only ever one of it on a screen, and a screen that asked
+   * you to agree and then asked you to leave would be two commitments.
+   *
+   * The store is written here rather than at the tap so that nothing this
+   * screen shows can be contradicted while it is showing it. The bed above is
+   * derived from `gardenSize`, so growing it mid-screen would step the ladder
+   * a second time under the finger that pressed it — the bed is what it is
+   * until you are gone. Backing out inside that third of a second cancels the growth, which
+   * is the same answer as backing out before pressing, and the bed is still
+   * full and the question still there the next time the garden's caption is
+   * touched.
+   */
+  useEffect(() => {
+    if (!taken) return;
+
+    const going = setTimeout(() => {
+      growGarden();
+      leave();
+    }, GROUND_FIRM_MS);
+
+    return () => clearTimeout(going);
+  }, [taken]);
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -87,9 +107,19 @@ export default function GrowScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}>
-        <View style={styles.middle} onLayout={onLayout}>
-          <Bed plot={plot} width={width} />
+        <View style={styles.middle}>
+          <GrowingBed bed={bed} taken={taken} />
 
+          {/*
+            What happened, and nothing about who it happened to. The bed being
+            full is the whole of the news; how much ground it would gain is said
+            by the ghost dots above, which is a better place to say it than a
+            number nobody can check against the drawing.
+
+            It sits close under the bed rather than centred in its own half of
+            the screen, because it is a caption to the picture and not a second
+            thing on the page. The bed is the subject.
+          */}
           <View style={styles.said}>
             <Text variant="title">The bed is full.</Text>
           </View>
@@ -100,69 +130,40 @@ export default function GrowScreen() {
         Drawn, like Meditate and like onboarding's Begin: the pen goes on a
         control that commits to something, and agreeing to fill more bed is the
         largest thing this app ever asks anybody to agree to.
+
+        Pressing twice is inert without a guard of its own — the second press
+        sets a flag that is already set, so the effect above does not run again.
       */}
-      <Button label="Grow it" variant="wobbly" onPress={grow} style={styles.begin} />
+      <Button label="Grow it" variant="wobbly" onPress={() => setTaken(true)} style={styles.begin} />
     </Screen>
   );
 }
 
-/**
- * The bed this screen is about, at the top of it.
- *
- * Drawn as plants while there are few enough to read — a bed that just filled
- * is the only warm thing on the screen, and the first time anybody sees this it
- * is holding three. Past that it falls back to the tally, which is the same
- * mark at a size a mala can be drawn at.
- */
-function Bed({ plot, width }: { plot: Plot; width: number }) {
-  if (width <= 0) return null;
-
-  const grown = plot.plants;
-  if (grown.length > 0 && grown.length <= BED_PLANTS_MAX) {
-    // Every plant the same size, so `alignItems: flex-end` puts every root on
-    // one line: a root is the same fraction down every canvas.
-    const span = grown.length - BED_OVERLAP * (grown.length - 1);
-    const size = Math.min(BED_PLANT, width / span);
-
-    return (
-      <View style={styles.bed}>
-        {grown.map((planted, i) => (
-          <View key={i} style={i > 0 && { marginLeft: -size * BED_OVERLAP }}>
-            <Plant plant={planted.key} size={size} />
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  return (
-    <MiniField
-      size={plot.size}
-      cells={plot.cells}
-      mark={markToFit(plot.size, { width, height: BED_HEIGHT }, BED_MARK_MAX)}
-    />
-  );
-}
-
 const styles = StyleSheet.create({
+  /**
+   * The bed sits near the top rather than in the middle of the page.
+   *
+   * Centred, it floated: a band of garden with paper above it and paper below
+   * it, adrift between a back arrow and a button and reading as the smallest
+   * thing on a screen it is supposed to be the subject of. Put high, with its
+   * caption under it, the picture is what the screen opens with and all the
+   * paper collects in one place — which is where this app usually keeps it.
+   */
   scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
   },
   middle: {
     alignItems: 'center',
-    paddingVertical: space.lg,
-    gap: space.lg,
+    // Air enough that the bed reads as placed on the page rather than stuck
+    // under the arrow. The grid reserves a little of its own above the top row,
+    // for the sprout, so what shows is a shade more than this.
+    paddingTop: space.xxl,
+    paddingBottom: space.lg,
+    gap: space.md,
   },
   said: {
     alignItems: 'center',
     gap: space.xs,
-  },
-  bed: {
-    flexDirection: 'row',
-    // One bottom edge, and so one ground line — every canvas is the same size
-    // and a root is the same fraction down each of them.
-    alignItems: 'flex-end',
   },
   begin: {
     alignSelf: 'stretch',

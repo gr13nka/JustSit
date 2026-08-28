@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { stageAt } from '../../src/domain/stages';
-import { daysSat, totalSatMs } from '../../src/domain/stats';
+import { daysSat } from '../../src/domain/stats';
 import { requestPermission, setDailyReminder } from '../../src/session/notifications';
 import { hairline, radius, space } from '../../src/theme/tokens';
 import { THEME_ORDER, THEMES, ThemeId } from '../../src/theme/themes';
@@ -27,7 +27,7 @@ import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
 import { TimedConfirm } from '../../src/ui/TimedConfirm';
 import { useOrganicCorners } from '../../src/ui/useOrganicCorners';
-import { formatTotal, fromHhMm, toHhMm } from '../../src/ui/time';
+import { fromHhMm, toHhMm } from '../../src/ui/time';
 
 /**
  * Small enough to read as a mark beside the words rather than a control of its
@@ -42,6 +42,7 @@ export default function YouScreen() {
   const sessions = useSessions();
   const notes = useNotes();
   const stage = stageAt(progress.stage);
+  const days = daysSat(sessions);
 
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -82,14 +83,33 @@ export default function YouScreen() {
           <Text variant="body">{stage.felt}</Text>
         </Card>
 
+        {/*
+          The practice itself, as one number and the way to the rest of it.
+
+          It used to print two figures and stop there, which made it the only
+          card on this screen that answered a question rather than opening one.
+          Folding them behind a row keeps the card count flat and puts the days
+          somewhere they can be looked at properly — a week, four weeks, and the
+          run they add up to.
+
+          Reachable at nought, exactly as the notes are: "you have not sat yet"
+          is a fact about the screen rather than a reason to hide it.
+        */}
         <Card style={styles.card}>
-          <Text variant="label">Practice</Text>
-          <View style={styles.figures}>
-            <Text variant="body">
-              {daysSat(sessions)} {daysSat(sessions) === 1 ? 'day' : 'days'} sat
+          <Text variant="label">Days</Text>
+          <Pressable
+            onPress={() => router.push('/streak')}
+            style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}>
+            <Text variant="body" color={days === 0 ? 'inkSoft' : 'ink'}>
+              {days === 0 ? 'Nothing yet' : `${days} ${days === 1 ? 'day' : 'days'} sat`}
             </Text>
-            <Text variant="body">{formatTotal(totalSatMs(sessions))} in total</Text>
-          </View>
+            <View style={styles.action}>
+              <Text variant="caption" color="ink">
+                Look back
+              </Text>
+              <ArrowRight color={color.inkSoft} size={ARROW_SIZE} />
+            </View>
+          </Pressable>
         </Card>
 
         <Card style={styles.card}>
@@ -304,10 +324,6 @@ const styles = StyleSheet.create({
    */
   rule: {
     marginVertical: space.sm,
-  },
-  figures: {
-    gap: space.xs,
-    marginTop: space.xs,
   },
   /** Value on the left, the action that changes it on the right. */
   settingRow: {

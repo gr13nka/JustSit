@@ -78,6 +78,7 @@ export default function RootLayout() {
           <Stack.Screen name="session" />
           <Stack.Screen name="garden" />
           <Stack.Screen name="notes" />
+          <Stack.Screen name="streak" />
           <Stack.Screen name="onboarding" />
         </Stack>
       </WebInsets>

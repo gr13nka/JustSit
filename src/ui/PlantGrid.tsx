@@ -35,6 +35,7 @@ export function PlantGrid({
   sway,
   noted,
   onInspect,
+  dotOpacity,
 }: {
   plot: Plot;
   /**
@@ -92,6 +93,26 @@ export function PlantGrid({
    */
   noted?: ReadonlySet<number>;
   onInspect?: (grown: Grown) => void;
+  /**
+   * How strongly the empty dots are drawn, where full strength is wrong.
+   *
+   * The garden never passes it. An unplanted dot there is a promise, it is
+   * already the faintest ink in the app, and drawing it any weaker would make
+   * the promise the hardest thing on the screen to see. It exists for the one
+   * screen that has ground to draw which is *offered* rather than had — dots
+   * that are on the page before they have been agreed to, and that are inked
+   * the rest of the way at the moment they are.
+   *
+   * A number or an `Animated.Value`, so that inking can be watched rather than
+   * switched. Only the empty cells take it: a plant is a record of something
+   * that happened, and no caller gets to draw it a shade less true than it was.
+   *
+   * Leaving it off costs nothing at all, which is the point of its being
+   * optional rather than defaulting to full: no wrapper is built, so the tab
+   * that draws a hundred and eight empty dots and never wants this does not pay
+   * a view apiece to carry a number nothing is reading.
+   */
+  dotOpacity?: number | Animated.Value;
 }) {
   const [width, setWidth] = useState(0);
 
@@ -217,7 +238,13 @@ export function PlantGrid({
 
             // The dot itself. Where it stands is `dropped`; all it decides here
             // is whether it is the one the garden would carry on from.
-            const mark = <EmptySlot size={dot} next={slot === next} />;
+            const drawn = <EmptySlot size={dot} next={slot === next} />;
+            const mark =
+              dotOpacity === undefined ? (
+                drawn
+              ) : (
+                <Animated.View style={{ opacity: dotOpacity }}>{drawn}</Animated.View>
+              );
 
             // The rest of the unplanted field is scenery. It used to be a
             // hundred buttons, one per dot, because a sitting grew wherever you

@@ -55,6 +55,7 @@ app/                 screens only (expo-router, file-based)
   session/           start → tip → run → complete → advance  (outside the tab bar)
   garden/            grow — the ask when the bed is full      (outside the tab bar)
   notes/             the pile · one note                      (outside the tab bar)
+  streak.tsx         your days — week, month, two runs        (outside the tab bar)
   onboarding.tsx     welcome → reminder → stage one, shown once
 src/
   theme/             themes.ts (all colour), tokens.ts (space/shape),
@@ -267,8 +268,9 @@ cards behind one plant would be a plant that only half remembers. The join is
 | Length buys quantity, and past ten minutes the trade is one rare against two mids against three commons | `domain/plants.offersFor` |
 | Three single commons under three minutes; the sitting that *makes* a seventh consecutive day puts a rare on the table, whatever its length | `domain/plants.ts` (`shapesFor`) |
 | One bed, and it only grows — 3 · 6 · 12, then a row of twelve at a time; 108 is the mala, and the bed carries on past it | `domain/plots.nextGardenSize` |
-| A garden fills in order; only the next dot answers a touch | `domain/plots.ts` → `ui/PlantGrid.tsx` → `app/session/start.tsx` |
+| A garden fills in order; only the next dot answers a touch — and a full bed answers anywhere, because a full bed has no next dot | `domain/plots.ts` → `ui/PlantGrid.tsx` → `app/session/start.tsx`, `app/(tabs)/index.tsx` |
 | A full bed asks to be grown and there is no size to pick; **the user confirms** | `store.growGarden`, `app/garden/grow.tsx` |
+| The bed comes up out of the ground and more ground opens in it — the app's one celebration, and it celebrates the event | `ui/GrowingBed.tsx`, `app/garden/grow.tsx` |
 | Whole minutes by default; seconds are opt-in | `settings.hideSeconds`, `ui/Clock.tsx` |
 | Advance offered at ≥20 sessions **and** ≥21 days at stage; a decline is respected for 14 days | `domain/progression.ts` |
 | The app proposes a stage; **the user confirms** | `app/session/advance.tsx` |
@@ -279,8 +281,9 @@ cards behind one plant would be a plant that only half remembers. The join is
 | One bell in, one out, nothing between | `session/bells.ts` |
 | One daily reminder, off by default; the line rotates by the day, and none of the six mentions what you did not do | `session/reminderLines.ts` |
 | A day already sat: the sun gone green, drawing and figure both, and a sleeping cat — and nothing else | `domain/stats.satToday`, `app/(tabs)/index.tsx` |
+| The days are a week, four weeks and two runs; the best run is what makes the current one safe to print | `domain/stats.ts` (`weekSat`, `recentDays`, `bestStreak`), `app/streak.tsx` |
 | A thought caught mid-sitting is kept, and nothing ever counts them | `domain/notes.ts`, `ui/NoteSheet.tsx` |
-| The two figures are corner indicators, not cards — no label, no unit | `ui/Indicator.tsx`, `app/(tabs)/index.tsx` |
+| One figure, pinned to a corner and not sat on a card — no label, no unit — and it is the way to the days | `ui/Indicator.tsx`, `app/(tabs)/index.tsx` |
 | Theme is taste, never behaviour: it changes values, never what the app does | `settings.theme`, `theme/themes.ts` |
 
 Wallace's criterion for advancing is the state of your mind, not attendance. The
@@ -328,16 +331,28 @@ and it is still one place. Note which slider earns it: navigation does, because
 where you are in the app is worth the app's one loud colour, while a choice made
 *inside* a screen takes `Slider`'s `tone="quiet"` and a `paperDeep` marker — the
 duration dial, where the choice is a length and not a place. Green means
-*something grew*, and it reaches four marks: plant strokes, the garden's session
-count, the tally strokes the grow screen draws a filled bed in, and the sun on a
-day already
-sat — the sun in **both** halves, drawing and figure, which is the one place
-green takes a whole mark rather than a number. It has earned it: today something grew. The pen brights
-(`penBlue/penOrange/penPink`) have exactly two licences: a plant's bloom (the
-reward-garden colour moment), and the first-run hero's night sky
-(`SittingFigure`). A tally's fleck is drawn in the species' own bright, which
-makes it the first licence at another size rather than a third. If a pen bright
-shows up in ordinary chrome, that's a bug.
+*something grew*, and it reaches three marks: plant strokes, the sun on a day
+already sat, and the stroke the days screen fills a sat day with. The sun takes
+it in **both** halves, drawing and figure, which is the one place green takes a
+whole mark rather than a number; it has earned that, because today something
+grew.
+
+The days screen's stroke is a licence **moved** and not a new one spent, and it
+is worth saying which, because green has just left two marks and arrived at one.
+The leaf that counted sittings in the garden's other corner has gone, and so has
+the tally the grow screen drew a filled bed in — one bed retired both, since the
+field is now the count and the grow screen draws the garden itself. A day sat is
+the same sentence about a different unit, so `DayMark` strikes the tally's own
+stroke rather than inventing a mark for it. Three is therefore where the count
+lands from four, and it is not a ceiling that has been raised: the next mark to
+ask for green is asking for a fourth.
+
+The pen brights (`penBlue/penOrange/penPink`) have exactly two licences: a
+plant's bloom (the reward-garden colour moment), and the first-run hero's night
+sky (`SittingFigure`). The tally the days screen borrows its stroke from has a
+fleck of the species' own bright where the plant blooms, and a day is not a
+species — so that is the one part of the mark `DayMark` leaves off, and the
+brights stay at two. If a pen bright shows up in ordinary chrome, that's a bug.
 **No hex literal may appear outside `src/theme/themes.ts`.**
 
 **Three themes, and they vary values, not structure.** Ink (cream paper, accent
@@ -446,9 +461,12 @@ says it in all three.
 
 **Батон, the sleeping loaf cat, holds the quiet places** — the reminder step of
 onboarding, the empty garden, and the foot of the field on a day already sat.
-Nowhere else, and the notes screen is deliberately left bare: a fourth place
-would make him decoration rather than the cat who is where nothing else should
-be.
+Three, and two screens with obvious room for him are deliberately left bare: the
+notes, and the days. The days screen was the closer call, because a thin month
+leaves real space at the foot of it — which is exactly the argument against: a
+cat who turns up when the month is thin is a cat commenting on the month. A
+fourth place would make him decoration rather than the cat who is where nothing
+else should be.
 
 He is always **placed, never earned**: he sits where a screen has room going
 spare, and never where finishing something put him. The sat-day nap is the
@@ -485,7 +503,13 @@ bottom of the screen — one number is better than a second component. `Fade` is
 its sibling for what must *not* move: a veil that slid would be a sheet of paper
 laid over the screen rather than the screen going quiet, and the thing rising in
 front of it is what the eye should follow. Everything animates transform and
-opacity only, so every driver is native. Four things loop and all four are
+opacity only, so every driver is native.
+
+What belongs in that file is **vocabulary the app speaks more than once**. Two
+animations deliberately live outside it: `Ripple`, and the opening in
+`GrowingBed`. Each is one motion on one screen, and an entrance that can only
+ever happen in a single place is not a word — putting it in `motion.tsx` would
+offer every other screen a growing bed. Four things loop and all four are
 named exceptions, because in each the loop is the point rather than a
 transition: the breathing ring, which owns its own; `Pulse`, which breathes the
 garden's next dot to the same four-in six-out count so the app has one breath
@@ -593,7 +617,7 @@ is doing exactly what it does now.
 
 **`Ripple` is the fourth loop, and what earns it is that it retires.**
 `src/ui/Ripple.tsx` sends one copy of the locator ring outward from the next dot
-every 3.6 seconds, and only on a garden nobody has ever sat in — `PlantGrid`
+every three seconds, and only on a garden nobody has ever sat in — `PlantGrid`
 takes a `hint`, the garden tab passes `sessions.length === 0`, and the first
 plant in the ground ends it for the life of the app. That is the whole argument.
 It cannot accumulate, it has nothing to congratulate, it keeps no score, and
@@ -611,19 +635,44 @@ ring and already breathes, and a third motion on one mark is a mark shouting.
 
 Three things about it are load-bearing. **One ring, never two** — overlapping
 rings would keep something on that dot at every instant, and a mark that never
-rests is a demand; with one, the last 1080ms of every beat has nothing on screen
-at all, and that silence is the difference between breathing and blinking.
+rests is a demand; with one, the last 900ms of every 3000ms beat has nothing on
+screen at all, and that silence is the difference between breathing and
+blinking. The table stopping at 0.7 of the clock is what guarantees it whatever
+`RIPPLE_MS` is changed to, which is why the silence lives inside the beat rather
+than beside it.
 **The ring is scaled, not redrawn**, because transform and opacity are the only
 things anything here animates — so its stroke thickens as it grows, which is
-backwards for a ripple, and opacity is what does the thinning instead. Ink laid
-down goes as width times opacity: the locator's is 1.6 × 1, the echo leaves at
-1.0 × 0.32 — a fifth of it — and is last visible at 1.98 × 0.03, a twenty-seventh.
-The width doubles across the life while the ink falls five and a half times, so
-by the point the line is fatter than the mark it came off there is nothing left
-of it to look fat. And **how far it travels is derived** — it stops where the dot's own canvas
-stops, which is `ART_SHARE`'s existing guarantee that half that canvas plus a
-full scatter is exactly half a cell, so the echo reaches the edge of its own cell
-and can never touch a neighbouring dot.
+backwards for a ripple, and opacity is what does the thinning instead. The one
+thing that has to hold is that the echo never out-inks the mark it came off, or
+the dot has two rings and no centre. Ink goes as rendered width times opacity:
+the locator's is 1.6 × 1 = 1.6, the echo leaves at 1.85 × 0.55 = 1.02, about two
+thirds of it, and is last visible at 4.14 × 0.035 = 0.15. The stroke more than
+doubles across the life while the ink falls by seven, so by the point the line
+is two and a half times the mark it came off there is under a tenth of its ink
+left to look fat with. And **how far it travels is tuned against the
+neighbouring dot's blob** — `RIPPLE_SCALE` is 3 with a ceiling of 3.07, and the
+margin is thin enough that widening `RIPPLE_WIDTH` or `SCATTER` eats it. The
+arithmetic is written out in the file; what matters here is that the bound is
+the neighbour's ink and nothing nearer.
+
+That last one replaced a derivation, and the derivation was the elegant answer
+to the wrong question. The travel used to be `LOCATOR.reach / LOCATOR.radius` —
+the edge of the dot's own canvas, which `ART_SHARE` makes exactly half a cell,
+so the echo provably stayed inside the cell it started in. But staying inside
+its own cell is not something the echo owes anybody: it only ever runs on a
+garden with no sittings in it, so every cell it crosses holds paper and one
+faint blob, and the blob is nearly twice as far away as the canvas edge. The
+bound was a third stricter than the constraint, and that is what was keeping the
+mark small.
+
+**It was first tuned quiet, from screenshots, and that was the wrong direction
+to tune from.** A browser is honest about proportion and overstates *amount*, so
+a mark that looks sufficient there arrives on glass smaller and lighter than it
+looked; the first pass was simply not noticed on a phone, which for the one mark
+whose whole job is to be noticed is total failure. Hence three seconds rather
+than 3.6 — a mark nobody has seen gets its chances one beat at a time — a peak
+of 0.55 rather than half that, and half again the travel. Judge amount
+conservatively upward from a browser and settle it in the hand.
 
 Its loop **wraps an `Animated.sequence`**, and that is not a style choice — see
 the frozen-loop trap below.
@@ -651,9 +700,20 @@ The **pitch is constant at every width**: `field` measures the cell against
 `COLUMNS` whatever the garden, then draws the lattice at `cell * cols`, centred
 in the room it was given rather than stretched to fill it. A narrower bed is a
 narrower bed and never a coarser one, which is what lets a 6 sitting beside a 12
-be *seen* to be half of it — the same claim `MiniField` makes at thumbnail size.
-A last row may come up short, but every rung above twelve divides exactly, so
-only a size off the ladder could do it and nothing writes one.
+be *seen* to be half of it. A last row may come up short, but every rung above
+twelve divides exactly, so only a size off the ladder could do it and nothing
+writes one.
+
+`GrowingBed` is the one place that pitch is deliberately not held, and what it
+keeps instead is the arithmetic. The grow screen draws one bed with nothing to
+compare it against, so a starter bed at the garden's pitch would be a postage
+stamp in the middle of a phone; the room is spent there rather than the
+comparison, by asking `field` for the cell at which the bed's own `cols` fill
+the width. That is the inverse of the question the garden asks it, and it is
+answered by handing the same function a box wider than the screen so only the
+empty margin hangs over — an inversion rather than a second formula, which is
+what stops the two from drifting. From twelve dots up the two widths are the
+same number anyway, so this only ever shows itself on the first two rungs.
 
 That tap target used to be cheap — a hundred dots each started a sitting where
 you touched, and a mis-tap spent nothing because the slot was only committed when
@@ -667,6 +727,17 @@ svg, the `ring.ts` precedent — because the guarantee it makes is one worth
 checking without a renderer. `COLUMNS`, `PLANT_ZOOM`, the page the plants are
 drawn on and the line they stand on are all there, and `PlantGrid` asks it for
 one `Field` rather than doing the sums itself.
+
+**`dotOpacity` is the only thing allowed to vary how a dot is drawn, and exactly
+one screen passes it.** Every empty cell is otherwise `inkFaint`, the faintest
+the palette goes — the dots ahead of you are a promise, and drawing them weaker
+would make the promise the hardest thing on the screen to see. The prop exists
+for the one screen with ground that is *offered* rather than had, and what makes
+it safe is that it reaches empty cells only: a plant is a record of something
+that happened, and no caller gets to draw it a shade less true than it was. It
+takes an `Animated.Value` as well as a number, so the inking can be watched
+rather than switched, and leaving it off builds no wrapper at all — the tab that
+draws a hundred and eight empty dots pays nothing for a prop it never passes.
 
 The two drawings in that field are sized differently, and `ART_SHARE` is why.
 The share is derived so that art plus a full scatter cannot cross the cell's
@@ -872,29 +943,187 @@ a bundle shrinks by `1/√count`, holding its total ink *area* to a single
 plant's — a bundle is the same amount of drawing rearranged, not three times as
 much of it, and an offer drawn bigger would be an offer being recommended.
 
-**The app's whole progress figure is the bed itself, and it carries no
-percentage, no total, no pace and no projection.** The one line of type on the
-garden tab says how far the bed has got — so many of so many — and the only
-other place the bed is drawn at all is `app/garden/grow.tsx`, which shows the
-one that just filled and asks whether to carry on.
+**The garden tab carries no copy at all, and the bed is the whole of the
+figure.** It had a title and a caption and both are struck: "Your garden" named
+the screen you were already standing on, and "so many of so many" put a number
+beside a drawing of the same number. What is left is the field, the sun in the
+corner, and the cat — nothing on the page that has to be read. Nowhere in the
+app is there a percentage, a pace or a projection.
 
-That screen draws the bed **as plants while there are few enough to read**, and
-the first time anybody reaches it there are three. Past six it falls back to a
-tally: one stroke in the green that means something grew, with a fleck of the
-species' own pen where it blooms, because a plant is a dozen béziers and a mala
-is a hundred and eight of them on something the size of a card. What survives at
-a fifth of an inch is exactly those three facts — that a sitting happened, that
-it grew, and whether the species blooms — so those three are what is drawn and
-the rest of the plant is left in the garden where it can be seen. `MiniField`
-draws it as **one** `<Svg>` with a transform per mark, since a hundred and eight
-native views is the cost the tally exists to avoid.
+Losing the caption cost a route, because it was the only manual way to the grow
+screen. So on a **full** bed the plot itself answers a touch
+(`accessibilityLabel="Grow the garden"`), and only then. That is not a second
+target beside the ring: a full bed has no next dot, so there is no ring to
+compete with, and the two states exclude each other by construction rather than
+by care. The rule that only the next dot answers a touch is intact — a bed with
+room in it is untouchable everywhere else, and the wrapper is gone the moment
+there is room again.
 
-Its arithmetic is `src/ui/tally.ts` — pure, the `field.ts` precedent — and the
-difference from `field.ts` is which way the fitting runs. The garden is given a
-width and works out a pitch; a thumbnail is given a box and works out the
-largest mark at which the bed's own shape fits inside it. Neither ever says how
-long a garden took: a sitting can grow two or three plants, so the same size
-fills in wildly different times, and printing that would be inventing a pace.
+It has to exist because of a corner that is rare and permanent. Finishing a
+sitting normally lands on the completion screen, whose **Done** goes to the grow
+screen on its own; killing the app there instead leaves a full field, no ring,
+and nothing to press. A line of copy would be the app explaining itself, and an
+automatic redirect would fight the back gesture and could loop somebody who only
+wanted to look at their garden. The cost is real and is accepted: while the
+wrapper is up a screen reader sees one button rather than the plants inside it,
+so holding a plant to read its note is out of reach until the bed grows. That is
+the right way round — the notes have their own screen, and this is the only
+state in the app you cannot otherwise leave.
+
+**The grow screen is the app's one celebration, and what it celebrates is the
+event.** This is where the no-congratulation rule is spent rather than broken,
+and the line between those is the second person. The copy is **"The bed is
+full."** — four words about the bed — and there is no adjective about you
+anywhere on the screen; nothing counts you and nothing says you did well. The
+motion is the congratulation, and the motion is a statement of fact: the bed
+comes up out of the ground, and then more ground opens in it. Any future
+celebration is measured against that sentence, not against this screen.
+
+What it draws is the **real garden**, `PlantGrid` at `nextGardenSize`, and that
+is an argument rather than reuse. The screen's claim is "this is the garden you
+are about to have", and a drawing of its own would be an artist's impression of
+one — a different pitch, a different scatter, marks that are not the marks —
+and it would drift the first time a plant was redrawn. There is no size at
+which an abstraction would earn its place here either, which is what retired the
+tally this screen used to fall back to past six plants: a mala is nine rows at
+the garden's own pitch, and nine rows is a quarter of a phone. Laying the plot out
+one rung up from the moment the screen opens is also what makes the offer
+legible without
+a second number: a bed that has filled has no holes in it, so *every* empty dot
+in that plot is exactly the new room, and nothing has to be told which dots are
+the offer. That matters because the ladder took the choice of size away — any
+other size would re-flow plants already in the ground — and it must not take the
+knowing with it. "Grow it" says nothing about how much; the ghosts do.
+
+`src/ui/GrowingBed.tsx` is how that is drawn, and it is **one grid rather than a
+composite**. `dotOpacity` is the whole of what this screen needed: the plot
+already says which dots are the offer, so the ghosts want no second drawing, no
+second lattice, and nothing held in step with anything. That the prop dims empty
+cells and only empty cells is what lets the offer and the plants share one grid
+in the first place — see it beside `PlantGrid` above.
+
+The grid then slides as one drawing, and that is what makes both growths one
+motion written once. What you watch is the plants leaving the middle while the
+ground they are making way for inks in behind them: the bed is not being added
+to at one end, it is being **re-centred** on a bigger bed, which is exactly what
+a centred lattice does when it gains a column or a row.
+
+**Which way it grows is `shapeFor`'s answer and not this screen's.** At 3→6 and
+6→12 the bed is still one row, so it widens and the plants slide outward — the
+bed moving rather than the plants, which is the motion a phone being turned
+makes. From twelve on the width is frozen and a whole row arrives below, so the
+same slide runs vertically instead. Which axis is the only thing that differs
+between the two, and both readings come out of `shapeFor` because that is the
+function deciding how either bed is actually laid out; anything else would be a
+second opinion about a shape.
+
+**The new dots do not sprout.** Ground does not sprout; it fades and settles, on
+`Easing.out` with no overshoot, because an overshoot on a slab of earth reads as
+elastic and an overshoot on opacity is a flicker. `GHOST` is two thirds, and it
+was measured rather than judged by eye: at seven tenths the firming could not be
+found between two screenshots taken either side of the press, and much below it
+the dots go back to being the hint this was corrected away from. At two thirds
+the dot's ink runs from a fifth of the paper's range to a third — half as much
+ink again, arriving across a whole row at once, which the eye catches in motion
+far more readily than a still comparison suggests. Nothing on the screen loops,
+which is deliberate on the loudest thing the app does: a celebration you can sit
+and watch repeat is a screen asking to be stayed on.
+
+**The bed sits high on the page rather than centred in it.** Centred, it
+floated — a band of garden with paper above and paper below, adrift between a
+back arrow and a button, and reading as the smallest thing on a screen it is
+meant to be the subject of. Put at the top with its caption under it, the
+picture is what the screen opens with and all the paper collects in one place,
+above **Grow it**, which is where this app keeps its slack everywhere else.
+
+Pressing **Grow it** holds the screen for `GROUND_FIRM_MS` and for that alone.
+The extension is the *offer*, so it has already played; what the press adds is
+the ghosts becoming ground, and leaving on the tap would make that invisible and
+turn them into a promise the app does not keep. A second touch was the other
+candidate and is wrong for a reason that is not about pacing — the drawn button
+is what commits, there is only ever one of it on a screen, and a screen that
+asked you to agree and then asked you to leave would be two commitments. The
+store is written at the end of that wait rather than at the tap, so nothing the
+screen is showing can be contradicted while it is showing it: the bed is derived
+from `gardenSize`, and growing it mid-screen would step the ladder a second time
+under the finger that pressed it.
+
+**"Your days" is the other half of the question, and the garden cannot answer
+it.** The bed fills in order and says nothing about the calendar, so a hundred
+sittings over a year and a hundred over a fortnight fill the same bed to the
+same dot. `app/streak.tsx` is where time is the subject: a Monday-first week
+with weekday letters, the two runs, four weeks of texture, and the totals. No
+plant appears on it.
+
+It is a stack screen and not a third tab — tabs are rationed, there is no Sit
+tab either, and one more would need a hand-traced mark off `npm run art`, which
+is a hardware loop rather than a code change. It is also the right shape for the
+thing: you come, you look, you leave. The route in is **the sun**, because a
+streak is the one number on the garden tab that is about the calendar rather
+than the bed, so the mark reporting it is the mark that opens the screen it came
+from and nothing new is added to the page to say so. The You tab's **Days** card
+is the second way in, and it is reachable at nought exactly as the notes are:
+"you have not sat yet" is a fact about the screen rather than a reason to hide
+it.
+
+**Three rules govern every mark on it.** Nothing on it mentions a day you did
+not sit — an unsat day is the same faint dot the garden puts under every slot
+nobody has reached, which is a day with nothing in it and not a day you failed
+at. Nothing on it is a percentage, a pace or a projection; every number is a
+count of something that happened. And **`bestStreak` is what makes the screen
+safe to build at all.** A current run is a number that spends most of its life
+going down, and a large figure reading nought the morning after a missed day is
+the app telling you that you failed. Kept beside the best, a broken run becomes
+a run that *ended*: the days are still there, the app still knows about them,
+and nothing has gone to zero and stayed there. The totals at the foot are the
+monotone counterweight under both — a sitting that happened cannot be undone by
+a thin week — and they are set quietly in `inkSoft` because that is the whole of
+their job. They are not the news; they are what stops the news being the only
+thing on the page.
+
+CURRENT and BEST are `label` over `stat`, which is the pairing those two
+variants were cut for and had been waiting on: `stat` had no caller at all until
+this screen, and `label` had plenty but never one standing over a figure.
+Neither figure is green — green means something grew, and a streak is an
+arithmetic fact about days rather than a thing that grew.
+
+**`DayMark` borrows the garden's marks rather than inventing a second
+vocabulary**, because both are saying one sentence about different units — two
+sittings on a Tuesday are two plants and one Tuesday. An unsat day is
+`EmptySlot` itself, ring and all, so the locator that says "this is where the
+garden carries on" says "today is still open" standing in a row of days, with no
+copy at all; reusing the component rather than the idea is what stops a nudge to
+the ring's tilt leaving this screen circling at the old one. A sat day is the
+tally's stroke — redrawn on the dot's own canvas rather than lifted, because two
+marks on two canvases at one `size` come out two sizes, and struck *centred*
+rather than on a ground line, because what it shares a row with is a blob whose
+ink is the middle of that canvas. The garden's lesson about a shared ground line
+does not transfer: there the two marks differ by two thirds of a cell, here by
+nothing.
+
+The week and the window are `weekSat` and `recentDays`, siblings rather than one
+written in terms of the other. A week is a thing with names — it begins on
+Monday whatever today is, so its edges are the calendar's and not yours — and a
+window has no names and no edges, being four weeks that always end where you are
+standing. Both are seven across so the columns line up under each other, and the
+window is dealt into explicit rows rather than wrapped for `field.ts`'s reason:
+seven fractional widths can total a hair over their container and throw the last
+mark onto a row of its own.
+
+Its motion is entrances only and adds no loop. Every mark sprouts off the
+garden's own `useBurst`, restarted from a plain `useEffect` because a stack
+screen's mount really is an arrival, and the figures and totals stagger in on
+`Rise`. The empty days sprout too, which the garden does not do — there the dots
+are the ground the plants come up out of, and here nothing is ground: a day with
+nothing in it is one of the seven things being drawn. Delays are seeded off each
+mark's key and **scrambled** before the modulo, which is `hash32`'s standing
+rule for anything slicing bits out of a key whose last character varies; the
+garden skips the scramble only because its start times are frozen and must keep
+answering the same forever.
+
+The clock is read once, on arrival. Every mark is placed against a day, so they
+all have to agree about which day it is, and reading `Date.now()` per call would
+let a midnight fall between the week row and the window under it.
 
 **The notes screen is a two-column masonry, estimated rather than measured.**
 `src/ui/masonry.ts` deals each card into whichever column has least, weighing it
@@ -970,8 +1199,8 @@ the root `require`s every weight.
 
 That subset is also why `src/ui/time.ts` pins `toLocaleDateString` to `'en'`.
 Every string in this app is English, so a month name taken from the phone's
-locale would not merely read oddly beside "Your garden" — on a Russian handset
-it would come back as tofu, and only on that handset.
+locale would not merely read oddly under a note headed "Note" — on a Russian
+handset it would come back as tofu, and only on that handset.
 
 **A `transformOrigin` must be an array, never a string, if it is not a whole
 percent.** React Native parses a string origin with

@@ -92,13 +92,14 @@ carry them across.
 |---|---|
 | **Planting** | A completed sitting offers three plants; you choose the one that grows. A longer sitting may offer a rarer plant, or a few common ones instead. Quit early and nothing grows — no message, no guilt. |
 | **Garden** | One bed, and it only grows: 3 to start, then 6, then 12, then another row of twelve each time it fills. You confirm each step; there is no size to pick. 108 is a mala, and the bed carries on past it. |
+| **Growing it** | When the bed fills it asks. The garden comes up out of the ground and the new room opens beside it, faint until you agree to it — the one place the app celebrates, and what it celebrates is the bed being full rather than anything about you. |
 | **Curriculum** | Wallace's ten stages. The app offers to advance after ~20 sessions across 3+ weeks; **you** confirm whether the next stage describes your mind. Declining is respected for a fortnight. |
 | **Tips** | One card before each sitting, in order, drawn from your current stage. |
 | **Duration** | Your stage pre-selects a length; every option stays tappable. |
 | **Themes** | Three palettes — Ink, Butter, Prose — chosen in the You tab. Taste only: nothing about the practice changes. |
 | **Sound** | One bell in, one bell out. Nothing between. |
 | **Reminders** | One daily notification, off until you set a time; its line changes from day to day. |
-| **Days** | On a day you sat, the streak's sun turns green and Батон naps beside the garden. Miss a day and nothing is said. |
+| **Days** | On a day you sat, the streak's sun turns green and Батон naps beside the garden. Miss a day and nothing is said. Touch the sun for **Your days**: this week, the last four, the current run and the longest one. No percentages, no pace, and no mark for a day you missed. |
 | **Notes** | A thought caught mid-sitting becomes a note; long-press the plant that grew to read it. |
 
 ## Where things live
@@ -109,6 +110,7 @@ app/                 screens (expo-router)
   session/           start → tip → run → complete → advance   (outside the tab bar)
   garden/            grow — the ask when the bed is full
   notes/             the notes and one note
+  streak.tsx         your days — the week, the month, the run
   onboarding.tsx
 src/
   theme/themes.ts    ← every colour in the app, in three palettes
