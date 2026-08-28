@@ -49,7 +49,7 @@ export default function CompleteScreen() {
   const [width, setWidth] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
-  const offers = session ? offersForSession(sessions, session, progress.gardens) : [];
+  const offers = session ? offersForSession(sessions, session, progress.gardenSize) : [];
 
   // How many plants, and how far the species reaches — the two things the
   // layout depends on. A bundle is always one species, so one reading of the
@@ -72,15 +72,15 @@ export default function CompleteScreen() {
   /**
    * Where a finished sitting goes.
    *
-   * A garden that has just filled asks its question first. It is the immediate
+   * A bed that has just filled asks its question first. It is the immediate
    * consequence of the plant that was put in the ground on this screen, and a
    * stage offer stacked on top of it would be two questions on one Done — so a
    * due offer simply waits: nothing records that it was skipped, so
    * `shouldOfferAdvance` is still true after the next sitting.
    */
   const done = () => {
-    if (nextFreeSlot(sessions, progress.gardens) === null) {
-      router.replace('/gardens/ask');
+    if (nextFreeSlot(sessions, progress.gardenSize) === null) {
+      router.replace('/garden/grow');
     } else if (shouldOfferAdvance(progress, sessions)) {
       router.replace('/session/advance');
     } else {

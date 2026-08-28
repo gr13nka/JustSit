@@ -1,4 +1,4 @@
-import { ART_SHARE, SCATTER } from '../../domain/plots';
+import { ART_SHARE, nextGardenSize, SCATTER, STARTER_GARDEN } from '../../domain/plots';
 import {
   CANVAS,
   COLUMNS,
@@ -149,31 +149,31 @@ describe('field', () => {
 
 describe('shapeFor', () => {
   it('keeps a mala twelve across and nine deep', () => {
-    // Every garden on a phone today is a 108 laid out twelve wide. Cutting it
-    // any other way would re-flow gardens people have been keeping for months,
-    // since a plant's cell is its index within its own garden.
+    // What the whole field is tuned to: nine rows of twelve fit a phone, and
+    // twelve is the width every bed above the fold is drawn at.
     expect(shapeFor(108)).toEqual({ cols: 12, rows: 9 });
   });
 
-  it('lays the ladder below a mala out as full rectangles', () => {
-    // Nine divides all three, which is the whole reason it is the width: a rung
-    // with a ragged last row would read as an accident rather than as a bed.
-    expect(shapeFor(9)).toEqual({ cols: 9, rows: 1 });
-    expect(shapeFor(27)).toEqual({ cols: 9, rows: 3 });
-    expect(shapeFor(54)).toEqual({ cols: 9, rows: 6 });
+  it('makes a small bed a strip, however few dots it holds', () => {
+    // Three in a row is a bed. Three in a square is a mistake, and one dot
+    // alone in a second row is worse. It stays a strip right up to a full row.
+    expect(shapeFor(1)).toEqual({ cols: 1, rows: 1 });
+    expect(shapeFor(2)).toEqual({ cols: 2, rows: 1 });
+    expect(shapeFor(3)).toEqual({ cols: 3, rows: 1 });
+    expect(shapeFor(6)).toEqual({ cols: 6, rows: 1 });
+    expect(shapeFor(12)).toEqual({ cols: 12, rows: 1 });
   });
 
-  it('makes the starter bed a strip, however few dots it holds', () => {
-    // Three in a row is a bed. Three in a square is a mistake, and one dot
-    // alone in a second row is worse.
-    expect(shapeFor(3)).toEqual({ cols: 3, rows: 1 });
-    expect(shapeFor(2)).toEqual({ cols: 2, rows: 1 });
-    expect(shapeFor(1)).toEqual({ cols: 1, rows: 1 });
+  it('adds rows rather than width from thirteen up', () => {
+    expect(shapeFor(13)).toEqual({ cols: 12, rows: 2 });
+    expect(shapeFor(24)).toEqual({ cols: 12, rows: 2 });
+    expect(shapeFor(36)).toEqual({ cols: 12, rows: 3 });
+    expect(shapeFor(216)).toEqual({ cols: 12, rows: 18 });
   });
 
   it('holds every dot it was asked for, ragged last row and all', () => {
-    // Only the quiet "grow this garden" path can ask for a size off the ladder,
-    // and a garden of 40 is still a garden of 40.
+    // Every rung of the ladder divides exactly, so only a size that is not on
+    // it can leave a short row — and a bed of 40 is still a bed of 40.
     for (const size of [4, 5, 12, 40, 53, 99, 100, 107, 150, 216]) {
       const { cols, rows } = shapeFor(size);
       expect(cols * rows).toBeGreaterThanOrEqual(size);
@@ -181,17 +181,80 @@ describe('shapeFor', () => {
     }
   });
 
-  it('never narrows a garden grown past a mala', () => {
+  it('never narrows a bed grown past a mala', () => {
     expect(shapeFor(117).cols).toBe(COLUMNS);
     expect(shapeFor(216).cols).toBe(COLUMNS);
   });
 });
 
+/**
+ * "A plant never moves", pinned.
+ *
+ * `PlantGrid` derives both the cell a plant is drawn in and the wind it leans
+ * in from `slot % cols` and `Math.floor(slot / cols)`. So if the bed's *width*
+ * ever changed under a planted dot, that plant would re-flow into a different
+ * cell and a different gust — the one thing this app promises it will never do
+ * to something already in the ground.
+ *
+ * The ladder is built so that cannot happen: the bed widens only while it is a
+ * single row, where `cols` does not enter the mapping at all, and above a row
+ * it grows by adding rows at a frozen twelve. That is a property of two modules
+ * agreeing — `nextGardenSize` in the domain and `shapeFor` here — and it is
+ * exactly the sort of guarantee that stops being true silently, with every
+ * other test still green and only somebody's garden rearranged.
+ */
+describe('growing the bed, dot by dot', () => {
+  /** Every rung from the starter bed to a mala and one past it. */
+  function ladder(): number[] {
+    const rungs = [STARTER_GARDEN];
+    while (rungs[rungs.length - 1] < 120) {
+      rungs.push(nextGardenSize(rungs[rungs.length - 1]));
+    }
+    return rungs;
+  }
+
+  it('leaves every planted dot in the cell it was already in', () => {
+    const rungs = ladder();
+    expect(rungs).toEqual([3, 6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]);
+
+    for (let i = 1; i < rungs.length; i++) {
+      const before = shapeFor(rungs[i - 1]);
+      const after = shapeFor(rungs[i]);
+
+      for (let slot = 0; slot < rungs[i - 1]; slot++) {
+        expect(slot % after.cols).toBe(slot % before.cols);
+        expect(Math.floor(slot / after.cols)).toBe(Math.floor(slot / before.cols));
+      }
+    }
+  });
+
+  it('only ever widens a bed that is a single row', () => {
+    // The reason the above holds, said directly: a widening with a second row
+    // in the bed would move every plant past the first row.
+    const rungs = ladder();
+
+    for (let i = 1; i < rungs.length; i++) {
+      const before = shapeFor(rungs[i - 1]);
+      if (shapeFor(rungs[i]).cols !== before.cols) expect(before.rows).toBe(1);
+    }
+  });
+
+  it('steps the ladder by exactly one row once the width is frozen', () => {
+    // Which is the same number twice — `COLUMNS` here and the ladder's step in
+    // `domain/plots.ts`, which cannot import it. A step that was not a whole
+    // row would leave every bed above the fold ragged.
+    for (const size of [12, 24, 108, 216]) {
+      expect(nextGardenSize(size) - size).toBe(COLUMNS);
+      expect(shapeFor(nextGardenSize(size)).rows).toBe(shapeFor(size).rows + 1);
+    }
+  });
+});
+
 describe("field, at a garden's own width", () => {
   it('draws a narrower bed at exactly the same pitch', () => {
-    // The pitch is what lets a 9 be seen to be a ninth of a 108. A bed that
-    // sized its own cells would spread three dots across a phone and the two
-    // gardens would stop being comparable at all.
+    // The pitch is what lets a 6 be seen to be half a 12. A bed that sized its
+    // own cells would spread three dots across a phone, and the bed you had
+    // last month would stop being comparable with the one you have now.
     const wide = field(371, 1.63, 12);
     const bed = field(371, 1.63, 3);
 

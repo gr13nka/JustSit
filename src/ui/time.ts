@@ -44,7 +44,7 @@ export function formatTotal(ms: number): string {
  * Every string in this app is English and the fonts are subset to Latin — the
  * three weights of M PLUS Rounded 1c ship without CJK or Cyrillic coverage
  * precisely because none is needed. A month taken from the phone's locale would
- * therefore not merely read oddly beside "Your gardens"; on a Russian handset it
+ * therefore not merely read oddly beside "Your garden"; on a Russian handset it
  * would come back as tofu, and it would do it only on that handset.
  */
 const LOCALE = 'en';

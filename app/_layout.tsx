@@ -76,7 +76,7 @@ export default function RootLayout() {
           }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="session" />
-          <Stack.Screen name="gardens" />
+          <Stack.Screen name="garden" />
           <Stack.Screen name="notes" />
           <Stack.Screen name="onboarding" />
         </Stack>

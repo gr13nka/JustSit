@@ -19,7 +19,7 @@ function progress(patch: Partial<Progress> = {}): Progress {
     stageStartedAt: NOW - 30 * DAY,
     lastOfferedAt: null,
     seenTipIds: [],
-    gardens: [3],
+    gardenSize: 3,
     ...patch,
   };
 }

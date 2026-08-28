@@ -16,30 +16,15 @@ import { SWAY_LEAN_DEG } from './sway';
  * with an inch of paper around it, which is what makes the garden read as one
  * drawing instead of as a list of what you have done.
  *
- * It is still the widest a garden gets, and still what the *pitch* is measured
- * against — see `field` — but it is no longer how wide every garden is. A
- * garden is a size the user chose, and `shapeFor` cuts each size the bed that
- * suits it.
+ * It is the width the bed keeps once it has reached it, and it is what the
+ * *pitch* is measured against at every size — see `field`. The bed is narrower
+ * than this only while it is still one row long, which `shapeFor` decides.
+ *
+ * It is also the ladder's step in `domain/plots.ts`, which grows the bed by a
+ * row at a time above twelve and cannot import this — that module is read by
+ * this one. `field.test.ts` pins the two numbers together.
  */
 export const COLUMNS = 12;
-
-/**
- * The widest a garden shares its lattice with the mala ladder.
- *
- * Nine divides 9, 27 and 54 exactly, so every rung below a mala comes out a
- * full rectangle — 9x1, 9x3, 9x6 — rather than a block with a ragged last row.
- * A hundred and eight keeps the twelve it has always had, which is both the
- * shape that fits nine rows on a phone and the shape every migrated garden is
- * already drawn in.
- */
-const LADDER_COLUMNS = 9;
-
-/**
- * From here up, a garden is a mala and takes the full lattice. It is written as
- * a threshold rather than as "108 exactly" so that a garden grown past a mala by
- * the quiet path does not suddenly narrow.
- */
-const MALA_FROM = 100;
 
 /** How a garden of a given size is laid out: so many dots across, so many down. */
 export type Shape = {
@@ -50,24 +35,28 @@ export type Shape = {
 /**
  * The bed a garden of `size` is cut to.
  *
- * Three widths and no more, because a bed's width is not a free parameter: it
- * decides whether the garden reads as a shape you could hold in your head. The
- * starter bed is a single row, however few dots it holds — three in a row is a
- * bed, three in a square is a mistake. Everything from there to a mala takes
- * nine, which the ladder divides exactly. A mala takes twelve.
+ * Two bands, and the line between them is the load-bearing part. A bed of
+ * twelve dots or fewer is a single row of exactly that many — three in a row is
+ * a bed, three in a square is a mistake. From thirteen up it is twelve across
+ * and as many rows as it takes.
+ *
+ * That is the width-freeze rule seen from the drawing's side. A plant's cell,
+ * and so the wind it leans in, is `slot % cols`; a bed that changed width with
+ * plants in it would re-flow every one of them. Below the fold `cols` is the
+ * size itself and the row is always 0, so the mapping does not depend on the
+ * width at all — which is exactly why `nextGardenSize` is allowed to widen the
+ * bed there and nowhere else.
  *
  * The *pitch* is the same at every width (`field` measures it against `COLUMNS`
  * whatever the garden), so a narrower bed is a narrower bed and never a coarser
- * one — which is what lets a 9 sitting beside a 108 be seen to be a ninth of it.
+ * one — which is what lets a 6 sitting beside a 12 be seen to be half of it.
  *
- * A last row may come up short. Only an arbitrary size can do that, and only
- * the quiet "grow this garden" path can make one; a ragged final row is a fair
- * drawing of a garden whose owner asked for 40 dots.
+ * A last row may come up short: 24, 36 and every rung after divide exactly, so
+ * only a size off the ladder can do it.
  */
 export function shapeFor(size: number): Shape {
   const dots = Math.max(1, Math.floor(size));
-  const cols =
-    dots <= 3 ? dots : dots >= MALA_FROM ? COLUMNS : LADDER_COLUMNS;
+  const cols = dots <= COLUMNS ? dots : COLUMNS;
 
   return { cols, rows: Math.ceil(dots / cols) };
 }

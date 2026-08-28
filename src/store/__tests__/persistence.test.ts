@@ -1,4 +1,4 @@
-import { PLOT_SIZE, STARTER_GARDEN } from '../../domain/plots';
+import { STARTER_GARDEN } from '../../domain/plots';
 import {
   mergePersisted,
   migrate,
@@ -19,7 +19,7 @@ const defaults: PersistedState = {
     stageStartedAt: 0,
     lastOfferedAt: null,
     seenTipIds: [],
-    gardens: [STARTER_GARDEN],
+    gardenSize: STARTER_GARDEN,
   },
   settings: {
     onboardedAt: null,
@@ -65,118 +65,62 @@ function v2Session(id: string, slot: number, plant = 'grass') {
 }
 
 /**
- * These guard the one failure in this codebase that cannot be undone: a real
- * garden on a real phone, lost on launch because the stored blob predates a
- * field the app now assumes.
+ * Version 4 is the one migration in this codebase that throws a garden away,
+ * and these pin that it really does — a half-migration that left an old shape
+ * standing would be worse than either outcome.
+ *
+ * `migrate` is only half of the story: it hands back an empty blob and
+ * `mergePersisted` lays the defaults down over it. `hydration.test.ts` is where
+ * the two are watched doing it together, from a real cold launch.
  */
 describe('migrate', () => {
-  it('gives every v1 plant the dot its array position used to mean', () => {
-    // Before v2 a plant's position *was* its index, so replaying that order is
-    // what makes an existing garden come back looking untouched.
+  it('throws away a v1 blob rather than trying to read it forward', () => {
+    // The ladder has nowhere to put an old garden: a sequence of beds flattened
+    // into one is the sum of their sizes, and that is not a rung. Nothing has
+    // shipped, so there is no phone holding the garden this discards.
     const v1 = {
       sessions: [v1Session('a', 1), v1Session('b', 2), v1Session('c', 3)],
-      progress: defaults.progress,
-      settings: defaults.settings,
+      progress: { ...defaults.progress, stage: 4 },
+      settings: { ...defaults.settings, onboardedAt: 700 },
     };
 
-    const migrated = migrate(v1, 1) as PersistedState;
-
-    expect(migrated.sessions.map((s) => s.plants[0].slot)).toEqual([0, 1, 2]);
-    expect(migrated.sessions.map((s) => s.id)).toEqual(['a', 'b', 'c']);
+    expect(migrate(v1, 1)).toEqual({});
   });
 
-  it('keeps everything else about a plant exactly as it was', () => {
-    const migrated = migrate(
-      { sessions: [v1Session('a', 1_700_000_000_000)] },
-      1
-    ) as PersistedState;
-
-    expect(migrated.sessions[0]).toMatchObject({
-      id: 'a',
-      stage: 1,
-      completedAt: 1_700_000_000_000,
-      durationMs: 600_000,
-    });
-    expect(migrated.sessions[0].plants).toEqual([{ key: 'grass', slot: 0 }]);
+  it('throws away a v2 blob the same way', () => {
+    const v2 = { sessions: [v2Session('a', 0, 'poppy'), v2Session('b', 1, 'fern')] };
+    expect(migrate(v2, 2)).toEqual({});
   });
 
-  it('leaves a current blob alone', () => {
+  it('throws away a v3 blob, gardens, notebook and all', () => {
+    // The version this one replaces, and the only one anybody has actually run.
+    const v3 = {
+      sessions: [{ ...session, plants: [{ key: 'poppy', slot: 40 }] }],
+      notes: [caught],
+      progress: { ...defaults.progress, stage: 4 },
+      settings: { ...defaults.settings, onboardedAt: 700 },
+    };
+
+    expect(migrate(v3, 3)).toEqual({});
+  });
+
+  it('leaves a current blob exactly as it is', () => {
     const current = { sessions: [{ ...session, plants: [{ key: 'poppy', slot: 40 }] }] };
     const migrated = migrate(current, STORAGE_VERSION) as PersistedState;
     expect(migrated.sessions[0].plants).toEqual([{ key: 'poppy', slot: 40 }]);
   });
 
-  /**
-   * v3 made a sitting worth a choice of plants and a garden a size the user
-   * picks. Both halves are a re-reading of what was already stored, so nothing
-   * a v2 blob holds may come out of it changed.
-   */
-  it('wraps every v2 plant into the one-plant list it always was', () => {
-    const v2 = {
-      sessions: [v2Session('a', 0, 'poppy'), v2Session('b', 1, 'fern')],
-      progress: { ...defaults.progress, stage: 4 },
-    };
-
-    const migrated = migrate(v2, 2) as PersistedState;
-
-    expect(migrated.sessions.map((s) => s.plants)).toEqual([
-      [{ key: 'poppy', slot: 0 }],
-      [{ key: 'fern', slot: 1 }],
-    ]);
-    expect(migrated.progress.stage).toBe(4);
-  });
-
-  it('leaves nothing of the old shape behind', () => {
-    const migrated = migrate({ sessions: [v2Session('a', 5)] }, 2) as PersistedState;
-    const stored = migrated.sessions[0] as unknown as Record<string, unknown>;
-
-    expect(stored.plant).toBeUndefined();
-    expect(stored.slot).toBeUndefined();
-  });
-
-  it('rebuilds the gardens a v2 blob was grown in, all of them 108', () => {
-    // Every garden was a mala back then. The open one stays a 108 rather than
-    // being retrofitted to a size nobody chose.
-    const one = migrate({ sessions: [v2Session('a', 7)] }, 2) as PersistedState;
-    expect(one.progress.gardens).toEqual([PLOT_SIZE]);
-
-    const three = migrate(
-      { sessions: [v2Session('a', 0), v2Session('b', PLOT_SIZE * 2 + 4)] },
-      2
-    ) as PersistedState;
-    expect(three.progress.gardens).toEqual([PLOT_SIZE, PLOT_SIZE, PLOT_SIZE]);
-  });
-
-  it('gives a garden nobody has sat in the starter bed', () => {
-    const migrated = migrate({ sessions: [] }, 2) as PersistedState;
-    expect(migrated.progress.gardens).toEqual([STARTER_GARDEN]);
-  });
-
-  it("runs the whole chain, so a v1 blob lands on today's shape", () => {
-    const v1 = { sessions: [v1Session('a', 1), v1Session('b', 2)] };
-    const migrated = migrate(v1, 1) as PersistedState;
-
-    expect(migrated.sessions.map((s) => s.plants)).toEqual([
-      [{ key: 'grass', slot: 0 }],
-      [{ key: 'grass', slot: 1 }],
-    ]);
-    expect(migrated.progress.gardens).toEqual([PLOT_SIZE]);
-  });
-
-  it("keeps a malformed plant rather than dropping someone's sitting", () => {
-    const broken = { sessions: [{ id: 'a', completedAt: 1 }, { id: 'b', plant: 7 }] };
-    const migrated = migrate(broken, 2) as PersistedState;
-
-    expect(migrated.sessions).toHaveLength(2);
-    expect(migrated.sessions.map((s) => s.plants[0].slot)).toEqual([0, 1]);
-    expect(migrated.sessions.every((s) => typeof s.plants[0].key === 'string')).toBe(true);
+  it('passes a blob from a future version through untouched', () => {
+    // A downgrade. There is nothing sensible to do to it here, and the merge's
+    // own guards are what keep the app standing on whatever it holds.
+    const ahead = { sessions: [session] };
+    expect(migrate(ahead, STORAGE_VERSION + 1)).toBe(ahead);
   });
 
   it('does not throw on a blob it cannot read', () => {
     expect(() => migrate(null, 1)).not.toThrow();
     expect(() => migrate('nonsense', 1)).not.toThrow();
-    expect(() => migrate({ sessions: 'not an array' }, 1)).not.toThrow();
-    expect(() => migrate({ sessions: 'not an array' }, 2)).not.toThrow();
+    expect(() => migrate({ sessions: 'not an array' }, 3)).not.toThrow();
   });
 });
 
@@ -223,28 +167,28 @@ describe('mergePersisted', () => {
     expect(merged.progress.stage).toBe(4);
     expect(merged.progress.seenTipIds).toEqual([]);
     expect(merged.progress.lastOfferedAt).toBeNull();
-    // A garden is the one thing here that must never come back empty.
-    expect(merged.progress.gardens).toEqual([STARTER_GARDEN]);
+    // A garden is the one thing here that must never come back as nothing.
+    expect(merged.progress.gardenSize).toBe(STARTER_GARDEN);
   });
 
-  it('gives a blob with no gardens, or an unreadable one, the default', () => {
-    // Belt and braces beside the migration: every plot arithmetic in the app
-    // divides by these, and there is no sensible answer for none of them.
-    for (const gardens of [undefined, [], 'nonsense', null]) {
+  it('gives a blob with no bed, or an unreadable one, the default', () => {
+    // Belt and braces beside the migration: the grid lays out one cell per dot,
+    // and there is no sensible field to draw for a size that is not a size.
+    for (const gardenSize of [undefined, 0, -12, 'nonsense', null, NaN]) {
       const merged = mergePersisted(
-        { progress: { ...defaults.progress, gardens } as unknown as Progress },
+        { progress: { ...defaults.progress, gardenSize } as unknown as Progress },
         defaults
       );
-      expect(merged.progress.gardens).toEqual([STARTER_GARDEN]);
+      expect(merged.progress.gardenSize).toBe(STARTER_GARDEN);
     }
   });
 
-  it('lets a stored sequence of gardens win over the default', () => {
+  it('lets a stored bed win over the default', () => {
     const merged = mergePersisted(
-      { progress: { ...defaults.progress, gardens: [3, 9, 27] } },
+      { progress: { ...defaults.progress, gardenSize: 36 } },
       defaults
     );
-    expect(merged.progress.gardens).toEqual([3, 9, 27]);
+    expect(merged.progress.gardenSize).toBe(36);
   });
 
   it('lets a stored value win over its default', () => {
@@ -256,11 +200,11 @@ describe('mergePersisted', () => {
   });
 
   /**
-   * The notebook and version 3 are one change, so no phone carries a blob that
-   * predates it. The default is here for the blob that arrives without the key
-   * anyway — a migration that did not run, a write cut in half — because
-   * zustand's shallow merge would otherwise hand the store an `undefined` the
-   * notes screen would map over.
+   * Every blob the app has ever written carries a notebook, so this shape
+   * should not reach the store. The default is here for the one that arrives
+   * without the key anyway — a write cut in half — because zustand's shallow
+   * merge would otherwise hand the store an `undefined` the notes screen would
+   * map over.
    */
   it('gives a blob with no notebook in it an empty one', () => {
     const old = {
@@ -288,10 +232,10 @@ describe('mergePersisted', () => {
   });
 
   /**
-   * The same default applied to `plants`, and the one with teeth: `plotAt`
-   * walks that list for every session on every render, so a session that
-   * reached the store without one would take the garden down rather than draw
-   * it short.
+   * The same default applied to `plants`, and the one with teeth:
+   * `currentPlot` walks that list for every session on every render, so a
+   * session that reached the store without one would take the garden down
+   * rather than draw it short.
    */
   it('gives a session with no plants an empty list', () => {
     const broken = { ...session, plants: undefined } as unknown as Session;

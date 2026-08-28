@@ -16,8 +16,8 @@ export type Session = {
    * what makes adding new art later safe, and what makes a garden someone has
    * been keeping draw the way they left it. Both halves are stored for that
    * reason: the species, because the same seed would hash differently once the
-   * registry grows; and the dot, because position was array order once and
-   * deriving it again would quietly rearrange a garden that has holes in it.
+   * registry grows; and the dot, because deriving position from array order
+   * again would rearrange a garden the moment anything about the order changed.
    *
    * Never empty. A completed sitting always leaves something in the ground, and
    * `recordCompletedSession` writes the first offer immediately so that stays
@@ -26,7 +26,7 @@ export type Session = {
   plants: Planted[];
 };
 
-/** One plant, and the dot it stands in — counted across every garden. */
+/** One plant, and the dot it stands in — counted from the first dot of the bed. */
 export type Planted = {
   key: string;
   slot: number;
@@ -80,15 +80,16 @@ export type Progress = {
   /** Tip ids already shown, so teaching moves in order rather than repeating. */
   seenTipIds: string[];
   /**
-   * The size of every garden the user has grown, in order.
+   * How many dots the garden holds today.
    *
-   * The last entry is the garden being filled and the only one that may still
-   * change; everything before it is closed forever. Sizes are counts of dots,
-   * never spans of time — a garden is finished when it is full.
+   * There is one bed and it only ever grows, a rung of `nextGardenSize` at a
+   * time, so this is the whole of the garden's shape. A count of dots and never
+   * a span of time — a garden is finished when it is full, and how long that
+   * took is nobody's business.
    *
-   * `[STARTER_GARDEN]` for a fresh user. Never empty.
+   * `STARTER_GARDEN` for a fresh user, and never below it.
    */
-  gardens: number[];
+  gardenSize: number;
 };
 
 export type Settings = {

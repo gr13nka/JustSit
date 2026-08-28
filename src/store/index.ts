@@ -2,13 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import { Offer, offersForSession } from '../domain/plants';
-import {
-  freeSlots,
-  nextFreeSlot,
-  STARTER_GARDEN,
-  withNextGarden,
-  withResizedGarden,
-} from '../domain/plots';
+import { freeSlots, nextFreeSlot, nextGardenSize, STARTER_GARDEN } from '../domain/plots';
 import { DEFAULT_THEME } from '../theme/themes';
 import {
   mergePersisted,
@@ -28,8 +22,8 @@ const initialProgress: Progress = {
   lastOfferedAt: null,
   seenTipIds: [],
   // A new field needs a default, not a migration — and a garden is the one
-  // thing here that must never come back empty.
-  gardens: [STARTER_GARDEN],
+  // thing here that must never come back as nothing.
+  gardenSize: STARTER_GARDEN,
 };
 
 const initialSettings: Settings = {
@@ -126,9 +120,9 @@ function newId(at: number): string {
 function materialise(
   offer: Offer,
   sessions: readonly Session[],
-  gardens: readonly number[]
+  gardenSize: number
 ): Planted[] {
-  const slots = freeSlots(sessions, gardens, offer.plants.length);
+  const slots = freeSlots(sessions, gardenSize, offer.plants.length);
 
   // A bundle is capped against the garden's room before it is ever offered, so
   // this only ever trims when something upstream has gone wrong.
@@ -157,19 +151,16 @@ export function recordCompletedSession(args: {
   const { sessions, progress } = useStore.getState();
 
   /*
-   * A finished sitting must leave something in the ground, and a full garden
-   * has nowhere to put it. Choosing the next garden's size is the user's job
-   * and wave B's screen; this is the floor under that — it opens one the same
-   * size as the last rather than losing the sitting. Nothing in the app can
-   * reach it, since a full garden has no dot left to start a sitting from.
+   * A finished sitting must leave something in the ground, and a full bed has
+   * nowhere to put it. Growing the bed is the user's to confirm, on the grow
+   * screen; this is the floor under that — it takes the next rung rather than
+   * losing the sitting. Nothing in the app can reach it, since a full bed has
+   * no dot left to start a sitting from.
    */
-  const gardens =
-    nextFreeSlot(sessions, progress.gardens) === null
-      ? withNextGarden(
-          progress.gardens,
-          progress.gardens[progress.gardens.length - 1] ?? STARTER_GARDEN
-        )
-      : progress.gardens;
+  const gardenSize =
+    nextFreeSlot(sessions, progress.gardenSize) === null
+      ? nextGardenSize(progress.gardenSize)
+      : progress.gardenSize;
 
   const id = newId(startedAt);
   const draft: Session = {
@@ -181,15 +172,15 @@ export function recordCompletedSession(args: {
     plants: [],
   };
 
-  const offers = offersForSession(sessions, draft, gardens);
+  const offers = offersForSession(sessions, draft, gardenSize);
   const session: Session = {
     ...draft,
-    plants: materialise(offers[0], sessions, gardens),
+    plants: materialise(offers[0], sessions, gardenSize),
   };
 
   useStore.setState((s) => ({
     sessions: [...s.sessions, session],
-    progress: { ...s.progress, gardens },
+    progress: { ...s.progress, gardenSize },
     settings: { ...s.settings, lastDurationMs: durationMs },
   }));
 
@@ -215,45 +206,39 @@ export function chooseOffer(sessionId: string, offerIndex: number): void {
   const session = sessions[at];
   if (!session || session.id !== sessionId) return;
 
-  const offer = offersForSession(sessions, session, progress.gardens)[offerIndex];
+  const offer = offersForSession(sessions, session, progress.gardenSize)[offerIndex];
   if (!offer) return;
 
   // Laid out against the garden without this sitting in it, so the swap lands
   // exactly where the sitting already is: it is the newest, and a garden fills
   // in order, so the first free dot behind it is the dot it took.
   const earlier = sessions.slice(0, at);
-  const plants = materialise(offer, earlier, progress.gardens);
+  const plants = materialise(offer, earlier, progress.gardenSize);
   if (plants.length === 0) return;
 
   useStore.setState({ sessions: [...earlier, { ...session, plants }] });
 }
 
 /**
- * Opens the next garden at the size the user chose.
+ * Grows the bed by one rung of the ladder.
  *
- * Only when there is nowhere left to plant, because two open gardens would give
- * the next sitting two answers about where it goes. A second tap on the ask
- * screen therefore does nothing rather than opening two beds.
+ * Only when there is nowhere left to plant, and that guard is what makes the
+ * grow screen's button safe to press twice: a bed with room in it is a bed
+ * nobody has been asked about, so a second tap is inert rather than two rungs.
+ * It is also the only thing standing between the ladder and a bed that widened
+ * with plants in it — every rung below twelve is a widening, and widening is
+ * only harmless on a bed whose plants are all in its one row.
+ *
+ * The bed never shrinks and there is no size to pass: the ladder decides, so
+ * that the only sizes a garden can ever be are ones `shapeFor` can lay out
+ * without moving anything already in the ground.
  */
-export function chooseGardenSize(size: number): void {
+export function growGarden(): void {
   const { sessions, progress } = useStore.getState();
-  if (nextFreeSlot(sessions, progress.gardens) !== null) return;
+  if (nextFreeSlot(sessions, progress.gardenSize) !== null) return;
 
   useStore.setState((s) => ({
-    progress: { ...s.progress, gardens: withNextGarden(s.progress.gardens, size) },
-  }));
-}
-
-/**
- * Changes the size of the garden being filled — the only one that may change.
- * Asking for less than has already grown closes it where it stands.
- */
-export function resizeGarden(size: number): void {
-  useStore.setState((s) => ({
-    progress: {
-      ...s.progress,
-      gardens: withResizedGarden(s.progress.gardens, s.sessions, size),
-    },
+    progress: { ...s.progress, gardenSize: nextGardenSize(s.progress.gardenSize) },
   }));
 }
 
@@ -359,7 +344,7 @@ export function completeOnboarding(): void {
 /**
  * Lets go of everything that grew, and keeps the user.
  *
- * Sittings, gardens and notes go; the settings that say how the app should
+ * Sittings, the garden and notes go; the settings that say how the app should
  * behave stay exactly as they are. That split is the whole difference between
  * this and `__reset`, which is a fresh install and takes onboarding with it —
  * somebody asking for this has been using the app and is not asking to be shown

@@ -50,12 +50,11 @@ after twenty sittings across three weeks. Whether that stage describes your mind
 yours to decide.
 [The rules, in a table →](docs/GUIDE.md#how-it-works)
 
-## Every garden you kept
+## One bed, and it grows
 
-<img src="docs/images/gardens.png" alt="A shelf of finished gardens at 3, 9, 27 and 108 plants" width="330">
-
-You pick the size each time one fills: 3 to start, then 9, 27, 54 or 108. A mala is
-the largest there is.
+A bed of three to start. Fill it and it asks whether to carry on: six, then twelve,
+then another row of twelve every time. A hundred and eight is a mala, and the bed
+goes past it.
 [Where the arithmetic lives →](docs/GUIDE.md#where-things-live)
 
 ## Docs

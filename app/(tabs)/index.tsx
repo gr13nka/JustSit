@@ -23,8 +23,8 @@ const BATON_SIZE = 110;
 export default function GardenScreen() {
   const sessions = useSessions();
   const notes = useNotes();
-  const { gardens } = useProgress();
-  const plot = currentPlot(sessions, gardens);
+  const { gardenSize } = useProgress();
+  const plot = currentPlot(sessions, gardenSize);
   const streak = currentStreak(sessions);
 
   const { progress, restart } = useBurst();
@@ -108,7 +108,7 @@ export default function GardenScreen() {
    * Held rather than tapped, and only where there is something to show: the
    * garden is a record and reading one back is looking at the record more
    * closely, not doing something to it. Which dots those are is worked out
-   * here, because the grid draws gardens and does not read the store.
+   * here, because the grid draws the bed and does not read the store.
    */
   const marked = notedSlots(notes, plot.plants);
   const [reading, setReading] = useState<Note | null>(null);
@@ -119,15 +119,24 @@ export default function GardenScreen() {
   };
 
   /**
-   * The caption is the way to the shelf, and the only way in that is not a dot.
+   * The caption says how far the bed has got, and only answers a touch when it
+   * is full.
    *
-   * When the garden is full it goes to the ask instead — there is no next dot
-   * for the ring to circle then, so the caption is the one mark on the screen
-   * that can still be touched, and the question it leads to is the only thing
-   * left to do here.
+   * A full bed has no next dot for the ring to circle, so nothing on the screen
+   * would lead anywhere — which is exactly the state somebody is in who killed
+   * the app on the completion screen instead of pressing Done. The caption is
+   * then the one mark left that can be touched, and it goes where Done would
+   * have gone. With room still in the bed there is nowhere else to be, so it is
+   * a line of type and nothing more.
    */
   const full = nextDot(plot) === null;
-  const openShelf = () => router.push(full ? '/gardens/ask' : '/gardens');
+
+  /** How far the bed has got. The same line either way — only the touch moves. */
+  const caption = (
+    <Text variant="caption" style={styles.plotLabel}>
+      {plot.plants.length} of {plot.size}
+    </Text>
+  );
 
   return (
     <View style={styles.root}>
@@ -160,16 +169,18 @@ export default function GardenScreen() {
 
         <View style={styles.header}>
           <Text variant="title">Your garden</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={full ? 'Choose the next garden' : 'Your gardens'}
-            onPress={openShelf}
-            hitSlop={space.sm}
-            style={({ pressed }) => pressed && styles.pressed}>
-            <Text variant="caption" style={styles.plotLabel}>
-              Garden {plot.index + 1} · {plot.plants.length} of {plot.size}
-            </Text>
-          </Pressable>
+          {full ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Grow the garden"
+              onPress={() => router.push('/garden/grow')}
+              hitSlop={space.sm}
+              style={({ pressed }) => pressed && styles.pressed}>
+              {caption}
+            </Pressable>
+          ) : (
+            caption
+          )}
         </View>
 
         {/*

@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { allPlots } from '../../src/domain/plots';
 import { stageAt } from '../../src/domain/stages';
 import { daysSat, totalSatMs } from '../../src/domain/stats';
 import { requestPermission, setDailyReminder } from '../../src/session/notifications';
@@ -45,8 +44,6 @@ export default function YouScreen() {
   const stage = stageAt(progress.stage);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  const plots = allPlots(sessions, progress.gardens);
 
   const onPickTime = async (event: DateTimePickerEvent, date?: Date) => {
     setPickerOpen(false);
@@ -150,29 +147,6 @@ export default function YouScreen() {
               />
             ))}
           </View>
-        </Card>
-
-        {/*
-          The archive used to be a list of dates here, which said the one thing
-          about a garden that was never true of it — how long it took — and left
-          out the only thing that is, which is its shape. It is a screen of its
-          own now, and this is the way to it.
-        */}
-        <Card style={styles.card}>
-          <Text variant="label">Gardens</Text>
-          <Pressable
-            onPress={() => router.push('/gardens')}
-            style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}>
-            <Text variant="body">
-              {plots.length} {plots.length === 1 ? 'garden' : 'gardens'}
-            </Text>
-            <View style={styles.action}>
-              <Text variant="caption" color="ink">
-                See them
-              </Text>
-              <ArrowRight color={color.inkSoft} size={ARROW_SIZE} />
-            </View>
-          </Pressable>
         </Card>
 
         {/*

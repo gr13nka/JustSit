@@ -97,8 +97,9 @@ export function PlantGrid({
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
-  // How wide this garden is cut. Gardens are sizes their owners chose, so a bed
-  // of three and a mala are different shapes at the same pitch.
+  // How wide the bed is cut. It is one row while it is small and twelve across
+  // from there on, so a starter bed and a mala are different shapes at the same
+  // pitch — and a bed only ever widens while every plant in it is in row 0.
   const { cols } = shapeFor(plot.size);
 
   // Sizes, the ground line, and what the overhang costs the grid in padding —
@@ -110,9 +111,8 @@ export function PlantGrid({
     cols
   );
 
-  // Which dot to circle. Slots are absolute, so this compares against the same
-  // number the grid is laying out — and there is none to circle at all in a
-  // garden that is only being looked at.
+  // Which dot to circle. There is none to circle at all in a garden that is
+  // only being looked at.
   const next = onBegin ? nextDot(plot) : null;
 
   // What moves a dot down onto the same ground line the plants stand on. Only
@@ -131,12 +131,8 @@ export function PlantGrid({
           { width: span, paddingTop: above, paddingBottom: below },
         ]}>
         {cell > 0 &&
-          Array.from({ length: plot.size }, (_, i) => {
-            // The garden knows where its own first dot is. Slots stay absolute
-            // across every garden, but the gardens are no longer all one size,
-            // so this can no longer be worked out by multiplying.
-            const slot = plot.start + i;
-            const planted = plot.cells[i];
+          Array.from({ length: plot.size }, (_, slot) => {
+            const planted = plot.cells[slot];
             const { dx, dy } = slotOffset(slot);
 
             const style = [
@@ -176,14 +172,16 @@ export function PlantGrid({
                     wide as a full one.
                   */}
                   {sway ? (
-                    // Where in *this* garden the plant stands, not where in the
-                    // sequence: the wind crosses the bed you are looking at,
-                    // and a bed nine wide has nine columns for it to cross.
+                    // Where in the bed the plant stands: the wind crosses the
+                    // bed you are looking at, and a bed six wide has six columns
+                    // for it to cross. This is also why the bed's width is
+                    // frozen above one row — a re-flow would move a plant into
+                    // a different cell and a different gust.
                     <Sway
                       progress={sway}
                       slot={slot}
-                      col={i % cols}
-                      row={Math.floor(i / cols)}>
+                      col={slot % cols}
+                      row={Math.floor(slot / cols)}>
                       {grown}
                     </Sway>
                   ) : (
@@ -199,7 +197,7 @@ export function PlantGrid({
               // are asked it.
               if (!onInspect || !noted?.has(slot)) {
                 return (
-                  <View key={i} style={style}>
+                  <View key={slot} style={style}>
                     {standing}
                   </View>
                 );
@@ -207,7 +205,7 @@ export function PlantGrid({
 
               return (
                 <Pressable
-                  key={i}
+                  key={slot}
                   accessibilityRole="button"
                   accessibilityLabel="Read what you wrote here"
                   onLongPress={() => onInspect(planted)}
@@ -228,7 +226,7 @@ export function PlantGrid({
             // that is not there.
             if (slot !== next || !onBegin) {
               return (
-                <View key={i} style={style}>
+                <View key={slot} style={style}>
                   <View style={dropped}>{mark}</View>
                 </View>
               );
@@ -236,7 +234,7 @@ export function PlantGrid({
 
             return (
               <Pressable
-                key={i}
+                key={slot}
                 accessibilityRole="button"
                 accessibilityLabel="Begin a sitting"
                 onPress={onBegin}

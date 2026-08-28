@@ -240,12 +240,12 @@ export function offersFor(
 export function offersForSession(
   sessions: readonly Session[],
   session: Session,
-  gardens: readonly number[]
+  gardenSize: number
 ): Offer[] {
   const at = sessions.findIndex((s) => s.id === session.id);
   const earlier = at === -1 ? sessions : sessions.slice(0, at);
 
-  const plot = currentPlot(earlier, gardens);
+  const plot = currentPlot(earlier, gardenSize);
 
   return offersFor(
     session.id,

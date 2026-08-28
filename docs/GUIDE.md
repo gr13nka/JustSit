@@ -91,7 +91,7 @@ carry them across.
 | | |
 |---|---|
 | **Planting** | A completed sitting offers three plants; you choose the one that grows. A longer sitting may offer a rarer plant, or a few common ones instead. Quit early and nothing grows — no message, no guilt. |
-| **Garden** | Gardens of a size you choose: a bed of 3 to start, then 9, 27, 54 or 108 (a mala) each time one fills — or grow the one you have. Finished gardens keep their place on the shelf. |
+| **Garden** | One bed, and it only grows: 3 to start, then 6, then 12, then another row of twelve each time it fills. You confirm each step; there is no size to pick. 108 is a mala, and the bed carries on past it. |
 | **Curriculum** | Wallace's ten stages. The app offers to advance after ~20 sessions across 3+ weeks; **you** confirm whether the next stage describes your mind. Declining is respected for a fortnight. |
 | **Tips** | One card before each sitting, in order, drawn from your current stage. |
 | **Duration** | Your stage pre-selects a length; every option stays tappable. |
@@ -107,7 +107,7 @@ carry them across.
 app/                 screens (expo-router)
   (tabs)/            Garden · You
   session/           start → tip → run → complete → advance   (outside the tab bar)
-  gardens/           the shelf, one garden, and the ask for the next
+  garden/            grow — the ask when the bed is full
   notes/             the notes and one note
   onboarding.tsx
 src/

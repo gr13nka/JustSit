@@ -287,17 +287,17 @@ describe('offersForSession', () => {
     const earlier = Array.from({ length: 6 }, (_, i) => sat(`e${i}`, 6 - i, i, 2 * MIN));
     const seventh = sat('seventh', 0, 6, 2 * MIN);
 
-    expect(tiers(offersForSession(earlier, seventh, [108]))).toContain('rare');
+    expect(tiers(offersForSession(earlier, seventh, 108))).toContain('rare');
     // And the same answer once it is recorded: the store asks before the
     // session exists, the completion screen asks again after.
-    expect(tiers(offersForSession([...earlier, seventh], seventh, [108]))).toContain(
+    expect(tiers(offersForSession([...earlier, seventh], seventh, 108))).toContain(
       'rare'
     );
 
     // A day short of it, a short sitting is a short sitting.
     const five = Array.from({ length: 5 }, (_, i) => sat(`e${i}`, 5 - i, i, 2 * MIN));
     const sixth = sat('sixth', 0, 5, 2 * MIN);
-    expect(tiers(offersForSession(five, sixth, [108]))).not.toContain('rare');
+    expect(tiers(offersForSession(five, sixth, 108))).not.toContain('rare');
   });
 
   it('is a fact about the day, not about how often you sat in it', () => {
@@ -308,7 +308,7 @@ describe('offersForSession', () => {
     const first = sat('first', 0, 5, 2 * MIN);
     const again = sat('again', 0, 6, 2 * MIN);
 
-    expect(tiers(offersForSession([...earlier, first], again, [108]))).not.toContain(
+    expect(tiers(offersForSession([...earlier, first], again, 108))).not.toContain(
       'rare'
     );
   });
@@ -317,7 +317,7 @@ describe('offersForSession', () => {
     // Two dots left in a garden of three: a bundle of three would not fit.
     const earlier = [sat('a', 2, 0)];
     const today = sat('b', 0, 1);
-    const offers = offersForSession(earlier, today, [3]);
+    const offers = offersForSession(earlier, today, 3);
     for (const offer of offers) expect(offer.plants.length).toBeLessThanOrEqual(2);
   });
 
@@ -327,8 +327,8 @@ describe('offersForSession', () => {
     const earlier = [sat('a', 3, 0), sat('b', 2, 1)];
     const today = sat('c', 0, 2);
 
-    expect(offersForSession(earlier, today, [108])).toEqual(
-      offersForSession([...earlier, today], today, [108])
+    expect(offersForSession(earlier, today, 108)).toEqual(
+      offersForSession([...earlier, today], today, 108)
     );
   });
 });

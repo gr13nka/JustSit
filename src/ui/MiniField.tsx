@@ -3,21 +3,21 @@ import Svg, { G, Path } from 'react-native-svg';
 import { Grown } from '../domain/plots';
 import { useColor } from '../theme/useColor';
 import { bloomOf } from './Plant';
-import { GROWN_PAGE, MiniPage, miniGrid } from './shelf';
+import { MARK_PAGE, miniGrid } from './tally';
 
 /**
  * A garden at a glance: one small mark per dot, on the shape that garden is
  * cut to.
  *
  * These are **tallies, not plants**. A plant is a drawing and costs an SVG with
- * a dozen béziers in it; a shelf can hold five gardens and one of them can be a
- * mala, so drawing them properly is six hundred of those on a screen you are
- * only scrolling past. What survives at a fifth of an inch is exactly three
- * things — that a sitting happened, that it grew (green), and whether the
- * species blooms (a fleck of its own pen) — so those three are what is drawn,
- * and the rest of the plant is left in the garden where it can be seen.
+ * a dozen béziers in it, and a bed can be a mala, so drawing them properly is a
+ * hundred and eight of those on something the size of a card. What survives at
+ * a fifth of an inch is exactly three things — that a sitting happened, that it
+ * grew (green), and whether the species blooms (a fleck of its own pen) — so
+ * those three are what is drawn, and the rest of the plant is left in the
+ * garden where it can be seen.
  *
- * The whole card is **one** `<Svg>` with a transform per mark, rather than one
+ * The whole thing is **one** `<Svg>` with a transform per mark, rather than one
  * `<Svg>` per mark. A hundred and eight native views is the cost the tally was
  * introduced to avoid, and paying it in the wrapper instead of in the drawing
  * would have missed the point.
@@ -65,59 +65,42 @@ export function MiniField({
   size,
   cells,
   mark,
-  start = 0,
-  page = GROWN_PAGE,
 }: {
   /** How many dots this garden holds. */
   size: number;
   /**
-   * What has grown, one entry per dot, null where nothing has. Absent draws an
-   * empty field — which is what a *shape preview* is: the bed a size would lay
-   * out, before it exists.
+   * What has grown, one entry per dot, null where nothing has. Absent draws the
+   * bed empty — the shape a size would lay out, before anything is in it.
    */
   cells?: readonly (Grown | null)[];
-  /** One mark's width in points. The same for every card on a shelf. */
+  /** One mark's width in points. */
   mark: number;
-  /**
-   * The absolute slot of this garden's first dot — `Plot.start`.
-   *
-   * The tally's hand and its lift are decided by the slot, and a slot is
-   * counted across every garden the user has grown. Left at zero every garden
-   * would open with the same mark in the same place, which is the one pattern
-   * both of them exist to break. Zero is right for a shape preview, which is a
-   * bed nobody has planted rather than a garden at some position on a shelf.
-   */
-  start?: number;
-  page?: MiniPage;
 }) {
   const color = useColor();
-  const grid = miniGrid(size, mark, page);
+  const grid = miniGrid(size, mark);
 
   if (grid.mark <= 0) return null;
 
   // The marks are drawn on their own ten-unit page and placed by transform, so
   // the page's own numbers stay readable above and nothing here is a magic
   // fraction of a point.
-  const scale = mark / page.width;
+  const scale = mark / MARK_PAGE.width;
 
   return (
     <Svg width={grid.width} height={grid.height}>
-      {Array.from({ length: size }, (_, i) => {
-        const grown = cells?.[i] ?? null;
-        const slot = start + i;
-        const col = i % grid.cols;
-        const row = Math.floor(i / grid.cols);
+      {Array.from({ length: size }, (_, slot) => {
+        const grown = cells?.[slot] ?? null;
+        const col = slot % grid.cols;
+        const row = Math.floor(slot / grid.cols);
 
-        const x = col * (grid.mark + grid.gapX) - page.x * scale;
+        const x = col * (grid.mark + grid.gapX);
         const y =
-          row * (grid.markHeight + grid.gapY) -
-          page.y * scale +
-          (grown ? lift(slot, grid.mark) : 0);
+          row * (grid.markHeight + grid.gapY) + (grown ? lift(slot, grid.mark) : 0);
 
         const bloom = grown ? bloomOf(grown.key) : null;
 
         return (
-          <G key={i} transform={`translate(${x} ${y}) scale(${scale})`}>
+          <G key={slot} transform={`translate(${x} ${y}) scale(${scale})`}>
             {grown ? (
               <>
                 <Path

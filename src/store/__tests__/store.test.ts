@@ -1,5 +1,5 @@
 import { isKnownPlant, offersFor } from '../../domain/plants';
-import { PLOT_SIZE, STARTER_GARDEN } from '../../domain/plots';
+import { MALA, nextGardenSize, STARTER_GARDEN } from '../../domain/plots';
 import { stageAt } from '../../domain/stages';
 import { Session } from '../types';
 import { noteForSession } from '../../domain/notes';
@@ -7,16 +7,15 @@ import {
   __replaceState,
   __reset,
   addNote,
-  chooseGardenSize,
   deleteNote,
   chooseOffer,
   completeOnboarding,
   getState,
+  growGarden,
   markTipSeen,
   noteAdvanceOffered,
   recordCompletedSession,
   resetProgress,
-  resizeGarden,
   setStage,
   updateNote,
   updateSettings,
@@ -40,15 +39,15 @@ function seeded(id: string, slot: number): Session {
   };
 }
 
-/** Opens a garden of `size` with `grown` dots already filled. */
+/** A bed of `size` dots with `grown` of them already filled. */
 function garden(size: number, grown: number) {
   __replaceState({
     sessions: Array.from({ length: grown }, (_, i) => seeded(`s${i}`, i)),
-    progress: { ...getState().progress, gardens: [size] },
+    progress: { ...getState().progress, gardenSize: size },
   });
 }
 
-/** Every dot in use, across every garden. */
+/** Every dot in use. */
 function slots(): number[] {
   return getState().sessions.flatMap((s) => s.plants.map((p) => p.slot));
 }
@@ -64,7 +63,7 @@ describe('recordCompletedSession', () => {
   });
 
   it('assigns species we have art for, and stores them rather than deriving them', () => {
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const session = recordCompletedSession({
       startedAt: Date.now(),
       durationMs: TEN_MIN,
@@ -77,10 +76,10 @@ describe('recordCompletedSession', () => {
   it('writes the first offer straight away, so no sitting is ever plantless', () => {
     // Kill the app on the completion screen and the sitting is still in the
     // ground — at the cost of it being the offer nobody picked.
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
 
-    const offers = offersFor(session.id, 30 * 60_000, 0, PLOT_SIZE);
+    const offers = offersFor(session.id, 30 * 60_000, 0, MALA);
     expect(session.plants.map((p) => p.key)).toEqual(offers[0].plants);
   });
 
@@ -114,7 +113,7 @@ describe('recordCompletedSession', () => {
 
 describe('the dot a plant grows in', () => {
   it('is the first free one in the garden, and nobody is asked', () => {
-    garden(PLOT_SIZE, 2);
+    garden(MALA, 2);
     const session = recordCompletedSession({
       startedAt: Date.now(),
       durationMs: TEN_MIN,
@@ -123,7 +122,7 @@ describe('the dot a plant grows in', () => {
   });
 
   it('fills consecutive dots across consecutive sittings', () => {
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const grown = [0, 1, 2].map((i) =>
       recordCompletedSession({ startedAt: i + 1, durationMs: TEN_MIN })
     );
@@ -131,7 +130,7 @@ describe('the dot a plant grows in', () => {
   });
 
   it('lays a bundle out over consecutive dots', () => {
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
     const laid = session.plants.map((p) => p.slot);
     expect(laid).toEqual(laid.map((_, i) => laid[0] + i));
@@ -146,7 +145,7 @@ describe('the dot a plant grows in', () => {
   it('fills the holes in a garden grown before planting was linear', () => {
     __replaceState({
       sessions: [seeded('a', 0), seeded('b', 4), seeded('c', 9)],
-      progress: { ...getState().progress, gardens: [PLOT_SIZE] },
+      progress: { ...getState().progress, gardenSize: MALA },
     });
 
     const first = recordCompletedSession({ startedAt: 1, durationMs: TEN_MIN });
@@ -156,9 +155,10 @@ describe('the dot a plant grows in', () => {
     expect(new Set(slots()).size).toBe(slots().length);
   });
 
-  it('opens a garden rather than losing a sitting with nowhere to go', () => {
-    // Unreachable from the app — a full garden has no dot left to start a
-    // sitting from, and the ask screen gets there first. This is the floor.
+  it('grows the bed rather than losing a sitting with nowhere to go', () => {
+    // Unreachable from the app — a full bed has no dot left to start a sitting
+    // from, and the grow screen gets there first. This is the floor under it,
+    // and it takes the same rung the ladder would have.
     garden(3, 3);
 
     const session = recordCompletedSession({
@@ -166,16 +166,16 @@ describe('the dot a plant grows in', () => {
       durationMs: TEN_MIN,
     });
 
-    expect(getState().progress.gardens).toEqual([3, 3]);
+    expect(getState().progress.gardenSize).toBe(6);
     expect(session.plants[0].slot).toBe(3);
   });
 });
 
 describe('chooseOffer', () => {
   it('swaps the newest sitting\'s plants for the one that was picked', () => {
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
-    const offers = offersFor(session.id, 30 * 60_000, 0, PLOT_SIZE);
+    const offers = offersFor(session.id, 30 * 60_000, 0, MALA);
 
     chooseOffer(session.id, 2);
 
@@ -187,7 +187,7 @@ describe('chooseOffer', () => {
   it('plants the choice where the first one stood', () => {
     // The dot is where the user touched; picking a different offer does not
     // move the sitting somewhere else in the garden.
-    garden(PLOT_SIZE, 4);
+    garden(MALA, 4);
     const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
     const first = session.plants[0].slot;
 
@@ -196,7 +196,7 @@ describe('chooseOffer', () => {
   });
 
   it('leaves no dot used twice, whichever offer is taken', () => {
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
 
     for (const index of [0, 1, 2, 1, 0]) {
@@ -208,7 +208,7 @@ describe('chooseOffer', () => {
   it('refuses a sitting that is no longer the newest', () => {
     // Its plants are no longer the tail of the used slots, so re-laying them
     // could land on a dot something else has grown in.
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const first = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
     recordCompletedSession({ startedAt: 2, durationMs: 30 * 60_000 });
 
@@ -218,7 +218,7 @@ describe('chooseOffer', () => {
   });
 
   it('refuses an offer that was never on the table', () => {
-    garden(PLOT_SIZE, 0);
+    garden(MALA, 0);
     const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
     const before = getState().sessions[0].plants;
 
@@ -238,42 +238,53 @@ describe('chooseOffer', () => {
   });
 });
 
-describe('choosing a garden', () => {
+describe('growGarden', () => {
   it('starts a fresh user on the starter bed', () => {
-    expect(getState().progress.gardens).toEqual([STARTER_GARDEN]);
+    expect(getState().progress.gardenSize).toBe(STARTER_GARDEN);
   });
 
-  it('opens the next garden at the size that was asked for', () => {
+  it('takes the next rung of the ladder, and takes no size', () => {
     garden(3, 3);
-    chooseGardenSize(27);
-    expect(getState().progress.gardens).toEqual([3, 27]);
+    growGarden();
+    expect(getState().progress.gardenSize).toBe(nextGardenSize(3));
   });
 
   it('does nothing while there is still somewhere to plant', () => {
-    // Two open gardens would give the next sitting two answers about where it
-    // goes, so a second tap on the ask screen is not a second garden.
-    garden(9, 3);
-    chooseGardenSize(27);
-    expect(getState().progress.gardens).toEqual([9]);
+    // A bed with room in it is a bed nobody has been asked about, so a second
+    // tap on the grow screen is inert rather than two rungs.
+    garden(12, 3);
+    growGarden();
+    expect(getState().progress.gardenSize).toBe(12);
   });
 
-  it('resizes the garden being filled', () => {
-    garden(9, 2);
-    resizeGarden(27);
-    expect(getState().progress.gardens).toEqual([27]);
+  it('is inert on a second press, so one ask grows one rung', () => {
+    garden(6, 6);
+    growGarden();
+    growGarden();
+    expect(getState().progress.gardenSize).toBe(12);
   });
 
-  it('closes a garden at what has grown rather than shrinking below it', () => {
-    garden(9, 5);
-    resizeGarden(2);
-    expect(getState().progress.gardens).toEqual([5]);
+  it('leaves every plant in the dot it was already in', () => {
+    // The whole reason the ladder is not a menu. A widening is only ever asked
+    // for on a full single-row bed, where nothing can re-flow.
+    garden(6, 6);
+    const before = slots();
+    growGarden();
+    expect(slots()).toEqual(before);
   });
 
-  it('leaves the gardens behind it alone', () => {
+  it('climbs the ladder a rung at a time, however often it is asked', () => {
     garden(3, 3);
-    chooseGardenSize(27);
-    resizeGarden(9);
-    expect(getState().progress.gardens).toEqual([3, 9]);
+    growGarden();
+    expect(getState().progress.gardenSize).toBe(6);
+
+    garden(6, 6);
+    growGarden();
+    expect(getState().progress.gardenSize).toBe(12);
+
+    garden(12, 12);
+    growGarden();
+    expect(getState().progress.gardenSize).toBe(24);
   });
 });
 
@@ -442,7 +453,7 @@ describe('resetProgress', () => {
 
     expect(getState().sessions).toEqual([]);
     expect(getState().notes).toEqual([]);
-    expect(getState().progress.gardens).toEqual([STARTER_GARDEN]);
+    expect(getState().progress.gardenSize).toBe(STARTER_GARDEN);
   });
 
   it('goes back to stage one, with nothing taught yet', () => {
@@ -498,7 +509,7 @@ describe('resetProgress', () => {
     resetProgress();
     expect(getState().sessions).toEqual([]);
     expect(getState().progress.stage).toBe(once.stage);
-    expect(getState().progress.gardens).toEqual(once.gardens);
+    expect(getState().progress.gardenSize).toBe(once.gardenSize);
   });
 });
 
@@ -507,12 +518,11 @@ describe('__reset', () => {
     recordCompletedSession({ startedAt: Date.now(), durationMs: TEN_MIN });
     addNote({ body: 'something' });
     setStage(5);
-    chooseGardenSize(9);
     __reset();
     expect(getState().sessions).toHaveLength(0);
     expect(getState().notes).toHaveLength(0);
     expect(getState().progress.stage).toBe(1);
-    expect(getState().progress.gardens).toEqual([STARTER_GARDEN]);
+    expect(getState().progress.gardenSize).toBe(STARTER_GARDEN);
     expect(getState().settings.onboardedAt).toBeNull();
     // A fresh install has never been asked for the developer panel, so pressing
     // this on a release build puts it away as well.

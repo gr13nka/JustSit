@@ -2,10 +2,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { plantFor } from '../domain/plants';
 import {
+  MALA,
   nextFreeSlot,
-  PLOT_SIZE,
+  nextGardenSize,
   STARTER_GARDEN,
-  withNextGarden,
 } from '../domain/plots';
 import {
   DAYS_AT_STAGE_TO_OFFER,
@@ -47,17 +47,18 @@ export function DevPanel() {
     const { sessions, progress } = getState();
     const now = Date.now();
 
-    // Seeding runs past the end of a garden, which real sittings cannot: the
-    // app asks what size to grow next, and there is nobody here to answer. A
-    // 108 is what these buttons are for — the interesting states are the ones
-    // a full mala takes to reach.
-    let gardens = progress.gardens;
+    // Seeding runs past the end of the bed, which real sittings cannot: the app
+    // stops and asks whether to grow it, and there is nobody here to answer. So
+    // it steps the ladder itself, one rung at a time — the same rungs the grow
+    // screen would have taken, so a seeded garden is a shape the app could
+    // actually have arrived at.
+    let gardenSize = progress.gardenSize;
 
     const added: Session[] = [];
     for (let i = 0; i < n; i++) {
       const grown = [...sessions, ...added];
-      if (nextFreeSlot(grown, gardens) === null) {
-        gardens = withNextGarden(gardens, PLOT_SIZE);
+      if (nextFreeSlot(grown, gardenSize) === null) {
+        gardenSize = nextGardenSize(gardenSize);
       }
 
       const completedAt = now - (n - i) * DAY;
@@ -71,14 +72,14 @@ export function DevPanel() {
         // One plant per seeded sitting, in the first free dot — the shape a
         // ten-minute sitting takes when its single-plant offer is accepted.
         plants: [
-          { key: plantFor(id), slot: nextFreeSlot(grown, gardens) as number },
+          { key: plantFor(id), slot: nextFreeSlot(grown, gardenSize) as number },
         ],
       });
     }
 
     __replaceState({
       sessions: [...sessions, ...added],
-      progress: { ...progress, gardens },
+      progress: { ...progress, gardenSize },
     });
   };
 
@@ -118,7 +119,9 @@ export function DevPanel() {
         {/* Fills the starter bed exactly, so the ask screen is one tap away. */}
         <DevButton label={`+${STARTER_GARDEN}`} onPress={() => seed(STARTER_GARDEN)} />
         <DevButton label="+10" onPress={() => seed(10)} />
-        <DevButton label={`+${PLOT_SIZE}`} onPress={() => seed(PLOT_SIZE)} />
+        {/* A mala's worth in one press: the states worth looking at are the
+            ones a bed that size takes months to reach. */}
+        <DevButton label={`+${MALA}`} onPress={() => seed(MALA)} />
       </View>
       <View style={styles.row}>
         <DevButton label="Next stage" onPress={bumpStage} />
