@@ -6,6 +6,7 @@ import {
   SESSIONS_TO_OFFER,
   sessionsAtStage,
   shouldOfferAdvance,
+  shouldShowTip,
 } from '../progression';
 import { stageAt } from '../stages';
 
@@ -100,6 +101,29 @@ describe('shouldOfferAdvance', () => {
     const moved = progress({ stage: 2 });
     const history = [...sat(SESSIONS_TO_OFFER, 1), ...sat(2, 2)];
     expect(shouldOfferAdvance(moved, history, NOW)).toBe(false);
+  });
+});
+
+describe('shouldShowTip', () => {
+  it('says nothing before the very first sitting, which onboarding has just taught', () => {
+    expect(shouldShowTip([], NOW)).toBe(false);
+  });
+
+  it('carries one idea into the day’s first sitting', () => {
+    // sat() lands its newest sitting yesterday, so nothing has grown today.
+    expect(shouldShowTip(sat(3), NOW)).toBe(true);
+  });
+
+  it('sends a second sitting on the same day straight to the bell', () => {
+    const earlierToday = sat(3).map((s, i, all) =>
+      i === all.length - 1 ? { ...s, completedAt: NOW - 2 * 3_600_000 } : s
+    );
+    expect(shouldShowTip(earlierToday, NOW)).toBe(false);
+  });
+
+  it('is the same after a long absence as after a day off', () => {
+    const stale = sat(3).map((s) => ({ ...s, completedAt: s.completedAt - 90 * DAY }));
+    expect(shouldShowTip(stale, NOW)).toBe(true);
   });
 });
 

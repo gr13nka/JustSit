@@ -1,5 +1,6 @@
 import { Progress, Session } from '../store/types';
 import { FINAL_STAGE, Stage, Tip } from './stages';
+import { satToday } from './stats';
 
 /**
  * Wallace's criterion for moving on is what your mind is doing, not how many
@@ -51,6 +52,31 @@ export function shouldOfferAdvance(
   }
 
   return true;
+}
+
+/**
+ * Whether the teaching card comes before this sitting, or the bell does.
+ *
+ * The card is instruction you can only act on while sitting, so putting one in
+ * front of every sitting delivers it at the one moment it cannot be practised.
+ * By the third time in a day it is a page to get past, and a page you tap past
+ * is not teaching. So the day's first sitting carries one idea and everything
+ * later that day goes straight to the bell.
+ *
+ * The very first sitting of all is skipped for the opposite reason: onboarding's
+ * third step has just handed over stage one's `felt` line, and a teaching card a
+ * minute behind it is the same teaching twice inside a minute.
+ *
+ * None of this is stored. It is read from the sittings and the clock, so there
+ * is no "tip last shown" timestamp to keep in step with the sittings — which
+ * would be a second answer to a question the sittings already answer, and the
+ * two would part company the first time a sitting was recorded without one.
+ */
+export function shouldShowTip(
+  sessions: readonly Session[],
+  now: number = Date.now()
+): boolean {
+  return sessions.length > 0 && !satToday(sessions, now);
 }
 
 /**

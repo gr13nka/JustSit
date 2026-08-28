@@ -1,11 +1,12 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 
-import { stageAt } from '../../src/domain/stages';
+import { shouldShowTip } from '../../src/domain/progression';
+import { stageAt, unlockedDurations } from '../../src/domain/stages';
 import { space } from '../../src/theme/tokens';
 import { useColor } from '../../src/theme/useColor';
-import { useProgress, useSettings } from '../../src/store';
+import { useProgress, useSessions, useSettings } from '../../src/store';
 import { Button } from '../../src/ui/Button';
 import { DurationDial } from '../../src/ui/DurationDial';
 import { ArrowLeft } from '../../src/ui/icons';
@@ -29,12 +30,44 @@ const PREVIEW_PLANT = 'grass';
 export default function StartScreen() {
   const progress = useProgress();
   const settings = useSettings();
+  const sessions = useSessions();
   const stage = stageAt(progress.stage);
 
-  // The stage proposes; a previous explicit choice, if there is one, wins.
-  const [durationMs, setDurationMs] = useState(
-    settings.lastDurationMs ?? stage.suggestedMs
-  );
+  /*
+    How far up the ladder the dial reaches. Counted in sittings rather than
+    read from the stage, because it is a tutorial about lengths and not a
+    statement about practice: somebody who has sat twenty times knows what
+    twenty-four minutes is, whatever stage they are at.
+  */
+  const options = unlockedDurations(sessions.length);
+
+  const [durationMs, setDurationMs] = useState(() => {
+    // The stage proposes; a previous explicit choice, if there is one, wins.
+    const suggested = settings.lastDurationMs ?? stage.suggestedMs;
+    /*
+      Neither of those can outrun the ladder in ordinary use — the unlocks are
+      done by sitting twenty and no stage past the first is reachable in fewer
+      (see DURATION_UNLOCKS). The dev panel's stage jump is the one thing that
+      can, and a pre-selection nothing on the row matches would leave the marker
+      parked on the first option while the button started a sitting of another
+      length entirely. So it falls back to the longest length actually offered
+      rather than to the shortest: the intent was a longer sitting.
+    */
+    return options.includes(suggested) ? suggested : options[options.length - 1];
+  });
+
+  /*
+    Straight to the bell when the card has nothing to add — `shouldShowTip`
+    holds the reasoning. Pushing `run` rather than `tip` is safe: the session
+    layout disables the back gesture everywhere except `start` and `tip`, and
+    the way out of a sitting is End, which replaces the whole stack with the
+    tabs.
+  */
+  const begin = () =>
+    router.push({
+      pathname: shouldShowTip(sessions) ? '/session/tip' : '/session/run',
+      params: { durationMs: String(durationMs) },
+    });
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -67,16 +100,11 @@ export default function StartScreen() {
       <Button
         label="Meditate"
         variant="wobbly"
-        onPress={() =>
-          router.push({
-            pathname: '/session/tip',
-            params: { durationMs: String(durationMs) },
-          })
-        }
+        onPress={begin}
         style={styles.start}
       />
 
-      <DurationDial valueMs={durationMs} onChange={setDurationMs} />
+      <DurationDial options={options} valueMs={durationMs} onChange={setDurationMs} />
     </Screen>
   );
 }

@@ -235,7 +235,9 @@ cards behind one plant would be a plant that only half remembers. The join is
 | Whole minutes by default; seconds are opt-in | `settings.hideSeconds`, `ui/Clock.tsx` |
 | Advance offered at ≥20 sessions **and** ≥21 days at stage; a decline is respected for 14 days | `domain/progression.ts` |
 | The app proposes a stage; **the user confirms** | `app/session/advance.tsx` |
-| Stage suggests a duration; every option stays tappable | `domain/stages.ts`, `ui/DurationDial.tsx` |
+| The dial opens at two lengths and reaches all six by the twentieth sitting; everything on the row is tappable | `domain/stages.DURATION_UNLOCKS`, `ui/DurationDial.tsx` |
+| Stage suggests a duration; it can never suggest one the dial is not yet showing | `domain/stages.ts`, `domain/progression.SESSIONS_TO_OFFER` |
+| The teaching card comes before the day's first sitting only, and never before the first of all | `domain/progression.shouldShowTip` |
 | Tips move forward in written order, then cycle | `domain/progression.nextTip` |
 | One bell in, one out, nothing between | `session/bells.ts` |
 | One daily reminder, off by default; the line rotates by the day, and none of the six mentions what you did not do | `session/reminderLines.ts` |
@@ -752,7 +754,7 @@ driver — and means there is nothing to measure and no frame where the marker i
 in the wrong place. It is silent: the kit allows this one navigation a sound,
 but this app rings one bell in, one out, and nothing between.
 
-**The duration dial has no container.** Six numbers with air between them are
+**The duration dial has no container.** A few numbers with air between them are
 already legible as a row of choices; the card that used to hold them was a box
 drawn around something that did not need one, and the heaviest mark at the foot
 of a screen whose whole argument is that it is quiet. Small boxes with generous
@@ -760,8 +762,24 @@ gaps (38 × 36, gap 10) rather than large boxes packed together — both fit the
 same width, only the second breathes, and the marker then reads as having
 arrived somewhere rather than as one cell of a strip. Selection is carried twice
 over, by the soft marker and by the number darkening from `inkSoft` to `ink`;
-what the unselected ones must never do is fade, because every length is
-available at every stage and five greyed-out numbers would say otherwise.
+what the unselected ones must never do is fade, because everything on the row
+can be had and a greyed-out number would say otherwise.
+
+**The row grows over the first twenty sittings, and that is a tutorial rather
+than a gate.** `DURATION_UNLOCKS` opens at two and three, adds five at the third
+sitting, ten at the seventh, fifteen at the twelfth and the ghatika at the
+twentieth. A first-time sitter has no idea what twenty-four minutes feels like,
+so six lengths on the first launch is a choice handed to somebody with nothing
+to make it with — and the one they are likeliest to try out of curiosity is the
+one Wallace says they will fail at.
+
+A locked length is **absent from the row, never drawn and greyed out**, which is
+what keeps the paragraph above true. And the mechanism retires itself by
+arithmetic rather than by care: the ladder is fully resolved at twenty sittings
+and every route out of stage one runs through at least `SESSIONS_TO_OFFER`
+sittings at stage one, so there is no reachable state in which a stage proposes
+a length the dial is not showing. A test pins exactly that, which is why
+`stages.test.ts` imports from `progression.ts` — the two constants are one fact.
 
 The chosen length is printed nowhere else. A large figure above the button said
 exactly what the dial's own marker says, in a place you cannot change it.

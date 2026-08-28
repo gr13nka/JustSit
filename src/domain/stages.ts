@@ -30,7 +30,7 @@ export type Stage = {
    * mind, not your attendance.
    */
   felt: string;
-  /** Pre-selected on the dial. Every other option stays tappable. */
+  /** Pre-selected on the dial. Every option the dial is showing stays tappable. */
   suggestedMs: number;
   tips: Tip[];
 };
@@ -38,15 +38,62 @@ export type Stage = {
 const MIN = 60_000;
 
 /**
- * The dial is the same at every stage. Only the pre-selection moves.
+ * The dial's rungs, and how many completed sittings each one waits for.
  *
  * It starts at two minutes because that is where a beginner actually is, and
  * the steps at the bottom are small because that is where the practice is won
  * or lost — Wallace is explicit that people fail by sitting too long too early.
  * It ends at 24, a ghatika: a sixtieth of a day, and long enough that the top
  * of the dial is a real destination rather than a round number.
+ *
+ * The rungs arrive over the first twenty sittings rather than all at once. A
+ * first-time sitter has no idea what twenty-four minutes feels like, so six
+ * lengths on the first launch is a choice handed to somebody with nothing to
+ * make it with — and the one they are likeliest to pick out of curiosity is the
+ * one Wallace says they will fail at. Two and three are enough to start; the
+ * rest turn up once there is something to compare them against.
+ *
+ * What keeps this a tutorial device rather than a restriction is that it
+ * retires itself, and it does so by arithmetic rather than by care. The ladder
+ * is fully resolved at twenty sittings, and every route out of stage one runs
+ * through at least twenty sittings at stage one (`shouldOfferAdvance`, in this
+ * same folder). **So the unlocks are always finished before any stage can
+ * suggest a length that is not yet on the dial** — there is no reachable state
+ * in which the app proposes something the user cannot choose, and no clamp
+ * anywhere is holding that together.
  */
-export const DURATION_OPTIONS_MS = [2, 3, 5, 10, 15, 24].map((m) => m * MIN);
+export const DURATION_UNLOCKS = [
+  { ms: 2 * MIN, after: 0 },
+  { ms: 3 * MIN, after: 0 },
+  { ms: 5 * MIN, after: 3 },
+  { ms: 10 * MIN, after: 7 },
+  { ms: 15 * MIN, after: 12 },
+  { ms: 24 * MIN, after: 20 },
+] as const;
+
+/**
+ * The whole ladder in order — where the dial arrives once the unlocks are done.
+ *
+ * Derived rather than written out a second time. Two lists of the same six
+ * numbers are two lists to keep in step, and the one that fell behind would do
+ * it silently: a length nothing unlocks, or a stage suggesting a rung that is
+ * not on the ladder at all.
+ */
+export const DURATION_OPTIONS_MS = DURATION_UNLOCKS.map((rung) => rung.ms);
+
+/**
+ * The lengths on the dial after `completed` sittings, in ladder order.
+ *
+ * What is unlocked is on the row and what is not is absent — never drawn and
+ * greyed out. Faded numbers would be the app pointing at what you have not done
+ * yet on the one screen whose job is to get out of the way, and they would put
+ * five things you cannot tap in a control where everything is tappable.
+ */
+export function unlockedDurations(completed: number): number[] {
+  return DURATION_UNLOCKS.filter((rung) => completed >= rung.after).map(
+    (rung) => rung.ms
+  );
+}
 
 const BREATH = 'Mindfulness of breathing';
 const SETTLING = 'Settling the mind in its natural state';
