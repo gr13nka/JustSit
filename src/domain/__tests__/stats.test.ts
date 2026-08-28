@@ -1,5 +1,13 @@
 import { Session } from '../../store/types';
-import { currentStreak, daysSat, satToday, totalSatMs } from '../stats';
+import {
+  bestStreak,
+  currentStreak,
+  daysSat,
+  recentDays,
+  satToday,
+  totalSatMs,
+  weekSat,
+} from '../stats';
 
 const DAY = 86_400_000;
 /** A fixed local noon, so day-boundary arithmetic is never ambiguous. */
@@ -62,6 +70,42 @@ describe('currentStreak', () => {
   });
 });
 
+describe('bestStreak', () => {
+  it('is zero with an empty garden', () => {
+    expect(bestStreak([])).toBe(0);
+  });
+
+  it('counts a single sitting as one', () => {
+    expect(bestStreak([satOn(0)])).toBe(1);
+  });
+
+  it('keeps the longest past run after the current one breaks', () => {
+    // Sat once today, and three days in a row a week ago. The current run is 1
+    // and the best is 3 — which is the whole reason this exists: the week that
+    // happened is not undone by the week that did not.
+    const s = [satOn(0), satOn(6), satOn(7), satOn(8)];
+    expect(currentStreak(s, NOON)).toBe(1);
+    expect(bestStreak(s)).toBe(3);
+  });
+
+  it('is nothing more than the current streak when today holds the record', () => {
+    // The two walk the days from opposite ends of the history, so agreeing on
+    // this case is a property worth pinning rather than an obvious one.
+    const s = [satOn(0), satOn(1), satOn(2), satOn(6), satOn(7)];
+    expect(currentStreak(s, NOON)).toBe(3);
+    expect(bestStreak(s)).toBe(3);
+  });
+
+  it('counts two sittings in one day as one day', () => {
+    const twice = [satOn(0), { ...satOn(0), id: 'again' }, satOn(1)];
+    expect(bestStreak(twice)).toBe(2);
+  });
+
+  it('does not care what order the sittings arrive in', () => {
+    expect(bestStreak([satOn(7), satOn(0), satOn(6), satOn(8)])).toBe(3);
+  });
+});
+
 describe('satToday', () => {
   it('is false with an empty garden', () => {
     expect(satToday([], NOON)).toBe(false);
@@ -92,6 +136,78 @@ describe('satToday', () => {
     expect(satToday(lateLastNight, justBefore)).toBe(true);
     expect(satToday(lateLastNight, justAfter)).toBe(false);
     expect(satToday([{ ...satOn(0), completedAt: justAfter }], justAfter)).toBe(true);
+  });
+});
+
+describe('weekSat', () => {
+  // NOON is Tuesday 28 July 2026, so the week it falls in runs Monday the 27th
+  // to Sunday the 2nd of August.
+  it('is seven days long and starts on Monday', () => {
+    // satOn(2) is Sunday the 26th, which belongs to the week before and must
+    // not appear in this one.
+    const week = weekSat([satOn(0), satOn(1), satOn(2)], NOON);
+    expect(week).toHaveLength(7);
+    expect(week).toEqual([
+      true, // Mon 27th
+      true, // Tue 28th, today
+      false, // Wed 29th
+      false, // Thu 30th
+      false, // Fri 31st
+      false, // Sat 1st
+      false, // Sun 2nd
+    ]);
+  });
+
+  it('puts Sunday last rather than first when today is a Sunday', () => {
+    // Where the naive `getDay()` bites: Sunday is 0, so an unrotated offset
+    // would start the week on this very day and run it forward into August.
+    const sunday = NOON - 2 * DAY; // Sunday 26 July 2026
+    const week = weekSat([satOn(1), satOn(2), satOn(3)], sunday);
+    expect(week).toEqual([
+      false, // Mon 20th
+      false, // Tue 21st
+      false, // Wed 22nd
+      false, // Thu 23rd
+      false, // Fri 24th
+      true, // Sat 25th
+      true, // Sun 26th, today
+    ]);
+  });
+
+  it('marks the rest of the week false rather than knowing it is still to come', () => {
+    const week = weekSat([satOn(0), satOn(1)], NOON);
+    expect(week.slice(2)).toEqual([false, false, false, false, false]);
+  });
+
+  it('is all false with an empty garden', () => {
+    expect(weekSat([], NOON)).toEqual([false, false, false, false, false, false, false]);
+  });
+});
+
+describe('recentDays', () => {
+  it('is as long as it was asked for and ends on today', () => {
+    const days = recentDays([satOn(0), satOn(27)], 28, NOON);
+    expect(days).toHaveLength(28);
+    expect(days[27]).toBe(true);
+    expect(days[0]).toBe(true);
+    expect(days.slice(1, 27)).toEqual(new Array(26).fill(false));
+  });
+
+  it('reads oldest first', () => {
+    const days = recentDays([satOn(1)], 28, NOON);
+    expect(days[26]).toBe(true);
+    expect(days[27]).toBe(false);
+  });
+
+  it('agrees with satToday about the last day', () => {
+    const sat = [satOn(0), satOn(3)];
+    const notYet = [satOn(1), satOn(2)];
+    expect(recentDays(sat, 28, NOON)[27]).toBe(satToday(sat, NOON));
+    expect(recentDays(notYet, 28, NOON)[27]).toBe(satToday(notYet, NOON));
+  });
+
+  it('is all false with an empty garden', () => {
+    expect(recentDays([], 28, NOON)).toEqual(new Array(28).fill(false));
   });
 });
 
