@@ -1,16 +1,6 @@
-/**
- * The three palettes the app can wear, and the only place a hex literal lives.
- *
- * Karakuli allows an app exactly one accent, on the grounds that a system stays
- * coherent by keeping what an app may vary very small. This app spends that
- * licence three times instead of once, deliberately: the ground a plant is drawn
- * on changes how the drawing reads, and the answer was not obvious enough to
- * settle from a swatch. What is *not* negotiable is the structure — paper, ink,
- * one accent, colour earned by the garden alone. A theme moves values inside
- * that structure; it never adds a colour that means something new.
- */
+/** The one palette the app wears, and the only place a hex literal lives. */
 
-export type ThemeId = 'ink' | 'butter' | 'prose';
+export type ThemeId = 'ink';
 
 /**
  * Every colour the interface can name. Screens never see this type — they ask
@@ -30,6 +20,8 @@ export type Palette = {
    * theme, brick in the two loud ones.
    */
   accent: string;
+  /** A warm sitting wash. Atmospheric only, never a signal or action colour. */
+  amberVeil: string;
 
   /** Growth. Plant strokes and large "something grew" marks. Never small text. */
   penGreen: string;
@@ -76,59 +68,9 @@ export const THEMES: Record<ThemeId, Theme> = {
       inkSoft: '#6B665C',
       inkFaint: '#A9A294',
       accent: '#26241F',
+      amberVeil: '#8A5A24',
       ...CREAM_PENS,
       danger: '#B3402F',
-    },
-  },
-
-  /**
-   * Butter ground, brick accent.
-   *
-   * The pens are re-mixed rather than reused: butter is a light warm ground and
-   * the cream pens were not mixed for it — green turns olive on it and orange
-   * all but disappears. Each drops a step in luminance and gains a little
-   * saturation. Blue was already dark enough against butter and is untouched.
-   */
-  butter: {
-    id: 'butter',
-    name: 'Butter',
-    color: {
-      paper: '#F6ECC9',
-      paperDeep: '#EFE0AF',
-      ink: '#2A1A14',
-      inkSoft: '#6E5A46',
-      inkFaint: '#B4A47E',
-      accent: '#B3402F',
-      penGreen: '#1F6136',
-      penBlue: '#2F3AC7',
-      penOrange: '#A85A0E',
-      penPink: '#B83B7D',
-      // Brick is spent on the accent here, so danger drops to an oxblood that
-      // is still unmistakably a warning and no longer the colour of a button.
-      danger: '#8C2A1C',
-    },
-  },
-
-  /**
-   * A warm near-white editorial ground with brick as the accent — the paper and
-   * the muted red of the Karakuli Prose sketch, and only those. That register's
-   * serif body, justified setting and drop cap are a separate, still-deferred
-   * decision, and nothing here should be read as having made it.
-   *
-   * Near-white, never #FFF: the system has no pure white anywhere.
-   */
-  prose: {
-    id: 'prose',
-    name: 'Prose',
-    color: {
-      paper: '#FBF9F4',
-      paperDeep: '#F1EDE2',
-      ink: '#231F1B',
-      inkSoft: '#6A645B',
-      inkFaint: '#B3ADA1',
-      accent: '#B3402F',
-      ...CREAM_PENS,
-      danger: '#8C2A1C',
     },
   },
 };
@@ -136,7 +78,7 @@ export const THEMES: Record<ThemeId, Theme> = {
 /** What a garden grown before there were themes comes back wearing. */
 export const DEFAULT_THEME: ThemeId = 'ink';
 
-export const THEME_ORDER: ThemeId[] = ['ink', 'butter', 'prose'];
+export const THEME_ORDER: ThemeId[] = ['ink'];
 
 /** True if a stored id is still one we have a palette for. */
 export function isKnownTheme(id: string): id is ThemeId {

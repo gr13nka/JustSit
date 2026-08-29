@@ -1,6 +1,3 @@
-import DateTimePicker, {
-  DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -12,10 +9,11 @@ import { completeOnboarding, updateSettings } from '../src/store';
 import { Baton } from '../src/ui/Baton';
 import { Button } from '../src/ui/Button';
 import { Rule } from '../src/ui/Rule';
+import { ReminderTimeMenu } from '../src/ui/ReminderTimeMenu';
 import { Screen } from '../src/ui/Screen';
 import { SittingFigure } from '../src/ui/SittingFigure';
 import { Text } from '../src/ui/Text';
-import { fromHhMm, toHhMm } from '../src/ui/time';
+import { toHhMm } from '../src/ui/time';
 
 type Step = 'welcome' | 'reminder' | 'stage';
 
@@ -43,9 +41,8 @@ export default function Onboarding() {
     router.replace('/(tabs)');
   };
 
-  const onPickTime = async (event: DateTimePickerEvent, date?: Date) => {
+  const onPickTime = async (date: Date) => {
     setPickerOpen(false);
-    if (event.type !== 'set' || !date) return;
 
     const granted = await requestPermission();
     if (!granted) {
@@ -117,6 +114,14 @@ export default function Onboarding() {
           </View>
         </View>
 
+        {pickerOpen && (
+          <ReminderTimeMenu
+            initial="07:30"
+            onCancel={() => setPickerOpen(false)}
+            onPick={onPickTime}
+          />
+        )}
+
         <View style={styles.footer}>
           <Button
             label="Choose a time"
@@ -125,10 +130,6 @@ export default function Onboarding() {
           />
           <Button label="Not now" variant="quiet" onPress={() => setStep('stage')} />
         </View>
-
-        {pickerOpen && (
-          <DateTimePicker mode="time" value={fromHhMm('07:30')} onChange={onPickTime} />
-        )}
       </Screen>
     );
   }

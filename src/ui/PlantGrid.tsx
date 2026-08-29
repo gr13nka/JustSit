@@ -1,10 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
 import { hash32 } from '../domain/hash';
 import { Grown, nextDot, Plot, slotOffset } from '../domain/plots';
 import { field, shapeFor } from './field';
-import { BURST_SPREAD_MS, Pulse, Sprout, SPROUT_PEAK, Sway } from './motion';
+import {
+  BURST_SPREAD_MS,
+  Pulse,
+  Sprout,
+  SPROUT_PEAK,
+  Sway,
+  useBurst,
+  useSway,
+} from './motion';
 import { EmptySlot, Plant } from './Plant';
 import { Ripple } from './Ripple';
 
@@ -65,18 +73,27 @@ export function PlantGrid({
    */
   hint?: boolean;
   /**
-   * The shared 0..1 clock from `useBurst`, if this plot should sprout when it
-   * is shown. Only what has grown takes part: the empty dots are the ground the
+   * Whether the field grows in when it appears, and what asks it to do so
+   * again. Only what has grown takes part: the empty dots are the ground the
    * garden is drawn on, and a hundred of them animating would be static rather
    * than a burst.
+   *
+   * Absent, the plot is simply drawn — a bed being *looked at* rather than
+   * arrived at. Present, it bursts the moment it has cells to draw, and again
+   * on every change of the number. A token rather than a clock, because the
+   * clock cannot live out here; see where it is made below.
    */
-  burst?: Animated.Value;
+  burst?: number;
   /**
-   * The shared 0..1 clock from `useSway`, if this plot should sway while it is
-   * shown. Like the burst, only what has grown takes part — the empty dots are
-   * the ground, and ground does not move in wind.
+   * Whether the field is being looked at, and so whether it leans in the wind.
+   * Like the burst, only what has grown takes part — the empty dots are the
+   * ground, and ground does not move in wind.
+   *
+   * Asked as a fact about the screen rather than handed a clock, and for the
+   * same reason: the caller knows whether anyone is watching, and this knows
+   * whether there is anything to blow on.
    */
-  sway?: Animated.Value;
+  sway?: boolean;
   /**
    * The dots whose sitting left a note, and what to do when one is held.
    *
@@ -132,6 +149,52 @@ export function PlantGrid({
     cols
   );
 
+  /**
+   * Whether there is a field to animate at all.
+   *
+   * The width arrives on a layout pass, so the first render of any grid draws
+   * no cells whatever it was asked for. Both clocks below wait for this and
+   * stop with it, which is what keeps each of them running only while the views
+   * reading it are on the screen — see the note under them for why that is a
+   * correctness rule rather than an economy.
+   */
+  const ready = cell > 0;
+
+  /**
+   * The two clocks, and they live here rather than in the screen that asked for
+   * the motion. That is load-bearing.
+   *
+   * React Native ties an `Animated.Value`'s *native* node to the views reading
+   * it. When the last one unmounts, `AnimatedValue.__detach` stops whatever
+   * animation is running on the value and drops the node; the node is rebuilt
+   * from the stale JavaScript value the next time anything attaches, and
+   * nothing restarts the animation. A clock owned by a screen therefore
+   * outlives the field it drives, and the garden replaces its whole field on
+   * exactly the transition that also restarts the burst — the bed growing. The
+   * burst was started, the old field came down, the animation was stopped
+   * underneath it, and every plant was left pinned at the first frame of a
+   * sprout, which is opacity 0: a garden of empty dots with the plants gone.
+   *
+   * Owned here, a clock cannot outlive its views. They are made together, they
+   * are thrown away together, and no arrangement of screens above can part
+   * them.
+   */
+  const { progress: burstClock, restart } = useBurst(burst !== undefined);
+
+  const swaying = ready && sway === true;
+  const swayClock = useSway(swaying);
+
+  /**
+   * The entrance: played when the field first has something to draw, and again
+   * whenever the caller asks. Both are the same event — the garden appearing —
+   * and running it from an effect is what guarantees the plants are already
+   * attached to the clock when it starts.
+   */
+  useEffect(() => {
+    if (burst === undefined || !ready) return;
+    restart();
+  }, [burst, ready, restart]);
+
   // Which dot to circle. There is none to circle at all in a garden that is
   // only being looked at.
   const next = onBegin ? nextDot(plot) : null;
@@ -176,13 +239,14 @@ export function PlantGrid({
               // drawing, and neither animation has to carry any of it.
               const drawn = <Plant plant={planted.key} size={plant} />;
 
-              const grown = burst ? (
-                <Sprout progress={burst} delayMs={burstDelay(slot)}>
-                  {drawn}
-                </Sprout>
-              ) : (
-                drawn
-              );
+              const grown =
+                burst === undefined ? (
+                  drawn
+                ) : (
+                  <Sprout progress={burstClock} delayMs={burstDelay(slot)}>
+                    {drawn}
+                  </Sprout>
+                );
 
               const standing = (
                 <View style={{ transform: [{ translateY: -lift }] }}>
@@ -192,14 +256,14 @@ export function PlantGrid({
                     round its lean is unscaled and a squashed plant swings as
                     wide as a full one.
                   */}
-                  {sway ? (
+                  {swaying ? (
                     // Where in the bed the plant stands: the wind crosses the
                     // bed you are looking at, and a bed six wide has six columns
                     // for it to cross. This is also why the bed's width is
                     // frozen above one row — a re-flow would move a plant into
                     // a different cell and a different gust.
                     <Sway
-                      progress={sway}
+                      progress={swayClock}
                       slot={slot}
                       col={slot % cols}
                       row={Math.floor(slot / cols)}>

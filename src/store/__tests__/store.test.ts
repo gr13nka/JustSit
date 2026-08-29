@@ -1,4 +1,4 @@
-import { isKnownPlant, offersFor } from '../../domain/plants';
+import { isKnownPlant, offersFor, surpriseOfferIndex } from '../../domain/plants';
 import { MALA, nextGardenSize, STARTER_GARDEN } from '../../domain/plots';
 import { stageAt } from '../../domain/stages';
 import { Session } from '../types';
@@ -73,14 +73,16 @@ describe('recordCompletedSession', () => {
     expect(getState().sessions[0].plants).toEqual(session.plants);
   });
 
-  it('writes the first offer straight away, so no sitting is ever plantless', () => {
+  it('writes the surprise offer straight away, so no sitting is ever plantless', () => {
     // Kill the app on the completion screen and the sitting is still in the
-    // ground — at the cost of it being the offer nobody picked.
+    // ground.
     garden(MALA, 0);
-    const session = recordCompletedSession({ startedAt: 1, durationMs: 30 * 60_000 });
+    const startedAt = 1;
+    const session = recordCompletedSession({ startedAt, durationMs: 30 * 60_000 });
 
     const offers = offersFor(session.id, 30 * 60_000, 0, MALA);
-    expect(session.plants.map((p) => p.key)).toEqual(offers[0].plants);
+    const index = surpriseOfferIndex(String(startedAt), offers.length);
+    expect(session.plants.map((p) => p.key)).toEqual(offers[index].plants);
   });
 
   it('stamps the stage the user was actually on', () => {
@@ -92,9 +94,10 @@ describe('recordCompletedSession', () => {
     expect(session.stage).toBe(3);
   });
 
-  it('remembers the chosen duration for next time', () => {
+  it('does not treat a guided completion as an explicit duration choice', () => {
+    updateSettings({ lastDurationMs: 15 * 60_000 });
     recordCompletedSession({ startedAt: Date.now(), durationMs: 30 * 60_000 });
-    expect(getState().settings.lastDurationMs).toBe(30 * 60_000);
+    expect(getState().settings.lastDurationMs).toBe(15 * 60_000);
   });
 
   it('gives distinct ids to sittings started in the same millisecond', () => {
@@ -436,7 +439,7 @@ describe('resetProgress', () => {
   function established() {
     completeOnboarding();
     updateSettings({
-      theme: 'butter',
+      theme: 'ink',
       reminderAt: '07:30',
       hideSeconds: false,
       devMode: true,
@@ -465,37 +468,33 @@ describe('resetProgress', () => {
     expect(getState().progress.lastOfferedAt).toBeNull();
   });
 
-  it('keeps the settings the user chose', () => {
+  it('resets the settings the user chose', () => {
     established();
     resetProgress();
 
-    expect(getState().settings.theme).toBe('butter');
-    expect(getState().settings.reminderAt).toBe('07:30');
-    expect(getState().settings.hideSeconds).toBe(false);
-    // Including the developer switch: it says how the app should behave, which
-    // is exactly the half of the state this reset does not touch.
-    expect(getState().settings.devMode).toBe(true);
+    expect(getState().settings.theme).toBe('ink');
+    expect(getState().settings.reminderAt).toBeNull();
+    expect(getState().settings.hideSeconds).toBe(true);
+    expect(getState().settings.devMode).toBe(false);
   });
 
-  it('leaves the user onboarded, so the welcome screen does not come back', () => {
+  it('unsets onboarding, so the welcome screen comes back', () => {
     established();
     resetProgress();
 
-    expect(getState().settings.onboardedAt).toEqual(expect.any(Number));
+    expect(getState().settings.onboardedAt).toBeNull();
   });
 
-  it('restarts the stage clock rather than unsetting it', () => {
-    // Zero is the sentinel for "onboarding never finished", which this user has.
+  it('unsets the stage clock until onboarding finishes again', () => {
     established();
-    const before = Date.now();
     resetProgress();
 
-    expect(getState().progress.stageStartedAt).toBeGreaterThanOrEqual(before);
+    expect(getState().progress.stageStartedAt).toBe(0);
   });
 
   it('lets stage one propose a length again', () => {
     established();
-    expect(getState().settings.lastDurationMs).toBe(TEN_MIN);
+    expect(getState().settings.lastDurationMs).toBeNull();
 
     resetProgress();
     expect(getState().settings.lastDurationMs).toBeNull();

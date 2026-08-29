@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import { Offer, offersForSession } from '../domain/plants';
+import { Offer, offersForSession, surpriseOfferIndex } from '../domain/plants';
 import { freeSlots, nextFreeSlot, nextGardenSize, STARTER_GARDEN } from '../domain/plots';
 import { DEFAULT_THEME } from '../theme/themes';
 import {
@@ -28,6 +28,7 @@ const initialProgress: Progress = {
 
 const initialSettings: Settings = {
   onboardedAt: null,
+  lastGreetedAt: null,
   reminderAt: null,
   lastDurationMs: null,
   hideSeconds: true,
@@ -133,11 +134,10 @@ function materialise(
  * The only way a plant ever appears. Called once, when a sitting has run its
  * full length — abandoned sessions are simply never passed here.
  *
- * The first offer is written immediately rather than waiting for the user to
- * choose one, so a session never exists without plants: kill the app on the
- * completion screen and the sitting is still in the ground, at the modest cost
- * of it being the offer nobody picked. `chooseOffer` replaces them if the user
- * does choose, which is the only moment `plants` is ever rewritten.
+ * A surprise offer is written immediately, so a session never exists without
+ * plants: kill the app on the completion screen and the sitting is still in
+ * the ground. `chooseOffer` remains as a dev/test seam, but the app no longer
+ * asks the user to swap it.
  *
  * Where the plants land is not among the arguments, and that is the design
  * rather than an omission: the garden fills in order, so the dot is read off
@@ -173,15 +173,15 @@ export function recordCompletedSession(args: {
   };
 
   const offers = offersForSession(sessions, draft, gardenSize);
+  const offer = offers[surpriseOfferIndex(String(startedAt), offers.length)];
   const session: Session = {
     ...draft,
-    plants: materialise(offers[0], sessions, gardenSize),
+    plants: materialise(offer, sessions, gardenSize),
   };
 
   useStore.setState((s) => ({
     sessions: [...s.sessions, session],
     progress: { ...s.progress, gardenSize },
-    settings: { ...s.settings, lastDurationMs: durationMs },
   }));
 
   return session;
@@ -319,7 +319,21 @@ export function noteAdvanceOffered(): void {
   }));
 }
 
-/** Marks a tip as delivered so teaching moves forward rather than repeating. */
+/**
+ * Records that the day has had its welcome screen.
+ *
+ * The only write in the app whose whole purpose is to remember that a screen
+ * was looked at. Everything else about "has this happened today" is read back
+ * off the sittings; opening the app is not a sitting and leaves nothing to
+ * read. `domain/greeting.ts` is where that argument is made in full.
+ */
+export function noteGreeted(): void {
+  useStore.setState((s) => ({
+    settings: { ...s.settings, lastGreetedAt: Date.now() },
+  }));
+}
+
+/** Marks a teaching item as delivered so instruction moves forward rather than repeating. */
 export function markTipSeen(tipId: string): void {
   useStore.setState((s) =>
     s.progress.seenTipIds.includes(tipId)
@@ -336,38 +350,32 @@ export function updateSettings(patch: Partial<Settings>): void {
 export function completeOnboarding(): void {
   const now = Date.now();
   useStore.setState((s) => ({
-    settings: { ...s.settings, onboardedAt: now },
+    // Onboarding is this day's welcome, so it counts as one. Without the stamp
+    // a new user would be shown a second welcome screen a moment after
+    // agreeing to the first, which is the app introducing itself twice.
+    settings: { ...s.settings, onboardedAt: now, lastGreetedAt: now },
     progress: { ...s.progress, stageStartedAt: now },
   }));
 }
 
 /**
- * Lets go of everything that grew, and keeps the user.
+ * Returns the app to a fresh install.
  *
- * Sittings, the garden and notes go; the settings that say how the app should
- * behave stay exactly as they are. That split is the whole difference between
- * this and `__reset`, which is a fresh install and takes onboarding with it —
- * somebody asking for this has been using the app and is not asking to be shown
- * the welcome screen again.
+ * Sittings, the garden, notes, progress and settings all go together. Keeping a
+ * preference after the garden has been thrown away would mean carrying a user
+ * through while asking them to begin again, so this takes onboarding with it and
+ * lets the welcome screen be the first thing they see.
  *
- * Two fields therefore cannot simply take their initial value. `stageStartedAt`
- * is a sentinel: 0 means onboarding never finished, and `shouldOfferAdvance`
- * reads it that way, so the stage clock restarts *now* rather than unsetting —
- * which is also what the reset is asking for, since stage one begins again
- * here. And `lastDurationMs` is cleared on `setStage`'s precedent, so stage
- * one's suggested length is heard again instead of the length of a practice
- * that no longer exists.
- *
- * There is no undo and no dialog asking about it. What guards it is the wait
- * in front of it — see `ui/TimedConfirm.tsx`.
+ * There is no undo and no dialog asking about it. What guards it is the wait in
+ * front of it — see `ui/TimedConfirm.tsx`.
  */
 export function resetProgress(): void {
-  useStore.setState((s) => ({
+  useStore.setState({
     sessions: [],
     notes: [],
-    progress: { ...initialProgress, stageStartedAt: Date.now() },
-    settings: { ...s.settings, lastDurationMs: null },
-  }));
+    progress: initialProgress,
+    settings: initialSettings,
+  });
 }
 
 /** Test and dev-panel seam. Never called from screen code. */

@@ -3,7 +3,7 @@ import { Animated, Easing, LayoutChangeEvent, StyleSheet, View } from 'react-nat
 
 import { Plot } from '../domain/plots';
 import { COLUMNS, field, shapeFor, SWAY_REACH } from './field';
-import { SPROUT_PEAK, useBurst } from './motion';
+import { SPROUT_PEAK } from './motion';
 import { PlantGrid } from './PlantGrid';
 
 /**
@@ -162,13 +162,6 @@ export function GrowingBed({
   const [width, setWidth] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
-  const { progress, restart } = useBurst();
-
-  // A stack screen, so a mount really is an arrival — unlike the garden tab,
-  // which stays mounted behind the other one and has to be told when it is
-  // being looked at.
-  useEffect(() => restart(), [restart]);
-
   const { shift, ground } = useOpening(taken);
 
   const open = shapeFor(bed.size);
@@ -231,7 +224,13 @@ export function GrowingBed({
             { width: box },
             { transform: across ? [{ translateX: travel }] : [{ translateY: travel }] },
           ]}>
-          <PlantGrid plot={bed} burst={progress} dotOpacity={ground} />
+          {/*
+            The bed grows in as it arrives, and is never asked again: this is a
+            stack screen, so a mount really is an arrival — unlike the garden
+            tab, which stays mounted behind the other one and has to say when it
+            is being looked at. The token is therefore a constant.
+          */}
+          <PlantGrid plot={bed} burst={0} dotOpacity={ground} />
         </Animated.View>
       )}
     </View>

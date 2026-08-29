@@ -17,13 +17,12 @@ import { SWAY_CYCLE_MS, swayTrack } from './sway';
  * Two layers, and they mean different things. An *entrance* marks a first
  * appearance — a screen arriving, a garden being shown — and plays once.
  * A *settle* is feedback for a touch. Neither repeats. Four things in the app
- * do loop and all four are deliberate: the timer's breathing ring, which owns
- * its own; `Pulse` and `Sway` below; and `Ripple`, which lives in its own file
- * because it belongs to one dot on one screen. In each the loop is the point
- * rather than a transition — the first says a sitting is running, the second
- * says the garden carries on here, the third says the garden is a living thing
- * rather than a chart of one, and the fourth says which dot to touch on a
- * garden nobody has touched yet.
+ * do loop and all four are deliberate: the sitting's breath, `Pulse` and `Sway`
+ * below, and `Ripple`, which lives in its own file because it belongs to one
+ * dot on one screen. In each the loop is the point rather than a transition —
+ * the first says a sitting is running, the second says the garden carries on
+ * here, the third says the garden is a living thing rather than a chart of one,
+ * and the fourth says which dot to touch on a garden nobody has touched yet.
  *
  * That fourth is the only one that ever stops for good, and that is what buys
  * it: it runs on an empty garden and never again once a plant is in the ground.
@@ -99,18 +98,6 @@ export const SPROUT_PEAK = Math.max(...GROWTH.map((frame) => frame.scaleY));
 type Channel = 'opacity' | 'scaleY' | 'scaleX';
 
 /**
- * One clock for a whole field of sprouting doodles.
- *
- * A garden is 108 cells, and giving each its own driver would start a hundred
- * animations to play one. Instead a single value runs 0 → 1 across the entire
- * burst and each `Sprout` reads its own window out of it, which is also what
- * makes the scatter cheap enough to replay on every visit.
- *
- * `restart` is what a screen calls when it becomes visible again. An entrance
- * that only fired on mount would fire once ever: the tab stays mounted, so
- * coming back to it is not a mount.
- */
-/**
  * The garden's idle sway: one clock for the whole field.
  *
  * A hundred and eight looping drivers is not a thing to do, so there is one
@@ -120,7 +107,11 @@ type Channel = 'opacity' | 'scaleY' | 'scaleX';
  *
  * `active` is asked for rather than assumed because the tab stays mounted when
  * you are on the other one: stopping on unmount, which is enough for `Pulse`,
- * would leave this turning for the life of the app.
+ * would leave this turning for the life of the app. It is also what puts the
+ * loop under the caller's control at the two moments that matter — a field
+ * nobody is looking at, and a field that is not on the screen yet. The second
+ * is the one with teeth: a loop left running past the last `Sway` reading it is
+ * a loop React Native stops and cannot restart. `PlantGrid` has the account.
  */
 export function useSway(active: boolean) {
   const progress = useRef(new Animated.Value(0)).current;
@@ -191,8 +182,30 @@ export function Sway({
   );
 }
 
-export function useBurst() {
-  const progress = useRef(new Animated.Value(1)).current;
+/**
+ * One clock for a whole field of sprouting doodles.
+ *
+ * A garden is 108 cells, and giving each its own driver would start a hundred
+ * animations to play one. Instead a single value runs 0 → 1 across the entire
+ * burst and each `Sprout` reads its own window out of it, which is also what
+ * makes the scatter cheap enough to replay on every visit.
+ *
+ * `restart` is what the field calls when it appears, and again whenever it is
+ * asked to play. An entrance that only fired on mount would fire once ever on
+ * the garden: the tab stays mounted, so coming back to it is not a mount.
+ *
+ * `waiting` is whether the field this drives is going to be asked to play. A
+ * clock that will be starts at the beginning rather than at the end, so the
+ * first frame drawn is the first frame of the entrance; one that will not sits
+ * at 1, because a drawing nobody is animating has to be simply there.
+ *
+ * The value belongs to whatever owns the views reading it, and that is not
+ * negotiable: React Native stops a running animation and drops the native node
+ * the moment the last view detaches, and rebuilds it from a stale value
+ * afterwards with nothing driving it. `PlantGrid` carries the full account.
+ */
+export function useBurst(waiting: boolean = false) {
+  const progress = useRef(new Animated.Value(waiting ? 0 : 1)).current;
 
   const restart = useCallback(() => {
     progress.setValue(0);
@@ -262,6 +275,43 @@ const INHALE_MS = 4000;
 const EXHALE_MS = 6000;
 
 /**
+ * One shared breath for a screen that wants several marks to settle together.
+ *
+ * The timer ring and the meditation veil borrow this rather than each starting
+ * a private loop, because two nearly-matched breaths would read as drift. Like
+ * every loop here, it stops when the screen that asked for it leaves.
+ */
+export function useBreath(active: boolean) {
+  const breath = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!active) return;
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: EXHALE_MS,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: INHALE_MS,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    loop.start();
+    return () => loop.stop();
+  }, [active, breath]);
+
+  return breath;
+}
+
+/**
  * A mark breathing where it stands — the one place the garden asks for anything.
  *
  * It wraps the dot a sitting would fill next, and it exists because a ring alone
@@ -285,31 +335,7 @@ const EXHALE_MS = 6000;
  * dot is ever next.
  */
 export function Pulse({ children }: { children: ReactNode }) {
-  const breath = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(breath, {
-          toValue: 0,
-          duration: EXHALE_MS,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(breath, {
-          toValue: 1,
-          duration: INHALE_MS,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    loop.start();
-    // Stopping on unmount matters for the same reason the ring's does: a loop
-    // left running holds the component alive after the screen is gone.
-    return () => loop.stop();
-  }, [breath]);
+  const breath = useBreath(true);
 
   return (
     <Animated.View

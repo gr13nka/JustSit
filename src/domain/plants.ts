@@ -254,3 +254,15 @@ export function offersForSession(
     plot.size - plot.plants.length
   );
 }
+
+/**
+ * Which offer becomes the surprise plant.
+ *
+ * The choice is deterministic because the result is still shown during the
+ * sitting before it is written at the bell. A re-render, a background trip or a
+ * killed completion screen must not turn one plant into another.
+ */
+export function surpriseOfferIndex(seed: string, count: number): number {
+  if (count <= 1) return 0;
+  return scramble(hash32(`${seed}-surprise`)) % count;
+}

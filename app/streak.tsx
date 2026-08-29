@@ -8,6 +8,7 @@ import {
   currentStreak,
   recentDays,
   totalSatMs,
+  weekdayIndex,
   weekSat,
 } from '../src/domain/stats';
 import { space } from '../src/theme/tokens';
@@ -114,8 +115,12 @@ export default function StreakScreen() {
   const week = weekSat(sessions, openedAt);
   const recent = recentDays(sessions, WINDOW_DAYS, openedAt);
 
-  /** Which column of the week row is today. Monday is 0, as `weekSat` lays it out. */
-  const today = (new Date(openedAt).getDay() + 6) % 7;
+  /**
+   * Which column of the week row is today. Monday is 0, as `weekSat` lays it
+   * out — and it is `weekSat`'s own rotation, so the column cannot come to
+   * point at a different day from the row it is pointing into.
+   */
+  const today = weekdayIndex(openedAt);
 
   /**
    * The same burst the garden runs, restarted once on mount. A stack screen is

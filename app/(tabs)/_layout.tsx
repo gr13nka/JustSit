@@ -1,14 +1,21 @@
 import { Redirect, Tabs } from 'expo-router';
 
+import { shouldGreet } from '../../src/domain/greeting';
+import { useOpenedDay } from '../../src/session/useOpenedDay';
 import { useSettings } from '../../src/store';
 import { SliderNav } from '../../src/ui/SliderNav';
 
 export default function TabsLayout() {
   const settings = useSettings();
+  const openedDay = useOpenedDay();
 
   // Safe to read directly: the root layout holds the splash until stored state
   // has been read, so this is never a spurious redirect on a returning user.
   if (settings.onboardedAt === null) return <Redirect href="/onboarding" />;
+  // Below the onboarding check, so somebody arriving for the first time meets
+  // the app's own introduction before it starts greeting them back. It cannot
+  // interrupt a sitting — `useOpenedDay` has that argument in full.
+  if (shouldGreet(settings.lastGreetedAt, openedDay)) return <Redirect href="/welcome" />;
 
   return (
     <Tabs

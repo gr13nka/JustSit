@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { hairline } from '../theme/tokens';
 import { useColor } from '../theme/useColor';
+import { ROOT_ORIGIN } from './field';
 import { Plant } from './Plant';
 import { arcLength, ringPath } from './ring';
 
@@ -19,6 +20,7 @@ const EXHALE_MS = 6000;
  * the same figure, far enough that the two lines never touch.
  */
 const ARC_INSET = 8;
+const PLANT_START = 0.18;
 
 /**
  * A thin ink ring with a plant resting at its centre.
@@ -42,6 +44,8 @@ export function TimerRing({
   plant,
   size = 210,
   spent,
+  breath: sharedBreath,
+  growth,
 }: {
   plant: string;
   size?: number;
@@ -52,6 +56,10 @@ export function TimerRing({
    * it holds still and draws neither.
    */
   spent?: number;
+  /** A screen-owned breath, when another mark needs to move with the ring. */
+  breath?: Animated.Value;
+  /** How much of the preview plant has grown, 0..1. Omitted means fully grown. */
+  growth?: number;
 }) {
   // A hairline, not the hero pen: at 210pt across, a stroke drawn to the 200-unit
   // hero ratio would shout, and this ring is meant to sit still and be quiet.
@@ -63,11 +71,13 @@ export function TimerRing({
 
   const fraction = spent === undefined ? null : Math.min(1, Math.max(0, spent));
   const running = fraction !== null;
+  const grown = Math.min(1, Math.max(0, growth ?? 1));
 
-  const breath = useRef(new Animated.Value(1)).current;
+  const ownBreath = useRef(new Animated.Value(1)).current;
+  const breath = sharedBreath ?? ownBreath;
 
   useEffect(() => {
-    if (!running) return;
+    if (!running || sharedBreath) return;
 
     const loop = Animated.loop(
       Animated.sequence([
@@ -90,7 +100,7 @@ export function TimerRing({
     // Stopping on unmount matters: the sitting screen is replaced the instant
     // the bell rings, and a loop left running holds the component alive.
     return () => loop.stop();
-  }, [running, breath]);
+  }, [running, breath, sharedBreath]);
 
   // Held at rest when nothing is running, so the start screen looks untouched.
   const ringStyle = running
@@ -137,7 +147,17 @@ export function TimerRing({
         </Svg>
       </Animated.View>
 
-      <Plant plant={plant} size={size * 0.28} />
+      <Animated.View
+        style={{
+          transformOrigin: ROOT_ORIGIN,
+          opacity: PLANT_START + grown * (1 - PLANT_START),
+          transform: [
+            { scaleY: PLANT_START + grown * (1 - PLANT_START) },
+            { scaleX: 0.72 + grown * 0.28 },
+          ],
+        }}>
+        <Plant plant={plant} size={size * 0.28} />
+      </Animated.View>
     </View>
   );
 }

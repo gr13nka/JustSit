@@ -12,15 +12,81 @@
 import { Session } from '../store/types';
 
 /**
- * Local calendar day, not UTC. A session at 11pm and one at 1am are different
- * days to the person who sat them, whatever the timezone offset says.
+ * The hour a day turns over at. Late enough to hold an ordinary late night,
+ * early enough that nobody's morning sitting falls into yesterday.
+ */
+export const DAY_START_HOUR = 4;
+
+/**
+ * The calendar day `ts` belongs to, with anything before `DAY_START_HOUR`
+ * belonging to the day before.
+ *
+ * It rolls the date back rather than subtracting four hours of milliseconds,
+ * and the reason is the one written out under `bestStreak`: a day here is a
+ * local calendar day, and twice a year the gap between two of them is 23 or 25
+ * hours. `setDate` steps the calendar and lets the zone say how long the step
+ * was; four hours of milliseconds is a fixed distance, and on either side of a
+ * changeover it lands an hour out — which is enough to put a sitting at five in
+ * the morning into the night before.
+ *
+ * Every walk in this file steps a `Date` carrying the hour it started from,
+ * which is what lets `setDate` step logical days as well as calendar ones: the
+ * hour does not change, so which side of `DAY_START_HOUR` it falls on does not
+ * either. That holds for a cursor started from `now` and for one started from a
+ * sitting alike.
+ *
+ * Private. `dayKey` and `weekdayIndex` are the two questions the app actually
+ * asks of it, and handing out the `Date` would be handing out a third.
+ */
+function logicalDate(ts: number): Date {
+  const d = new Date(ts);
+  if (d.getHours() < DAY_START_HOUR) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+/**
+ * Local calendar day, not UTC, and it begins at 04:00 rather than at midnight.
+ *
+ * Somebody sitting at half past one has sat at the end of their Saturday, not
+ * the start of their Sunday, and a streak that broke because they were still up
+ * would be the app arguing with them about the clock. So a sitting belongs to
+ * the evening it ended, not to the morning it happened to touch.
+ *
+ * Local rather than UTC for the same reason at the other end: a session at 11pm
+ * and one at 5am are different days to the person who sat them, whatever the
+ * timezone offset says.
  *
  * Exported because the reminder's wording is chosen by the day too, and "what
  * counts as a day here" is a decision this app should only make once.
  */
 export function dayKey(ts: number): string {
-  const d = new Date(ts);
+  const d = logicalDate(ts);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/**
+ * Which column of a Monday-first week `ts` falls in. Monday is 0, Sunday 6.
+ *
+ * The week starts on Monday, and `Date.getDay()` does not: it calls Sunday 0,
+ * so subtracting it lands on the Sunday *before* every day of the week except
+ * Sunday itself, where it lands on the day it was given. Used raw it would draw
+ * a row that starts a day early for six days out of seven and a week early on
+ * the seventh — which is the sort of wrong that looks right until somebody
+ * opens the app on a Sunday. `(getDay() + 6) % 7` is the rotation that fixes
+ * it: Monday comes out 0 and Sunday 6, which is where the last column of a
+ * Monday-first row belongs.
+ *
+ * It asks the *logical* day, which matters for one hour of the week and matters
+ * by a whole week when it does: at two in the morning on a Monday the calendar
+ * has started a week the sitter has not, and the row to draw is the one that
+ * ends with the Sunday they are still in.
+ *
+ * Exported because the days screen asks the same question of the same instant —
+ * `weekSat` to find its Monday, the screen to say which column is today. Two
+ * copies of one rotation would agree by luck rather than by construction.
+ */
+export function weekdayIndex(ts: number): number {
+  return (logicalDate(ts).getDay() + 6) % 7;
 }
 
 /**
@@ -120,14 +186,8 @@ export function satToday(
 /**
  * The seven days of the local week containing `now`, Monday first.
  *
- * The week starts on Monday, and `Date.getDay()` does not: it calls Sunday 0,
- * so subtracting it lands on the Sunday *before* every day of the week except
- * Sunday itself, where it lands on the day it was given. Used raw it would draw
- * a row that starts a day early for six days out of seven and a week early on
- * the seventh — which is the sort of wrong that looks right until somebody
- * opens the app on a Sunday. `(getDay() + 6) % 7` is the rotation that fixes
- * it: Monday comes out 0 and Sunday 6, which is where the last column of a
- * Monday-first row belongs.
+ * How far back Monday is, is `weekdayIndex`'s question — see it for why the
+ * rotation is there and why it is asked of the logical day.
  *
  * Days later in the week than today come back `false`, the same value a missed
  * day gets. That is deliberate. The difference between "not yet" and "not done"
@@ -141,7 +201,7 @@ export function weekSat(
   const days = new Set(sessions.map((s) => dayKey(s.completedAt)));
 
   const cursor = new Date(now);
-  cursor.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7));
+  cursor.setDate(cursor.getDate() - weekdayIndex(now));
 
   const week: boolean[] = [];
   for (let i = 0; i < 7; i += 1) {

@@ -46,6 +46,10 @@ export const REMINDER_BODIES = [
  * every return to the foreground — cannot change its mind between one morning
  * and the same morning. Which day gets which line is arbitrary and stable.
  *
+ * The day is `dayKey`'s, so the rotation turns over at 04:00 with everything
+ * else: an app opened at one in the morning reschedules the line for the
+ * evening that is ending, not for the day the clock has just started.
+ *
  * `scramble` before slicing: the seeds differ only in their last characters,
  * and `hash32` alone leaves those bits a ramp rather than a scatter, so
  * consecutive days would walk the table in order. `hash.ts` has the full story.

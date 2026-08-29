@@ -23,13 +23,36 @@ allowed here where the user is the one choosing — whether to carry the garden
 on when the bed fills, which of three plants a sitting grew, whether to write
 anything at all.
 
-The guardrails are what keep it from becoming a game, and none of them is
-negotiable. **No congratulation:** nothing here tells you you did well. **No
-failure state:** a missed day is silence, nothing withers, and no copy mentions
-what you did not do. **Rarity is never labelled** — a tier is scarcity in
-`plants.ts` and appears nowhere in the interface. **One bell in, one out,
-nothing between.** And **a plant never moves or changes** once it is in the
-ground. A second way to watch the clock is still wrong.
+The guardrails are what keep it from becoming a game. **No congratulation:**
+nothing here tells you you did well. **No failure state:** a missed day is
+silence, nothing withers, and no copy mentions what you did not do. **Rarity is
+never labelled** — a tier is scarcity in `plants.ts` and appears nowhere in the
+interface. **One bell in, one out, nothing between.** And **a plant never moves
+or changes** once it is in the ground. A second way to watch the clock is still
+wrong.
+
+The last four of those are absolute. The first has exactly one exception, and it
+is a decision rather than drift: **the welcome screen praises you.** Once on the
+first open of a day it says a line — "You are doing well. Consistency is what
+does it." is one of six — standing over a row of marks for the week behind it.
+It was put to the author that this contradicts the rule as written, and it
+was chosen anyway. So a later reader tidying praise out of the app should leave
+`src/domain/greeting.ts` and `app/welcome.tsx` alone, and should treat praise
+anywhere else as the bug it still is.
+
+What the licence buys is praise in words, on that one screen, and nothing else.
+Every other rule holds there, and the no-failure rule most of all — which is the
+whole reason the week is *drawn* rather than counted out. A printed run was the
+first draft and was rejected for reading like a scoreboard: a number handed to
+you on arrival is a thing to keep up, and keeping something up is not what this
+app asks of anybody. The no-failure rule was the second objection and the
+sharper one — a figure reading nought the morning after a lapse is the app
+greeting you with what you did not do, and the only way to keep it honest would
+have been a special case saying nothing at zero. Seven `DayMark`s over
+`recentDays(sessions, 7, now)` have no such problem, because a row of marks has
+no zero to print: an empty week is seven faint dots, which is exactly what the
+garden already puts under a slot nobody has reached. The awkward case is retired
+rather than worked around.
 
 ## Commands
 
@@ -46,6 +69,9 @@ don't add one unless asked.
 
 Before claiming work is done, run both `npm run typecheck` and `npm test`, and
 **check jest's exit code**, not just its summary line — see the trap below.
+For UI changes, also test on a connected Android phone by default. Use the
+simulator or web only as a fallback when no phone is attached or the change is
+not reachable on device.
 
 ## Architecture
 
@@ -81,6 +107,16 @@ Everything else is *derived* — plots, streaks, which tip is next, whether to
 offer a stage, what a sitting was worth, which plant carries which note. Nothing
 derived is ever stored.
 
+There is one thing remembered rather than derived, `settings.lastGreetedAt`, and
+what makes it the exception is that there is nothing to derive it from. Every
+other "has this happened today" is read back off the sittings — `shouldShowTip`
+argues in as many words that a stored flag beside them would be a second answer
+to a question the sittings already answer, and that the two would part company
+the first time a sitting was recorded without one. Opening the app is not a
+sitting. It is recorded nowhere and leaves no trace to read the answer off, so
+`noteGreeted` writing a timestamp is not a shortcut past a derivation; it is the
+only way the question can be asked at all.
+
 **Colour is read, not imported.** `settings.theme` names one of three palettes
 in `src/theme/themes.ts`, and every component gets the live one from
 `useColor()`. A `StyleSheet.create` is frozen at import and cannot repaint, so
@@ -97,8 +133,8 @@ import the underlying `useStore`.**
   `useHydrated`
 - Writes, the garden: `recordCompletedSession` · `chooseOffer` · `growGarden`
 - Writes, the notebook: `addNote` · `updateNote` · `deleteNote`
-- Writes, the rest: `setStage` · `noteAdvanceOffered` · `markTipSeen` ·
-  `updateSettings` · `completeOnboarding` · `resetProgress`
+- Writes, the rest: `setStage` · `noteAdvanceOffered` · `noteGreeted` ·
+  `markTipSeen` · `updateSettings` · `completeOnboarding` · `resetProgress`
 - Escape hatches (tests + dev panel only): `getState` · `__replaceState` · `__reset`
 
 `src/store/persistence.ts` is the seam for swapping AsyncStorage for
@@ -209,8 +245,8 @@ beds flattened into one bed is the sum of their sizes, and two malas come to
 216, which is not a rung. Keeping such a blob would mean teaching
 `nextGardenSize` about arbitrary sizes and teaching the shape rules about beds
 nobody could ever have grown, for the sake of installs that do not exist — the
-app has not shipped, and the You tab's Reset is already the answer for anyone
-who changes their mind about the garden they do have. **The licence expires with
+app has not shipped, and Reset is already the answer for anyone who changes
+their mind about the garden they do have. **The licence expires with
 this version.** The next shape change goes back to migrating: by then it is a
 real phone's real garden, and there is no second one of these.
 
@@ -260,6 +296,30 @@ holding a plant give back everything you were thinking while it grew — two
 cards behind one plant would be a plant that only half remembers. The join is
 `sittingStartedAt`, which is the same instant for both thoughts.
 
+**The day turns at 04:00, and `dayKey` is the one place that is decided.**
+Somebody sitting at half past one has sat at the end of their Saturday rather
+than at the start of their Sunday, and a streak broken because they were still
+up would be the app arguing with them about the clock — so a sitting belongs to
+the evening it ended. Every question the app asks about days goes through that
+one function: the two runs, whether anything grew today, the week and the four
+weeks of texture, the teaching card that comes once a day, the reminder's line
+and the welcome screen's. Move the hour and all of them move together, which is
+the whole reason there is one function rather than a convention.
+
+`logicalDate` under it is private, and stays that way: `dayKey` and
+`weekdayIndex` are the only two questions the app asks of it, and handing out
+the `Date` would be handing out a third. `weekdayIndex` exists rather than being
+inlined because `weekSat` and the days screen both need the Monday-first
+rotation, and two copies of it would agree by luck rather than by construction.
+What it rotates is the *logical* day, which parts from the calendar one for an
+hour a week and parts by a whole week when it does: at two on a Monday morning
+the calendar has started a week the sitter has not.
+
+The non-obvious part is that it rolls the calendar date *back* rather than
+subtracting four hours of milliseconds. A local day is 23 or 25 hours twice a
+year, so a fixed four hours lands an hour out on either side of a changeover,
+which is enough to file a sitting at five in the morning into the night before.
+
 ## Product rules encoded in the code
 
 | Rule | Where |
@@ -280,6 +340,8 @@ cards behind one plant would be a plant that only half remembers. The join is
 | Tips move forward in written order, then cycle | `domain/progression.nextTip` |
 | One bell in, one out, nothing between | `session/bells.ts` |
 | One daily reminder, off by default; the line rotates by the day, and none of the six mentions what you did not do | `session/reminderLines.ts` |
+| One welcome on the first open of a day — the app's one congratulation; the line rotates by the day, and the week behind it is drawn in the days screen's own marks rather than printed as a figure | `domain/greeting.ts`, `ui/DayMark.tsx`, `app/welcome.tsx` |
+| The day turns at 04:00, so a sitting at half past one belongs to the evening it ended | `domain/stats.dayKey` |
 | A day already sat: the sun gone green, drawing and figure both, and a sleeping cat — and nothing else | `domain/stats.satToday`, `app/(tabs)/index.tsx` |
 | The days are a week, four weeks and two runs; the best run is what makes the current one safe to print | `domain/stats.ts` (`weekSat`, `recentDays`, `bestStreak`), `app/streak.tsx` |
 | A thought caught mid-sitting is kept, and nothing ever counts them | `domain/notes.ts`, `ui/NoteSheet.tsx` |
@@ -836,10 +898,23 @@ for it is the bug that arrangement exists to prevent.
 
 **The garden bursts on every visit, not once per launch.** `useBurst` runs one
 shared 0..1 clock and each `Sprout` reads its own window out of it, so 108 cells
-cost one driver. `app/(tabs)/index.tsx` restarts it from `useFocusEffect` — the
-tab stays mounted, so a mount effect would fire exactly once in the life of the
-app. Delays are seeded from the slot (`hash32('burst-' + slot)`), never random:
-a field that re-rolled its timings would be a different drawing each visit.
+cost one driver. Delays are seeded from the slot (`hash32('burst-' + slot)`),
+never random: a field that re-rolled its timings would be a different drawing
+each visit.
+
+**Both of the garden's clocks are owned by `PlantGrid`, and a screen asks for
+motion rather than supplying it.** `burst` is a *number* — bump it and the field
+grows in again — and `sway` is a *boolean* saying whether anyone is looking;
+neither is an `Animated.Value`. The garden tab bumps its token from
+`useFocusEffect`, because the tab stays mounted and a mount effect would fire
+exactly once in the life of the app.
+
+That is a correctness rule and not tidiness, and it is written up under the
+traps below: React Native ties an `Animated.Value`'s native node to the views
+reading it, so a clock that outlives its field is a clock the platform silently
+stops. Both clocks also wait on `cell > 0` — the width arrives on a layout pass,
+so the first render of any grid draws no cells at all — which is what keeps each
+of them running only while the views reading it are mounted.
 
 The whole field takes about a second and a half — 1000ms per doodle scattered
 across 450 — and each one is **squash and stretch**, not a fade-up. `GROWTH` in
@@ -1099,7 +1174,8 @@ marks on two canvases at one `size` come out two sizes, and struck *centred*
 rather than on a ground line, because what it shares a row with is a blob whose
 ink is the middle of that canvas. The garden's lesson about a shared ground line
 does not transfer: there the two marks differ by two thirds of a cell, here by
-nothing.
+nothing. This screen is not its only caller — the welcome screen draws the same
+marks for a rolling seven days.
 
 The week and the window are `weekSat` and `recentDays`, siblings rather than one
 written in terms of the other. A week is a thing with names — it begins on
@@ -1222,6 +1298,37 @@ the origin to CSS, which reads decimals perfectly well: the browser drew a
 correct garden the whole time the phone drew an empty one. `origin.test.ts`
 pins it against RN's own parser.
 
+**A shared `Animated.Value` must be owned by whatever owns the views reading
+it.** React Native ties a value's *native node* to its children: when the last
+one detaches, `AnimatedValue.__detach` calls `stopAnimation()` and drops the
+node, and the node is rebuilt from the stale JavaScript value the next time
+anything attaches — with nothing driving it. So a clock held by a screen and
+read by a subtree that can unmount is a clock the platform will silently stop
+and never restart.
+
+This shipped once and cost two wrong fixes to find. The garden's burst lived in
+`app/(tabs)/index.tsx` and its `Sprout`s lived in `PlantGrid`, which the garden
+tab replaces on exactly one transition — the bed growing, where `full` flips and
+the wrapper's element type changes with it. `useFocusEffect` restarted the burst
+as the tab came back, the old field came down underneath it, and every plant was
+left pinned at the first frame of a sprout, which is opacity 0. The dots were
+untouched because dots do not sprout: a garden of empty ground with the plants
+gone, and going to the other tab and back put them all back.
+
+Three things about it are worth keeping. **A fresh mount is not the cure, it is
+the trigger** — the first attempt added `key={gardenSize}` to force one, which
+could never have worked because the wrapper swap already forced one. **It does
+not reproduce in the web preview**, which walks the same path perfectly: web has
+no native driver and no `react-native-screens` freeze, so the ordering that
+kills the animation never arises there. And **the mechanism is checkable without
+a device** — attach a child to a value, start a timing, remove the child, and
+the value sits where it was forever; measured at 0.114 of 1 and still 0.114 five
+seconds later.
+
+The fix is ownership rather than care: `PlantGrid` makes both clocks itself and
+takes a token and a boolean instead. A clock cannot then outlive its views,
+whatever any screen above does.
+
 **Do not add `babel.config.js`.** SDK 57 applies `babel-preset-expo` by default.
 Adding the config file the docs show makes Metro demand `babel-preset-expo` as a
 top-level dependency, which isn't hoisted — bundling fails immediately.
@@ -1249,11 +1356,12 @@ already, which is also why `src/ui/time.ts` holds the pure time formatting rathe
 than `src/session/` — a pure function must not sit in a file that imports
 `expo-audio`.
 
-**An empty garden and the onboarding screen is what `__reset()` looks like.**
-The dev panel's Reset clears `sessions`, `notes`, `progress` and `settings` back
-to their initials, and `onboardedAt: null` is what redirects to onboarding — so
-a wiped garden after pressing it is the button working, not hydration failing.
-Check that before going looking for a persistence bug.
+**An empty garden and the onboarding screen is what Reset looks like.**
+The You tab's Reset and the dev panel's `__reset()` clear `sessions`, `notes`,
+`progress` and `settings` back to their initials, and `onboardedAt: null` is
+what redirects to onboarding — so a wiped garden after pressing either one is
+the button working, not hydration failing. Check that before going looking for a
+persistence bug.
 
 What happens on a cold launch is pinned by
 `src/store/__tests__/hydration.test.ts`, which boots the store against real
@@ -1368,6 +1476,15 @@ adb exec-out screencap -p > /tmp/shot.png    # then actually look at it
 
 Metro's output is where runtime errors show up; a stuck splash almost always
 means a module threw during evaluation.
+
+**`uiautomator dump` cannot read the garden tab**, and that is the sway rather
+than a fault: it waits for the window to go idle and the wind never stops, so it
+times out where every other screen answers instantly. Driving that screen means
+tapping coordinates read off a screenshot. Two more things make an unattended
+walk misfire — a tap during a screen's entrance is swallowed, so screenshot
+between steps rather than chaining sleeps, and Expo Go's own dev menu and
+LogBox toast land on top of the buttons at the foot of the page after a fresh
+`pm clear`.
 
 `./build-android.sh` is for what Expo Go cannot reach: **both notification
 paths** and the `hidden: true` status-bar plugin config. It builds a release

@@ -23,6 +23,7 @@ const defaults: PersistedState = {
   },
   settings: {
     onboardedAt: null,
+    lastGreetedAt: null,
     reminderAt: null,
     lastDurationMs: null,
     hideSeconds: true,
@@ -157,6 +158,30 @@ describe('mergePersisted', () => {
     expect(merged.settings.devMode).toBe(false);
   });
 
+  it('has never greeted a garden grown before the welcome screen existed', () => {
+    // The field it needs is a timestamp, so `undefined` is not harmlessly
+    // falsy here the way a missing boolean would be: `shouldGreet` asks whether
+    // the stored day is today's, and a day derived from nothing is not a day.
+    // Null is the sentinel that means never, and it is what the merge must lay
+    // down — so an existing install meets the screen once, on its next open,
+    // rather than never or every time.
+    const old = {
+      settings: {
+        onboardedAt: 1_700_000_000_000,
+        reminderAt: null,
+        lastDurationMs: null,
+        hideSeconds: true,
+        theme: 'ink',
+        devMode: false,
+      } as unknown as Settings,
+    };
+
+    const merged = mergePersisted(old, defaults);
+
+    expect(merged.settings.lastGreetedAt).toBeNull();
+    expect(merged.settings.onboardedAt).toBe(1_700_000_000_000);
+  });
+
   it('fills a progress field the stored blob has never heard of', () => {
     const old = {
       progress: { stage: 4, stageStartedAt: 123 } as unknown as Progress,
@@ -197,6 +222,14 @@ describe('mergePersisted', () => {
       defaults
     );
     expect(merged.settings.hideSeconds).toBe(false);
+  });
+
+  it('returns removed themes to ink', () => {
+    const merged = mergePersisted(
+      { settings: { ...defaults.settings, theme: 'butter' } as unknown as Settings },
+      defaults
+    );
+    expect(merged.settings.theme).toBe('ink');
   });
 
   /**

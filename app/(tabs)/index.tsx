@@ -10,7 +10,7 @@ import { Note, useNotes, useProgress, useSessions } from '../../src/store';
 import { Baton } from '../../src/ui/Baton';
 import { SunIcon } from '../../src/ui/icons';
 import { Indicator } from '../../src/ui/Indicator';
-import { useBurst, usePullToReplay, useSway } from '../../src/ui/motion';
+import { usePullToReplay } from '../../src/ui/motion';
 import { NoteReader, NoteSheet } from '../../src/ui/NoteSheet';
 import { PlantGrid } from '../../src/ui/PlantGrid';
 import { Screen } from '../../src/ui/Screen';
@@ -26,14 +26,22 @@ export default function GardenScreen() {
   const plot = currentPlot(sessions, gardenSize);
   const streak = currentStreak(sessions);
 
-  const { progress, restart } = useBurst();
+  /**
+   * How many times the garden has been asked to grow in — bumped, never read.
+   *
+   * The clock itself belongs to the field, because a clock that outlives the
+   * views reading it is a clock React Native stops and does not restart; what
+   * is left up here is the asking. `PlantGrid` carries the full account.
+   */
+  const [replay, setReplay] = useState(0);
+  const again = useCallback(() => setReplay((n) => n + 1), []);
 
   /**
    * Pulling down at the top plays it again. The garden is the one screen in
    * this app worth looking at rather than using, and the burst was previously
    * only available by leaving and coming back.
    */
-  const pull = usePullToReplay(restart);
+  const pull = usePullToReplay(again);
 
   /**
    * The garden bursts every time you arrive at it, not once per launch. The tab
@@ -61,11 +69,11 @@ export default function GardenScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      restart();
+      again();
       setVisitedAt(Date.now());
       setShown(true);
       return () => setShown(false);
-    }, [restart])
+    }, [again])
   );
 
   /** Whether today has already grown something. Two marks depend on it. */
@@ -89,9 +97,6 @@ export default function GardenScreen() {
    * is what makes that structural rather than merely true today.
    */
   const baton: 'above' | 'below' | null = untouched ? 'above' : sat ? 'below' : null;
-
-  /** The idle sway, one clock for all 108. Still while you are elsewhere. */
-  const sway = useSway(shown);
 
   /**
    * Nothing is promised to the garden until a sitting actually finishes, which
@@ -133,8 +138,10 @@ export default function GardenScreen() {
       plot={plot}
       onBegin={beginSitting}
       hint={untouched}
-      burst={progress}
-      sway={sway}
+      burst={replay}
+      // The wind blows on the tab you are looking at. The tab stays mounted
+      // behind the other one, so this is the only thing that can say so.
+      sway={shown}
       noted={marked}
       onInspect={inspect}
     />

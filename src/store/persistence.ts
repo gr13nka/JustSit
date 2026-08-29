@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createJSONStorage } from 'zustand/middleware';
 
+import { DEFAULT_THEME, isKnownTheme } from '../theme/themes';
 import { Note, Progress, Session, Settings } from './types';
 
 /**
@@ -65,12 +66,17 @@ export function mergePersisted<T extends PersistedState>(
     Array.isArray(session.plants) ? session : { ...session, plants: [] }
   );
 
+  const settings = { ...current.settings, ...stored.settings };
+  if (!isKnownTheme(String(settings.theme))) {
+    settings.theme = DEFAULT_THEME;
+  }
+
   return {
     ...current,
     sessions,
     notes,
     progress,
-    settings: { ...current.settings, ...stored.settings },
+    settings,
   };
 }
 
@@ -95,8 +101,8 @@ export const STORAGE_VERSION = 4;
  * mean teaching `nextGardenSize` about arbitrary sizes, and teaching the shape
  * rules about beds nobody could ever have grown, for the sake of installs that
  * do not exist. The app has not shipped. Nobody is holding a garden this
- * throws away, and the You tab's Reset is already the answer for anyone who
- * changes their mind about the one they have.
+ * throws away, and Reset is already the answer for anyone who changes their
+ * mind about the one they have.
  *
  * That licence expires with this version. The next shape change goes back to
  * migrating: it will be a real phone's real garden by then, and there is no

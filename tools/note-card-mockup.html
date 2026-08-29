@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>JustSit — the note caught mid-sitting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /*
+    A copy, on the anim-lab.html precedent: colours, spacing, the type scale,
+    the ring's knots and the traced arrow are lifted from src/, and nothing here
+    ships. Judge proportion and arrangement in the browser; judge amount, and
+    anything about the keyboard, on the phone.
+  */
+  :root {
+    --paper:     #F7F3E9;
+    --paperDeep: #EFE9DA;
+    --ink:       #26241F;
+    --inkSoft:   #6B665C;
+    --inkFaint:  #A9A294;
+    --amberVeil: #8A5A24;
+    --penGreen:  #4C7A3F;
+
+    --xs: 4px; --sm: 8px; --md: 16px; --lg: 24px; --xl: 32px; --xxl: 48px;
+
+    --sans: 'M PLUS Rounded 1c', ui-rounded, 'Hiragino Maru Gothic ProN',
+            'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 28px 32px 64px;
+    background: #2A2723;
+    color: #CFC8BA;
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: 19px;
+    font-weight: 700;
+    color: #F2EDE2;
+    letter-spacing: 0.2px;
+  }
+
+  .sub { margin: 0 0 22px; max-width: 74ch; color: #9A9285; }
+  .sub code { color: #C9BFA9; font-size: 12px; }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin: 0 0 26px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    color: #CFC8BA;
+    background: #3A362F;
+    border: 1px solid #4C473E;
+    border-radius: 7px;
+    padding: 7px 13px;
+    cursor: pointer;
+  }
+  button:hover { background: #454038; }
+  button.on { background: var(--paper); border-color: var(--paper); color: var(--ink); }
+
+  .spacer { width: 12px; }
+  .hint { color: #7E776B; font-size: 12px; }
+
+  .frames { display: flex; gap: 34px; align-items: flex-start; flex-wrap: wrap; }
+
+  figure { margin: 0; }
+  figcaption {
+    margin: 0 0 9px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #9A9285;
+  }
+  figcaption b { color: #E4DCCB; font-weight: 700; }
+
+  /*
+    411 x 911 dp — the CMF Phone 1, this project's default preview shape. Scaled
+    down only for the page; every number inside is dp, so the proportions are
+    the phone's.
+  */
+  .phone {
+    position: relative;
+    background: var(--paper);
+    overflow: hidden;
+    border-radius: 22px;
+    transform-origin: top left;
+    box-shadow: 0 0 0 1px #4C473E;
+  }
+  .scaled .phone { transform: scale(0.85); }
+
+  .fill { position: absolute; inset: 0; }
+
+  /* ---- the sitting, underneath ---------------------------------------- */
+
+  .sitting { display: flex; flex-direction: column; align-items: center; }
+  .ringStage {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 286px; height: 286px;
+    margin: -190px 0 0 -143px;
+  }
+  .clock {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    margin-top: 111px;                 /* ring half + space.xl */
+    text-align: center;
+    font-size: 56px;
+    color: var(--ink);
+  }
+  .foot {
+    position: absolute;
+    left: 24px; right: 24px; bottom: 48px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .foot .end { font-size: 15px; font-weight: 700; color: var(--inkSoft); letter-spacing: 0.2px; }
+  .foot .pencil { position: absolute; right: 0; top: 50%; margin-top: -13px; }
+
+  .amber { background: var(--amberVeil); opacity: 0.27; pointer-events: none; }
+
+  /* ---- the sheet ------------------------------------------------------- */
+
+  .veil { background: var(--paper); opacity: 0.55; }
+
+  .sheet { display: flex; flex-direction: column; }
+  .sheet.centred { justify-content: center; align-items: center; }
+  .strip { flex: 0 0 auto; }
+  .strip.grow { flex: 1 1 auto; }
+
+  .dock { padding: 0 var(--md); display: flex; flex-direction: column; }
+  .dock.room { flex: 1 1 auto; min-height: 0; }
+
+  .card {
+    background: var(--paperDeep);
+    padding: var(--lg);
+    display: flex;
+    flex-direction: column;
+    /* organicCorners(radius.lg = 20) — four unequal corners, ±20%, seeded. */
+    border-radius: 17.4px 22.6px 18.9px 21.7px;
+  }
+  /*
+    An index card: 3:4, and a good deal narrower than the screen. Both halves
+    are the point — a card the width of the page reads as a bar across it
+    however short it is, and the veil left either side is what says this is a
+    small thing being done on top of something else.
+  */
+  .card.room { flex: 0 0 auto; aspect-ratio: 3 / 4; max-height: 100%; }
+
+  /* BackHeader with no title: the arrow alone, positioned, not laid out. */
+  /*
+    The arrow alone, at the card's own top-left. Tighter than BackHeader's row:
+    a screen can afford 16 above and below its heading, and a card this size
+    cannot — the row would be a fifth of it.
+  */
+  .backhead { position: relative; height: 24px; margin-bottom: var(--md); }
+  .backhead svg { position: absolute; left: 0; top: 0; }
+
+  .body {
+    font-size: 15px;
+    line-height: 23px;
+    font-weight: 500;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+  .body.room { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .placeholder { color: var(--inkFaint); }
+
+  .caret {
+    display: inline-block;
+    width: 1.5px; height: 18px;
+    background: var(--ink);
+    vertical-align: -3px;
+    animation: blink 1.06s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* today's single line, with its rule under it */
+  .rule { border-bottom: 1.5px solid var(--inkFaint); padding-bottom: var(--sm); }
+  .nowrap { white-space: nowrap; overflow: hidden; }
+  .done {
+    align-self: flex-end;
+    padding: var(--md) 0 0 var(--md);
+    font-size: 15px; font-weight: 700; color: var(--inkSoft); letter-spacing: 0.2px;
+  }
+
+  /* ---- the keyboard ---------------------------------------------------- */
+
+  .keyboard {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: #DCD6C8;
+    border-top: 1px solid #C9C2B2;
+    padding: 10px 5px 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .krow { display: flex; gap: 5px; justify-content: center; }
+  .key {
+    flex: 1 1 0;
+    height: 42px;
+    background: var(--paper);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #55504A;
+  }
+  .key.wide { flex: 1.6 1 0; }
+  .key.space { flex: 5 1 0; }
+  .key.dark { background: #C6BFAF; }
+  .knav { height: 24px; display: flex; align-items: center; justify-content: center; gap: 60px; }
+  .knav i { display: block; width: 90px; height: 3px; border-radius: 2px; background: #8E8778; }
+
+  .measure {
+    position: absolute;
+    right: 6px;
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; color: #B4402F; font-weight: 700;
+    pointer-events: none;
+  }
+  .measure::before {
+    content: ''; display: block; width: 22px; height: 0;
+    border-top: 1px dashed #B4402F;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<h1>The note caught mid-sitting</h1>
+<p class="sub">
+  Three screen shapes from the table in <code>CLAUDE.md</code>, insets and all.
+  Colours, spacing, the type scale, the ring's knots and the arrow are lifted
+  from <code>src/</code>; the keyboard is drawn at roughly what a phone that
+  size gives an IME plus its navigation bar. The card is an index card — 3:4,
+  its width a share of the screen — floated in whatever room the keyboard
+  leaves.
+  <b>Today</b> is what ships now: a single line that cannot wrap, and — with the
+  keyboard up — a card underneath it, because edge-to-edge stopped
+  <code>adjustResize</code> resizing anything.
+</p>
+
+<div class="controls">
+  <button id="btnToday">Today</button>
+  <button id="btnRoom" class="on">Proposed</button>
+  <span class="spacer"></span>
+  <button id="btnEmpty">Empty</button>
+  <button id="btnShort">A line</button>
+  <button id="btnLong" class="on">A long thought</button>
+  <span class="spacer"></span>
+  <button id="btn56">56%</button>
+  <button id="btn64" class="on">64% wide</button>
+  <button id="btn72">72%</button>
+  <button id="btn80">80%</button>
+  <span class="spacer"></span>
+  <button id="btnCmf" class="on">411 &times; 911</button>
+  <button id="btnSe">375 &times; 667</button>
+  <button id="btnI15">393 &times; 852</button>
+  <span class="spacer"></span>
+  <span class="hint">the frames are keyboard-down and keyboard-up, side by side</span>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<script>
+/* --------------------------------------------------------------------------
+   The ring, copied from src/ui/ring.ts — seven knots nudged a couple of percent
+   off perfect, a fixed table rather than random, because the real one is on
+   screen unchanged for twenty minutes at a time.
+   -------------------------------------------------------------------------- */
+const KNOT_RADIUS = [1.008, 0.978, 1.021, 0.984, 1.026, 0.974, 1.014];
+const KNOT_ANGLE  = [0, 0.036, -0.028, 0.02, -0.034, 0.026, -0.018];
+
+function ringPath(cx, cy, r) {
+  const n = KNOT_RADIUS.length;
+  const step = (2 * Math.PI) / n;
+  const angle = (i) => -Math.PI / 2 + i * step + KNOT_ANGLE[i % n];
+  const rad = (i) => KNOT_RADIUS[i % n];
+  const pt = (i) => ({ x: Math.cos(angle(i)) * rad(i), y: Math.sin(angle(i)) * rad(i) });
+  const tan = (i) => ({ x: -Math.sin(angle(i)) * rad(i), y: Math.cos(angle(i)) * rad(i) });
+
+  const S = (p) => `${(cx + p.x * r).toFixed(2)},${(cy + p.y * r).toFixed(2)}`;
+  let d = 'M' + S(pt(0));
+  for (let i = 0; i < n; i++) {
+    const h = (4 / 3) * Math.tan((angle(i + 1) - angle(i)) / 4);
+    const from = pt(i), to = pt(i + 1), tF = tan(i), tT = tan(i + 1);
+    d += 'C' + S({ x: from.x + h * tF.x, y: from.y + h * tF.y })
+       + ' ' + S({ x: to.x - h * tT.x, y: to.y - h * tT.y })
+       + ' ' + S(to);
+  }
+  return d + 'Z';
+}
+
+/* The run screen's pencil, four cubics on PEN_DOODLE — the one icon still
+   stroked in code. Copied from src/ui/icons.tsx. */
+const PEN_DOODLE = 2.8;
+
+/* ArrowLeft, traced from a real drawing — filled outline, not a stroke. */
+const ARROW_LEFT = ["M34.7,21.9C33.8,21.9 32.9,22.0 32.7,22.0C32.5,22.0 31.7,22.1 31.1,22.1C30.4,22.1 29.5,22.2 29.0,22.2C27.5,22.4 26.1,22.5 24.8,22.6C20.9,22.8 19.6,22.9 18.1,23.2C17.2,23.4 15.8,23.8 15.1,24.1C14.4,24.4 14.2,24.4 14.1,23.8C14.0,23.2 13.9,23.0 13.5,22.7C12.5,21.9 12.3,21.9 11.5,22.7C11.2,23.0 10.8,23.4 10.6,23.5C10.3,23.7 10.0,23.9 9.8,24.1C9.6,24.3 8.9,24.8 8.2,25.2C6.7,26.2 6.6,26.3 6.8,27.2C7.0,28.3 7.2,28.4 8.9,28.6C10.0,28.7 11.2,28.8 12.5,29.0C14.9,29.4 15.9,28.5 15.3,26.8C15.1,26.2 15.1,26.1 15.9,25.8C17.7,25.1 19.8,24.7 23.0,24.5C24.5,24.4 26.3,24.3 27.5,24.2C28.0,24.2 29.2,24.1 30.1,24.0C31.1,24.0 32.2,23.9 32.6,23.8C33.8,23.7 42.5,23.6 42.8,23.7C44.1,24.3 44.8,22.6 43.5,22.0C43.2,21.8 38.4,21.8 34.7,21.9Z"];
+
+/**
+ * The shapes this app is judged on, from CLAUDE.md's table. `kb` is what a
+ * phone that size gives an IME plus its navigation bar — the shortest screen is
+ * where a centred card and a keyboard compete for room, so it is the one that
+ * decides whether the share is too generous.
+ */
+const DEVICES = {
+  cmf: { name: 'CMF Phone 1', w: 411, h: 911, top: 46, bottom: 24, kb: 300 },
+  se:  { name: 'iPhone SE',   w: 375, h: 667, top: 0,  bottom: 0,  kb: 260 },
+  i15: { name: 'iPhone 15',   w: 393, h: 852, top: 59, bottom: 34, kb: 300 },
+};
+
+/**
+ * Three things worth looking at, and the empty one is the state the card opens
+ * in — the first thing anybody sees, and the one a mockup is likeliest to skip.
+ */
+const CONTENT = {
+  empty: '',
+  short: 'ring the plumber back',
+  long:
+    'the breath keeps getting away from me and I keep coming back to it, ' +
+    'which is apparently the whole of it, and I have spent about eleven ' +
+    'minutes being annoyed about that rather than doing it',
+};
+const PLACEHOLDER = 'catch it, then let it go';
+
+function sitting() {
+  return `
+    <div class="fill sitting">
+      <svg class="ringStage" width="286" height="286" viewBox="0 0 286 286">
+        <path d="${ringPath(143, 143, 140)}" fill="none" stroke="var(--inkFaint)"
+              stroke-width="3" stroke-linecap="round" opacity="0.16" />
+        <path d="${ringPath(143, 143, 105)}" fill="none" stroke="var(--ink)"
+              stroke-width="2.6" stroke-linecap="round" opacity="0.5" />
+      </svg>
+      <div class="clock">18:32</div>
+      <div class="foot">
+        <span class="end">End</span>
+        <svg class="pencil" width="26" height="26" viewBox="0 0 48 48">
+          <g fill="none" stroke="var(--inkSoft)" stroke-width="${PEN_DOODLE}"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12,36 C13,31 14.5,27 16,24" />
+            <path d="M16,24 C21,15 27,9.5 33,6" />
+            <path d="M33,6 C35.5,5 37.5,6.5 37,9 C36.5,12 33,17 28,24" />
+            <path d="M28,24 C24,29.5 20,33.5 12,36" />
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="fill amber"></div>`;
+}
+
+function arrowSvg() {
+  return `<svg width="24" height="24" viewBox="0 0 48 48">
+      ${ARROW_LEFT.map((d) => `<path d="${d}" fill="var(--ink)" />`).join('')}
+    </svg>`;
+}
+
+/**
+ * One frame.
+ *
+ * `mode` is 'today' or 'room'; `kb` is whether the keyboard is up. Every number
+ * below is the one the component would compute — the strip is
+ * insets.top + VEIL_STRIP, the dock's floor is (kb ? 0 : insets.bottom) +
+ * space.md — so what is drawn is the arrangement and not an impression of it.
+ */
+function frame(mode, kb, content, share, device) {
+  const { w: W, h: H, top: INSET_TOP, bottom: INSET_BOTTOM, kb: KB } = DEVICES[device];
+  const floor = (kb ? 0 : INSET_BOTTOM) + 16;
+  const room = mode === 'room';
+
+  const text = CONTENT[content];
+  const CARET_EMPTY = '<span class="caret"></span>';
+  const CARET = '<span class="caret"></span>';
+  const written = text === ''
+    ? CARET + `<span class="placeholder">${PLACEHOLDER}</span>`
+    : text + CARET;
+
+  /* Today's field is one line: everything past the card's edge is simply not
+     on the screen, which is what the ellipsis stands for. */
+  const oneLine = text === ''
+    ? CARET_EMPTY + `<span class="placeholder">${PLACEHOLDER}</span>`
+    : text.slice(0, 34) + (text.length > 34 ? '\u2026' : '') + CARET_EMPTY;
+
+  /*
+    The width is a share of the screen and the height follows from the ratio, so
+    a narrow phone gets a proportionally narrower card rather than a clipped
+    one, and however many lines fit is however many fit. The card is the same
+    size the whole time it is open — past the last line the field scrolls inside
+    it, the same as the notes screen — because a card that grew line by line
+    would be movement, and movement under the thumb doing the typing.
+  */
+  const cardWidth = Math.round(W * share);
+  const card = room
+    ? `<div class="card room" style="width:${cardWidth}px">
+         <div class="backhead">${arrowSvg()}</div>
+         <div class="body room">${written}</div>
+       </div>`
+    : `<div class="card">
+         <div class="body rule nowrap">${oneLine}</div>
+         <div class="done">done</div>
+       </div>`;
+
+  /* Today's sheet has no idea the keyboard is there — it docks at the bottom of
+     the screen and the IME is painted over the top of it. That is the bug. */
+  /*
+    Centred in whatever room is left. The keyboard takes its share off the
+    bottom — that is KeyboardAvoidingView's padding, drawn here as the sheet's
+    own bottom edge — and the card sits in the middle of the rest, so it lands
+    about where the ring was rather than climbing the screen.
+
+    Everything that is not the card is veil, and touching veil puts the note
+    away. Today only the strip *above* the card does that; a centred card has
+    room below it too, and a dead patch of veil would be the one part of the
+    screen that answers nothing.
+  */
+  const sheet = room
+    ? `<div class="fill veil"></div>
+       <div class="fill sheet centred"
+            style="padding:${INSET_TOP}px 0 ${floor}px; bottom:${kb ? KB : 0}px">
+         ${card}
+       </div>`
+    : `<div class="fill veil"></div>
+       <div class="fill sheet">
+         <div class="strip grow"></div>
+         <div class="dock" style="padding-bottom:${floor}px">${card}</div>
+       </div>`;
+
+  const keyboard = kb ? `
+    <div class="keyboard" style="height:${KB}px">
+      <div class="krow">${'qwertyuiop'.split('').map((c) => `<div class="key">${c}</div>`).join('')}</div>
+      <div class="krow" style="padding:0 18px">${'asdfghjkl'.split('').map((c) => `<div class="key">${c}</div>`).join('')}</div>
+      <div class="krow"><div class="key wide dark">&#8679;</div>${'zxcvbnm'.split('').map((c) => `<div class="key">${c}</div>`).join('')}<div class="key wide dark">&#9003;</div></div>
+      <div class="krow"><div class="key wide dark">?123</div><div class="key space"></div><div class="key wide dark">&#8629;</div></div>
+      <div class="knav"><i></i></div>
+    </div>` : '';
+
+  const measure = '';
+
+  return `<div class="phone" style="width:${W}px;height:${H}px">${sitting()}${sheet}${keyboard}${measure}</div>`;
+}
+
+/* The hash preselects a mode, so a screenshot can be taken of either. */
+let mode = location.hash.startsWith('#today') ? 'today' : 'room';
+let content = location.hash.includes('empty') ? 'empty'
+            : location.hash.includes('short') ? 'short' : 'long';
+let share = (Number((location.hash.match(/W(\d+)/) || [])[1]) || 64) / 100;
+let device = location.hash.includes('-se') ? 'se'
+           : location.hash.includes('-i15') ? 'i15' : 'cmf';
+
+function render() {
+  document.getElementById('frames').innerHTML = [false, true]
+    .map((kb) => `
+      <figure>
+        <figcaption>${kb ? '<b>Keyboard up</b> — writing' : '<b>Keyboard down</b> — dismissed with the back key'}
+          &nbsp;·&nbsp; ${DEVICES[device].name}, card ${Math.round(DEVICES[device].w * share)} × ${Math.round(DEVICES[device].w * share / 0.75)}</figcaption>
+        <div class="scaled" style="width:${Math.round(DEVICES[device].w * 0.85)}px; height:${Math.round(DEVICES[device].h * 0.85)}px">${frame(mode, kb, content, share, device)}</div>
+      </figure>`)
+    .join('');
+  document.getElementById('btnToday').className = mode === 'today' ? 'on' : '';
+  document.getElementById('btnRoom').className = mode === 'room' ? 'on' : '';
+  document.getElementById('btnEmpty').className = content === 'empty' ? 'on' : '';
+  document.getElementById('btnShort').className = content === 'short' ? 'on' : '';
+  document.getElementById('btnLong').className = content === 'long' ? 'on' : '';
+  [56, 64, 72, 80].forEach((w) => {
+    document.getElementById('btn' + w).className =
+      Math.round(share * 100) === w ? 'on' : '';
+  });
+  Object.entries({ cmf: 'btnCmf', se: 'btnSe', i15: 'btnI15' }).forEach(([k, id]) => {
+    document.getElementById(id).className = device === k ? 'on' : '';
+  });
+}
+
+const pick = (k, v) => () => {
+  if (k === 'mode') mode = v;
+  else if (k === 'content') content = v;
+  else if (k === 'share') share = v;
+  else device = v;
+  location.hash =
+    mode + '-' + content + '-W' + Math.round(share * 100) + '-' + device;
+  render();
+};
+document.getElementById('btnToday').onclick = pick('mode', 'today');
+document.getElementById('btnRoom').onclick  = pick('mode', 'room');
+document.getElementById('btnEmpty').onclick = pick('content', 'empty');
+document.getElementById('btnShort').onclick = pick('content', 'short');
+document.getElementById('btnLong').onclick  = pick('content', 'long');
+[56, 64, 72, 80].forEach((w) => {
+  document.getElementById('btn' + w).onclick = pick('share', w / 100);
+});
+document.getElementById('btnCmf').onclick = pick('device', 'cmf');
+document.getElementById('btnSe').onclick  = pick('device', 'se');
+document.getElementById('btnI15').onclick = pick('device', 'i15');
+render();
+</script>
+</body>
+</html>

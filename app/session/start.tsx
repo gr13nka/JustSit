@@ -3,16 +3,25 @@ import { useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 
 import { shouldShowTip } from '../../src/domain/progression';
+import {
+  activePractice,
+  isPracticeIntroduction,
+  practicePathComplete,
+  practicePathForStage,
+  sessionsAtStage as practiceSessionsAtStage,
+} from '../../src/domain/practices';
 import { stageAt, unlockedDurations } from '../../src/domain/stages';
 import { space } from '../../src/theme/tokens';
 import { useColor } from '../../src/theme/useColor';
-import { useProgress, useSessions, useSettings } from '../../src/store';
+import { markTipSeen, updateSettings, useProgress, useSessions, useSettings } from '../../src/store';
 import { Button } from '../../src/ui/Button';
 import { DurationDial } from '../../src/ui/DurationDial';
-import { ArrowLeft } from '../../src/ui/icons';
+import { ArrowLeft, ArrowRight } from '../../src/ui/icons';
 import { usePressSettle } from '../../src/ui/motion';
+import { Rule } from '../../src/ui/Rule';
 import { Screen } from '../../src/ui/Screen';
 import { TimerRing } from '../../src/ui/TimerRing';
+import { Text } from '../../src/ui/Text';
 
 /** The ring's plant before a sitting. The one that grows is chosen at the end. */
 const PREVIEW_PLANT = 'grass';
@@ -28,10 +37,21 @@ const PREVIEW_PLANT = 'grass';
  * promise about then.
  */
 export default function StartScreen() {
+  const color = useColor();
   const progress = useProgress();
   const settings = useSettings();
   const sessions = useSessions();
   const stage = stageAt(progress.stage);
+  const path = practicePathForStage(progress.stage);
+  const completedAtStage = path
+    ? practiceSessionsAtStage(sessions, progress.stage)
+    : 0;
+  const practice = path ? activePractice(path, completedAtStage) : null;
+  const [instructionOpen, setInstructionOpen] = useState(() =>
+    practice
+      ? isPracticeIntroduction(practice, completedAtStage, progress.seenTipIds)
+      : false
+  );
 
   /*
     How far up the ladder the dial reaches. Counted in sittings rather than
@@ -63,11 +83,97 @@ export default function StartScreen() {
     the way out of a sitting is End, which replaces the whole stack with the
     tabs.
   */
-  const begin = () =>
+  const begin = () => {
+    if (practice) {
+      router.push({
+        pathname: '/session/run',
+        params: { durationMs: String(practice.durationMs) },
+      });
+      return;
+    }
+
+    // The fallback dial is an explicit choice, so remember it when it is used.
+    updateSettings({ lastDurationMs: durationMs });
     router.push({
       pathname: shouldShowTip(sessions) ? '/session/tip' : '/session/run',
       params: { durationMs: String(durationMs) },
     });
+  };
+
+  if (practice && instructionOpen) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Read practice and continue"
+        onPress={() => {
+          markTipSeen(practice.id);
+          setInstructionOpen(false);
+        }}
+        style={styles.sheet}>
+        <Screen edges={['top', 'bottom']}>
+          <View style={styles.body}>
+            <Text variant="label">Stage One</Text>
+            <Text variant="caption" style={styles.practiceLabel}>
+              {practice.title} · {minutesOf(practice.durationMs)} minutes
+            </Text>
+            <Rule />
+            <Text variant="teaching">{practice.body}</Text>
+          </View>
+          <View style={styles.footer}>
+            <Text variant="caption" style={styles.hint}>tap</Text>
+          </View>
+        </Screen>
+      </Pressable>
+    );
+  }
+
+  if (practice) {
+    const free = path && practicePathComplete(path, completedAtStage);
+
+    return (
+      <Screen edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <BackArrow onPress={() => router.back()} />
+        </View>
+
+        <View style={styles.guidedMiddle}>
+          <TimerRing plant={PREVIEW_PLANT} />
+          <View style={styles.practiceCopy}>
+            <Text variant="title" style={styles.practiceTitle}>
+              {practice.title}
+            </Text>
+            <Text variant="body" color="inkSoft" style={styles.cue}>
+              {practice.cue}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Read full practice instruction"
+              onPress={() => setInstructionOpen(true)}
+              hitSlop={space.sm}
+              style={({ pressed }) => pressed && styles.pressed}>
+              <Text variant="label" color="inkSoft">i</Text>
+            </Pressable>
+          </View>
+          <Text variant="caption" color="inkSoft">
+            {minutesOf(practice.durationMs)} minutes
+          </Text>
+        </View>
+
+        <Button label="Meditate" variant="wobbly" onPress={begin} style={styles.start} />
+
+        {free && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose another length"
+            onPress={() => router.push('/session/free')}
+            style={({ pressed }) => [styles.freeLink, pressed && styles.pressed]}>
+            <Text variant="caption" color="inkSoft">Choose another length</Text>
+            <ArrowRight color={color.inkSoft} size={18} />
+          </Pressable>
+        )}
+      </Screen>
+    );
+  }
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -139,7 +245,15 @@ function BackArrow({ onPress }: { onPress: () => void }) {
 /** Big enough to read as a drawing, small enough not to be the first thing seen. */
 const BACK_SIZE = 26;
 
+function minutesOf(ms: number): number {
+  return Math.round(ms / 60_000);
+}
+
 const styles = StyleSheet.create({
+  body: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   header: {
     alignItems: 'flex-start',
   },
@@ -154,6 +268,43 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  guidedMiddle: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.lg,
+  },
+  practiceCopy: {
+    alignItems: 'center',
+    gap: space.sm,
+    maxWidth: 300,
+  },
+  practiceTitle: {
+    textAlign: 'center',
+  },
+  practiceLabel: {
+    marginTop: space.xs,
+  },
+  cue: {
+    textAlign: 'center',
+  },
+  sheet: {
+    flex: 1,
+  },
+  footer: {
+    paddingBottom: space.lg,
+    alignItems: 'center',
+  },
+  hint: {
+    letterSpacing: 1,
+  },
+  freeLink: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    marginBottom: space.lg,
   },
   /**
    * Held clear of the dial below it. The two are the only controls on the

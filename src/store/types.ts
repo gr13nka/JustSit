@@ -77,7 +77,7 @@ export type Progress = {
   stageStartedAt: number;
   /** When we last offered to advance. Null if never — used to avoid nagging. */
   lastOfferedAt: number | null;
-  /** Tip ids already shown, so teaching moves in order rather than repeating. */
+  /** Teaching ids already shown, so instruction moves forward rather than repeating. */
   seenTipIds: string[];
   /**
    * How many dots the garden holds today.
@@ -95,6 +95,15 @@ export type Progress = {
 export type Settings = {
   /** Null until the welcome flow is finished. Gates the onboarding redirect. */
   onboardedAt: number | null;
+  /**
+   * When the welcome screen was last shown, or null if it never has been.
+   *
+   * A fact about this install's use of the app rather than about the practice,
+   * which is why it sits here beside `onboardedAt` and not in `Progress`. It is
+   * also the one thing the app remembers instead of deriving — opening the app
+   * leaves no other trace to read it off. See `domain/greeting.ts`.
+   */
+  lastGreetedAt: number | null;
   /** Local time as "HH:MM", or null for no reminder. Off by default. */
   reminderAt: string | null;
   /**

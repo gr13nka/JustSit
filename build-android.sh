@@ -10,6 +10,30 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 # $HOME rather than getent: getent is glibc-only and this script also runs on macOS.
 user_home=${HOME:?HOME is not set}
 
+# Gradle checks JAVA_HOME directly before looking at PATH. Prefer a real JDK 17,
+# and repair stale shell values from removed local installs when possible.
+java_home=''
+if command -v /usr/libexec/java_home >/dev/null 2>&1; then
+  java_home=$(/usr/libexec/java_home -v 17 2>/dev/null || true)
+fi
+if [ -z "$java_home" ] && [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+  java_home=$JAVA_HOME
+fi
+for java_candidate in \
+  "$user_home/jdk17" \
+  "$user_home/.local/opt/jdk-17" \
+  /usr/lib/jvm/java-17-openjdk \
+  /usr/lib/jvm/java-17-openjdk-amd64 \
+  /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home; do
+  if [ -z "$java_home" ] && [ -x "$java_candidate/bin/java" ]; then
+    java_home=$java_candidate
+  fi
+done
+if [ -n "$java_home" ]; then
+  export JAVA_HOME="$java_home"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
 # First SDK that exists wins: the explicit variables, then the path our Linux
 # setup script installs to, then Android Studio's default location on macOS.
 android_sdk_root=''

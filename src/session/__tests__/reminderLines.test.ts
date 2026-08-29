@@ -20,14 +20,18 @@ describe('reminderBody', () => {
     expect(reminderBody(night)).toBe(reminderBody(NOON));
   });
 
-  it('turns over at local midnight', () => {
-    const justBefore = new Date(2026, 6, 28, 23, 59, 30).getTime();
-    const justAfter = new Date(2026, 6, 29, 0, 0, 30).getTime();
+  it('turns over at 04:00, with the small hours still on the day before', () => {
+    const afterMidnight = new Date(2026, 6, 29, 0, 0, 30).getTime();
+    const beforeFour = new Date(2026, 6, 29, 3, 59, 30).getTime();
+    const afterFour = new Date(2026, 6, 29, 4, 0, 30).getTime();
 
     // Not that they must differ — six lines and two days will collide often
-    // enough — only that the day is what is being asked, and it has changed.
-    expect(reminderBody(justBefore)).toBe(reminderBody(NOON));
-    expect(reminderBody(justAfter)).toBe(on(1));
+    // enough — only that the day is what is being asked, and that it is the
+    // app's day rather than the clock's. Rescheduling at one in the morning
+    // must not queue tomorrow's line for tonight.
+    expect(reminderBody(afterMidnight)).toBe(reminderBody(NOON));
+    expect(reminderBody(beforeFour)).toBe(reminderBody(NOON));
+    expect(reminderBody(afterFour)).toBe(on(1));
   });
 
   it('only ever answers with a line from the table', () => {

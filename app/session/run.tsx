@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { appendThought, noteForSitting } from '../../src/domain/notes';
 import { prepareBells, ringBell } from '../../src/session/bells';
@@ -18,7 +19,9 @@ import {
 import { Button } from '../../src/ui/Button';
 import { Clock } from '../../src/ui/Clock';
 import { PencilIcon } from '../../src/ui/icons';
+import { useBreath } from '../../src/ui/motion';
 import { NoteCapture, NoteSheet } from '../../src/ui/NoteSheet';
+import { ringPath } from '../../src/ui/ring';
 import { Screen } from '../../src/ui/Screen';
 import { TimerRing } from '../../src/ui/TimerRing';
 
@@ -26,6 +29,18 @@ const PREVIEW_PLANT = 'grass';
 
 /** Small enough to be the quietest thing on a screen that is mostly nothing. */
 const PENCIL_SIZE = 26;
+
+/**
+ * The screen going quieter, not darker.
+ *
+ * It is a paper-deep wash over the sitting rather than a black veil or a
+ * hardware brightness change. The timer already breathes to say the sitting is
+ * running; this borrows the same breath so the whole screen settles together.
+ */
+const VEIL_EXHALE = 0.34;
+const VEIL_INHALE = 0.2;
+const HALO_SIZE = 286;
+const HALO_STROKE = 3;
 
 export default function RunScreen() {
   const params = useLocalSearchParams<{ durationMs: string }>();
@@ -54,6 +69,7 @@ export default function RunScreen() {
    * from wall time and schedules the ending either way.
    */
   const clockMs = sittingClockMs(durationMs, settings.devMode);
+  const breath = useBreath(true);
 
   const [catching, setCatching] = useState(false);
 
@@ -125,15 +141,21 @@ export default function RunScreen() {
    * what finishing earned; the thought was the user's as soon as they had it.
    */
   const leave = () => router.replace('/(tabs)');
+  const spent = clockMs > 0 ? 1 - remainingMs / clockMs : 0;
 
   return (
     <View style={styles.root}>
       <Screen center edges={['top', 'bottom']}>
         <View style={styles.middle}>
-          <TimerRing
-            plant={PREVIEW_PLANT}
-            spent={clockMs > 0 ? 1 - remainingMs / clockMs : 0}
-          />
+          <View style={styles.ringStage}>
+            <BreathingHalo breath={breath} />
+            <TimerRing
+              plant={PREVIEW_PLANT}
+              spent={spent}
+              breath={breath}
+              growth={spent}
+            />
+          </View>
           <View style={styles.clock}>
             <Clock ms={remainingMs} />
           </View>
@@ -169,6 +191,8 @@ export default function RunScreen() {
         </View>
       </Screen>
 
+      <MeditationVeil breath={breath} />
+
       {/*
         Raised over the sitting rather than replacing it. The clock is wall time,
         so the detour costs nothing at all — and `useSession` never learns this
@@ -183,6 +207,65 @@ export default function RunScreen() {
   );
 }
 
+function MeditationVeil({ breath }: { breath: Animated.Value }) {
+  const color = useColor();
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          backgroundColor: color.amberVeil,
+          opacity: breath.interpolate({
+            inputRange: [0, 1],
+            outputRange: [VEIL_EXHALE, VEIL_INHALE],
+          }),
+        },
+      ]}
+    />
+  );
+}
+
+function BreathingHalo({ breath }: { breath: Animated.Value }) {
+  const color = useColor();
+  const centre = HALO_SIZE / 2;
+  const radius = centre - HALO_STROKE;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.halo,
+        {
+          opacity: breath.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.22, 0.08],
+          }),
+          transform: [
+            {
+              scale: breath.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1.05, 0.94],
+              }),
+            },
+          ],
+        },
+      ]}>
+      <Svg width={HALO_SIZE} height={HALO_SIZE}>
+        <Path
+          d={ringPath(centre, centre, radius)}
+          stroke={color.inkFaint}
+          strokeWidth={HALO_STROKE}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   /** The sitting, and the sheet that may be raised over all of it. */
   root: {
@@ -192,6 +275,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  ringStage: {
+    width: HALO_SIZE,
+    height: HALO_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  halo: {
+    position: 'absolute',
   },
   clock: {
     marginTop: space.xl,

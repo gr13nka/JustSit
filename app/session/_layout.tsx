@@ -25,6 +25,7 @@ export default function SessionLayout() {
       */}
       <Stack.Screen name="start" options={{ gestureEnabled: true }} />
       <Stack.Screen name="tip" options={{ gestureEnabled: true }} />
+      <Stack.Screen name="free" options={{ gestureEnabled: true }} />
     </Stack>
   );
 }

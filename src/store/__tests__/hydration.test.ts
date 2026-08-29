@@ -226,7 +226,7 @@ describe('a cold launch on a version 4 garden', () => {
 
     expect(progress.stage).toBe(2);
     expect(progress.seenTipIds).toEqual(['s2-01']);
-    expect(settings.theme).toBe('butter');
+    expect(settings.theme).toBe('ink');
     expect(settings.reminderAt).toBe('07:30');
   });
 
