@@ -492,6 +492,40 @@ Everywhere else `paperDeep` appears it is a *surface* rather than a drawing's
 fill, which the kit has always sanctioned: the card, the note sheet, the nav
 bar, the quiet slider's marker, the chosen offer's marker.
 
+**The note sheet has two shapes, and they are one decision rather than two
+knobs.** A note being *read* is a card the size of the thought on it, the width
+of the page and docked at the foot of it — that is the garden's reader, and it is
+`NoteSheet`'s default. A note being *written* is an **index card**: 3:4, its
+width `NOTE_WIDTH_SHARE` of the screen, floated in the middle of whatever the
+keyboard leaves. Two earlier readings were wrong in opposite directions and are
+worth recording, because both looked reasonable in a browser. A card that took
+*all* the room above the keyboard read as a large empty page and hid the sitting
+completely, which is the one thing this sheet exists not to do — it is raised
+over a sitting, not instead of one. A short full-width card fixed that and came
+out a bar across the screen: a card the width of the page reads as a bar however
+short it is. The veil left either side is what says this is a small thing being
+done on top of something else, and it is why the width is a *share* rather than
+a gutter.
+
+Its height follows from the ratio rather than from a line count, so a narrow
+phone gets a proportionally narrower card instead of a clipped one and however
+many lines fit is however many fit; `maxHeight: '100%'` is what stops it
+overflowing the room a keyboard leaves on a short screen, rather than good luck.
+The field inside is `flex: 1` in a box whose height is already settled, so the
+card is the same size the whole time it is open and a line past the last one
+scrolls inside it — a card that grew line by line would be movement, and
+movement under the thumb doing the typing.
+
+The way out is the veil and the arrow, and they are one action. The whole veil
+answers a touch, not only the part above the card: a floating card has veil below
+it too, and a dead patch that answers nothing would be the one part of the screen
+that ignores you. The arrow is `ArrowLeft` at the card's own top-left rather than
+a `BackHeader`, whose row would be a fifth of a card this size — and it is the
+only "done", which is the sentence `app/notes/[id].tsx` was already written
+around. The sheet answers the Android back key for the same reason: it is not a
+route, so nothing else does, and what the navigator would answer with on the run
+screen is the end of a sitting.
+
 The pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
 heroes at 7 on 200, and hand-drawn UI marks (`Rule`) at hairline–2 on their own
 tight canvas — so one hand appears to have drawn the whole app.
@@ -1263,6 +1297,41 @@ every screen. The run screen's pencil is therefore laid out in a *row* beside
 styling preference: the web preview is where layout is decided, and a layout
 that only agrees with itself there is worse than no preview.
 
+**Edge-to-edge is always on, so `adjustResize` resizes nothing.**
+`android/gradle.properties` sets `edgeToEdgeEnabled=true` and SDK 54 made that
+non-optional. The manifest still says `android:windowSoftInputMode="adjustResize"`,
+and it still matters — but not for the reason it reads: the window is no longer
+resized for the keyboard, so a `KeyboardAvoidingView` with `behavior={undefined}`
+on Android lifts nothing and the keyboard draws over whatever is at the foot of
+the screen. That is what put the note card underneath the IME. `behavior="padding"`
+on **both** platforms is the fix, and what makes one behaviour right for both is
+that RN measures rather than asks — the lift is `frame.y + frame.height -
+endCoordinates.screenY`, its own frame against the keyboard's top edge. The price
+is that the view has to *be* the screen: a KAV inside a padded box reports
+`frame.y === 0` while standing at `insets.top` and under-lifts by exactly that,
+which is what `keyboardVerticalOffset` exists for and what placing it at the
+screen's root avoids. `NoteSheet` puts it on the absolute fill; `app/notes/[id].tsx`
+puts it outside `Screen`.
+
+Two numbers there disagree, and it costs real time to find out which. On Android
+`endCoordinates.height` is `ime.bottom - systemBars.bottom` — the keyboard
+*above* the navigation bar — while on iOS the same field spans the home
+indicator. So a hand-rolled lift has to add `insets.bottom` back on one platform
+and not the other, which is why nothing here hand-rolls one. And
+`useSafeAreaInsets().bottom` never counts the IME at all (safe-area-context reads
+`statusBars | displayCutout | navigationBars | captionBar`), so it has to be
+*dropped* while the keyboard is up, or the card floats a bar's height above a
+keyboard it is already clear of. `src/ui/useKeyboardUp.ts` is the whole of that
+fact, and it answers *whether* rather than *how tall* precisely because the
+measuring is already done. Focus is not the same question: RN 0.86's
+`ReactEditText` has no `onKeyPreIme` override, so the Android back key hides the
+keyboard without clearing focus and anything watching `onFocus`/`onBlur` goes on
+believing it is there.
+
+Don't set `android.softwareKeyboardLayoutMode` in `app.json`: `adjustResize` is
+what puts RN on the `screenY = visibleFrame.bottom` branch, and `adjustNothing`
+takes the other one.
+
 **Fonts ship as Latin subsets in `assets/fonts/`, not from npm.** M PLUS
 Rounded 1c carries CJK coverage — the full face is ~3.3MB *per weight*, so three
 weights would put ~10MB of font binary behind the splash to set English text.
@@ -1960,3 +2029,32 @@ sun is safe — it comes from `DATA.icons`.
 
 As with the bench and the web preview: decide here, confirm on the phone. This
 one is a desktop page and nothing in it ships.
+
+## Judging the note card: the mockup page
+
+`tools/note-card-mockup.html` is the note caught mid-sitting, on toggles — the
+`anim-lab.html` precedent, opened straight off disk with no server and no build
+step.
+
+```sh
+open tools/note-card-mockup.html
+```
+
+Two frames side by side, keyboard down and keyboard up, over a dimmed mock of the
+run screen. **Today / Proposed** is what makes it worth keeping: Today reproduces
+the edge-to-edge bug exactly — a card docked at the foot of the screen with the
+IME painted over the top of it, so there is nothing on screen but the keyboard.
+The rest are the knobs the shape was actually settled on: **Empty / A line / A
+long thought**, the card's **width share**, and the three screen shapes from the
+table above with their real insets.
+
+Two things about it are the point. The **empty** state is what the card opens in
+and is the one a mockup is likeliest to skip. And the **shortest screen decides
+the width share** — an iPhone SE at 375 × 667 leaves under 410dp above a 260dp
+keyboard, which is where a centred card and a keyboard compete for room and a
+generous share stops fitting.
+
+It draws the keyboard, which the web preview cannot: `react-native-web`'s
+`Keyboard` is a stub, so `useKeyboardUp()` is permanently false there and
+`npm run web` only ever shows the keyboard-down half. As with the bench and the
+preview: decide here, confirm on the phone.

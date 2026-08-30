@@ -194,12 +194,13 @@ export default function RunScreen() {
       <MeditationVeil breath={breath} />
 
       {/*
-        Raised over the sitting rather than replacing it. The clock is wall time,
-        so the detour costs nothing at all — and `useSession` never learns this
-        happened, which is what keeps that true.
+        Raised over the sitting rather than replacing it: an index card floating
+        clear of the keyboard, with the sitting still going on behind it. The
+        clock is wall time, so the detour costs nothing at all — and
+        `useSession` never learns this happened, which is what keeps that true.
       */}
       {catching && (
-        <NoteSheet onDismiss={lowerCard}>
+        <NoteSheet card="note" onDismiss={lowerCard}>
           <NoteCapture onChange={(body) => (draft.current = body)} onDone={lowerCard} />
         </NoteSheet>
       )}
