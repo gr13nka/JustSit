@@ -7,9 +7,18 @@ import { TextStyle } from 'react-native';
  * buttons, and the teaching card. Its soft terminals keep even the clinical
  * copy from sounding severe, which is the whole reason it is here.
  *
- * Shantell Sans is a voice, not a reading face. It is for short felt lines —
- * the app name, a caption under the cat, an onboarding tagline — one line at a
- * time. A paragraph set in it stops being warm and starts being hard to read.
+ * Shantell Sans is a voice rather than a reading face, and the boundary between
+ * the two is drawn by who is speaking: M PLUS carries what the app says,
+ * Shantell carries what you said. So it sets the app name, the short felt lines
+ * — a caption under the cat, an onboarding tagline — and every note, wherever a
+ * note is shown.
+ *
+ * A note is the length of a paragraph and is not one, which is why it does not
+ * break the rule this used to state. It is not reading matter: it is a thought
+ * put down so that it could stop being carried, and what is wanted on the way
+ * back to it is the thought itself, in the hand it was thought in. Everything
+ * the app says around it goes back to M PLUS — the date under a note, the words
+ * on its buttons — so the two faces on that card are the two voices.
  */
 export const font = {
   sans: 'MPLUSRounded1c_400Regular',
@@ -84,7 +93,7 @@ export const type = {
     lineHeight: 28,
   },
 
-  /** A single felt line — a caption beside Батон, the onboarding tagline. */
+  /** What you wrote: a note, and the felt lines — a caption beside Батон. */
   hand: {
     fontFamily: font.hand,
     fontSize: 18,

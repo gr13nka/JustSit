@@ -345,6 +345,8 @@ which is enough to file a sitting at five in the morning into the night before.
 | A day already sat: the sun gone green, drawing and figure both, and a sleeping cat — and nothing else | `domain/stats.satToday`, `app/(tabs)/index.tsx` |
 | The days are a week, four weeks and two runs; the best run is what makes the current one safe to print | `domain/stats.ts` (`weekSat`, `recentDays`, `bestStreak`), `app/streak.tsx` |
 | A thought caught mid-sitting is kept, and nothing ever counts them | `domain/notes.ts`, `ui/NoteSheet.tsx` |
+| The note card is a physical thing: it follows the finger, resists the wrong way, and swiping it down finishes the note — never discards it | `ui/carry.ts`, `ui/useCarry.ts`, `ui/NoteSheet.tsx` |
+| What you wrote is set in your hand; what the app says is set in the app's | `theme/typography.ts` (`hand` vs `body`) |
 | One figure, pinned to a corner and not sat on a card — no label, no unit — and it is the way to the days | `ui/Indicator.tsx`, `app/(tabs)/index.tsx` |
 | Theme is taste, never behaviour: it changes values, never what the app does | `settings.theme`, `theme/themes.ts` |
 
@@ -385,7 +387,36 @@ colour and more ink.
 
 **Colour is earned, and almost only the garden earns it.** Touchability is
 marked by shape — a fill, a 1.5px border, organic corners — and by the app's one
-`accent`, which is ink in the Ink theme and brick in the other two. The accent
+`accent`, which is ink.
+
+There is now one mark that is not about touchability at all: **the note card
+casts a shadow, and it is the app's first and only.** Holding is what earns it —
+a card under a finger is off the page and has to say so — and the licence stops
+exactly there. A card that merely *sits* on a page is still paper laid on paper:
+`Card`, `NoteCard` and the completion screen's offers have none and are not
+getting any. What a shadow says here is "this is in your hand", never "this is
+important", which is why it exists only while the card is being held and is
+unfindable at rest. `color.shadow` is its own token rather than an alias for
+`ink`, because it is a different decision and should be able to move without
+dragging the text with it; pure black is wrong on cream, reading as a hole in
+the page rather than as an absence of light.
+
+How it is drawn is a constraint rather than a preference, and it cost real time.
+`boxShadow` cannot ride the native driver — only transform and opacity can — so
+the shade is a separate view behind the card carrying a *static* shadow, with
+opacity and a transform doing the ramp. Blur cannot be animated in React Native
+at all. **And a box shadow is clipped to the outside of the box casting it**: it
+is a ring around a hole, so scaling the element moves the ring outward instead
+of spreading it, and an offset opens a clean gap of exactly that offset between
+a card and its own shadow. Drawn at `inset: 0` and scaled, full lift gave a
+hard-edged rounded rectangle some 60pt out with bare paper between it and the
+card — a second, wrong-sized card. The shade's box therefore sits **inset inside
+the card** by more than the shadow can reach, so its own bright edge hides under
+the paper and only the reach comes out. The inset is a distance and never a
+share: the two card shapes are 263 × 351 and about 379 × 186, and a share that
+hid one haloed the other. Keep `SHADE_INSET` above `SHADE_BLUR` — reach is blur
+plus spread — and there is a test on it, because the rest state reaching past
+the card is the one thing it may never do. The accent
 appears in exactly four places: the primary button's fill, the wobbly button's
 fill, the breathing ring, and the screen switcher's travelling marker. It is
 four *kinds* of mark and not four screens — the wobbly button is on several now,
@@ -393,21 +424,27 @@ and it is still one place. Note which slider earns it: navigation does, because
 where you are in the app is worth the app's one loud colour, while a choice made
 *inside* a screen takes `Slider`'s `tone="quiet"` and a `paperDeep` marker — the
 duration dial, where the choice is a length and not a place. Green means
-*something grew*, and it reaches three marks: plant strokes, the sun on a day
-already sat, and the stroke the days screen fills a sat day with. The sun takes
+*something grew*, and it reaches two kinds of mark: the sun on a day already
+sat, and the stroke a tally is struck in. It does not reach the garden's own
+drawings, and that is the point rather than an omission — a plant is filled with
+`ink`, the same pen as everything else on the page, because a plant does not
+report that something grew: it is the thing that grew, and it says so by
+standing there. Green is left to the marks that stand in for one. The sun takes
 it in **both** halves, drawing and figure, which is the one place green takes a
 whole mark rather than a number; it has earned that, because today something
 grew.
 
 The days screen's stroke is a licence **moved** and not a new one spent, and it
-is worth saying which, because green has just left two marks and arrived at one.
-The leaf that counted sittings in the garden's other corner has gone, and so has
+is worth saying which, because green has only ever been giving marks up. The
+leaf that counted sittings in the garden's other corner has gone, and so has
 the tally the grow screen drew a filled bed in — one bed retired both, since the
 field is now the count and the grow screen draws the garden itself. A day sat is
 the same sentence about a different unit, so `DayMark` strikes the tally's own
-stroke rather than inventing a mark for it. Three is therefore where the count
-lands from four, and it is not a ceiling that has been raised: the next mark to
-ask for green is asking for a fourth.
+stroke rather than inventing a mark for it, which is why the count named above
+is of kinds of mark and not of screens. Two is therefore where it lands, from
+three and before that four, and no step down that ladder was a licence spent:
+the last of them was the plants going to ink. The next mark to ask for green is
+asking for a third.
 
 The pen brights (`penBlue/penOrange/penPink`) have exactly two licences: a
 plant's bloom (the reward-garden colour moment), and the first-run hero's night
@@ -427,12 +464,26 @@ re-mixes the garden pens — green goes olive on a light warm ground and orange
 disappears — and both brick themes drop `danger` to an oxblood, because a
 warning that is the same colour as every button is not a warning.
 
-**Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read for
-information — timer, labels, nav, stats, buttons (500), headings (700), and the
-teaching card body (400, the long-form reading weight). Shantell Sans is a
-voice, not a reading face: the hand-scrawled app name and one-line felt captions
-(`variant="hand"`), never a paragraph. If a sentence runs past a line, it goes
-back to the body face.
+**Two typefaces, and the boundary is who is speaking.** M PLUS Rounded 1c
+carries everything read for information — timer, labels, nav, stats, buttons
+(500), headings (700), and the teaching card body (400, the long-form reading
+weight). Shantell Sans is a voice rather than a reading face: the hand-scrawled
+app name, one-line felt captions (`variant="hand"`), and **every note, wherever
+a note is shown**. M PLUS carries what the app says; Shantell carries what you
+said.
+
+The rule used to end "never a paragraph", and a note is paragraph-shaped, so it
+is worth saying why this is the boundary moving rather than the boundary
+breaking. A note is not reading matter. It is a thought put down so that it
+could stop being carried, and what is wanted on the way back to it is the
+thought itself, in the hand it was thought in — the same argument that gives the
+garden drawings rather than a list. Everything the app says *around* a note goes
+back to M PLUS: the date under it, the words on its buttons. Two faces on one
+card, because there are two voices on it.
+
+The old rule's real content survives: a sentence of the *app's* that runs past a
+line goes back to the body face. What changed is that the app is no longer the
+only thing setting type.
 
 **Hand-drawn touches are rationed.** Exactly four kinds exist: the wobbly
 `Rule`, organic corner asymmetry (`organicCorners` — always seeded, never
@@ -516,15 +567,60 @@ card is the same size the whole time it is open and a line past the last one
 scrolls inside it — a card that grew line by line would be movement, and
 movement under the thumb doing the typing.
 
-The way out is the veil and the arrow, and they are one action. The whole veil
-answers a touch, not only the part above the card: a floating card has veil below
-it too, and a dead patch that answers nothing would be the one part of the screen
-that ignores you. The arrow is `ArrowLeft` at the card's own top-left rather than
-a `BackHeader`, whose row would be a fifth of a card this size — and it is the
-only "done", which is the sentence `app/notes/[id].tsx` was already written
-around. The sheet answers the Android back key for the same reason: it is not a
-route, so nothing else does, and what the navigator would answer with on the run
-screen is the end of a sitting.
+**There are four ways out and one exit.** The swipe, the arrow, the veil and the
+Android back key all route through one `leave()` that plays the card off the
+screen and calls `onDismiss` when it arrives; from rest the spring simply starts
+with no throw in it. The alternative — the swipe animating while the other three
+cut — would give the card two characters for one action, and the whole argument
+of this sheet is that there is one way out. `leave()` is guarded by a ref,
+because the back key can fire twice while the card is still travelling.
+
+The whole veil answers a touch, not only the part above the card: a floating
+card has veil below it too, and a dead patch that answers nothing would be the
+one part of the screen that ignores you. The arrow is `ArrowLeft` at the card's
+own top-left rather than a `BackHeader`, whose row would be a fifth of a card
+this size. The sheet answers the Android back key because it is not a route, so
+nothing else does, and what the navigator would answer with on the run screen is
+the end of a sitting.
+
+**And the card is a physical thing: you pull it down and it goes.** It follows
+the finger exactly, resists being pushed the other way, and past a threshold
+leaves on the momentum it was given. The arithmetic is `src/ui/carry.ts`, pure
+and tested on the `ring.ts` precedent; `src/ui/useCarry.ts` is the gesture; the
+component supplies only the two things a screen knows, which are the measured
+layout and the veil.
+
+Three things about it are load-bearing. **The card is assigned, not sprung** —
+it sits exactly under the finger, because a spring lagging behind the pointer
+reads as latency rather than as mass however carefully it is tuned, and once the
+object is not where you put it you stop believing you are holding it. Weight
+goes into the one thing that can lag without lying: the lift, which is a
+*stepped* target and so lags for free, where anything interpolated off travel
+would be rigid with position and not a lift at all. **Release hands the finger's
+own velocity to the spring** rather than starting a fresh animation, so a card
+let go mid-flick is the same motion continuing. And **the return and the exit
+are two presets on purpose** — `SETTLE` home, where you watch it arrive, and
+`GLIDE` out, where nothing is watched settling and what matters is that the
+departure is continuous with the throw. Collapsing that pair to one is the
+mistake the source material warns about by name.
+
+**The swipe is finish, never discard.** `lowerCard` keeps the draft, and
+`onComplete` keeps it independently, so the bell never costs a thought whatever
+the card is doing. Nothing here has copy, a confirmation, or anything else that
+could read as throwing a thought away — the direction is down, which is putting
+something down.
+
+**The keyboard is the floor.** It stays up through the drag and the card slides
+toward it, with the resistance felt there; dismissing it on the grab would
+collapse the `KeyboardAvoidingView`'s padding and re-lay-out the stage under the
+finger that had just taken hold of the card.
+
+One layout fact is easy to get backwards and was: the dragged box sits
+*outside* `Rise`, not inside it. `onLayout` reports position relative to the
+parent, so nested inside the entrance the card's `y` is 0 for ever — on Yoga and
+on `react-native-web` alike, where `UIManager.measure` explicitly measures
+against `node.parentNode`. Outside it, `noteShape`'s `maxHeight: '100%'` still
+resolves, because the box is then the stage's own child.
 
 The pen contract lives in `src/ui/pen.ts`: doodles draw at 2.8 on a 48-unit canvas,
 heroes at 7 on 200, and hand-drawn UI marks (`Rule`) at hairline–2 on their own
@@ -621,6 +717,18 @@ the same one the burst makes about growth. The pen's rule holds too: the lean is
 half a *shear* and half a turn about the root (`SWAY_BEND`), and both have a
 determinant of exactly 1 — so unlike a scale channel neither can break the rule
 that a doodle changes shape and never mass.
+
+**One species is not in the wind.** A mushroom is a cap on a stiff stalk rather
+than a stem, and one leaning with the grass is a drawing that has forgotten what
+it drew. Unlike which of a plant's shapes are filled or how far its ink reaches,
+that cannot be read off the paths — it is a fact about the thing rather than
+about the drawing — so it is written down beside the key in `domain/plants.ts`,
+and `swaysInWind` is the whole of the question. `PlantMotion` asks it on both
+platforms and skips the lean wrapper entirely, so a rigid plant builds no
+sampled loop and no interpolation config at all. That is a conditional wrapper
+in the one file whose comment argues against them, and it is allowed for the
+reason the argument turns on: the focus flips during a visit and a slot's
+species never does.
 
 Its arithmetic is `src/ui/sway.ts`, pure and tested on the `ring.ts` precedent,
 and three things about it cost real time to rediscover.
@@ -1747,6 +1855,38 @@ it to tell the truth:
 - **`react-dom`, `react-native-web` and `@expo/metro-runtime`** are in
   `dependencies` because `expo install` puts them there. Nothing in `app/` or
   `src/` imports them; they exist only for the web bundle.
+- **`react-native-web`'s `TextInput` supplies no responder handlers of its own**,
+  and that makes the preview lie in the direction of "it works". On a phone a
+  `TextInput` renders through `usePressability`, whose `onStartShouldSetResponder`
+  answers true and is spread *after* anything a caller passes, so the field wins
+  the responder system's depth-first race and keeps its caret, its selection and
+  its scrolling for nothing. In a browser a real `<textarea>` focuses itself, so
+  RNW joins the responder system only with handlers it is *given* and supplies
+  none — nothing at the field answers, and the touch reaches whatever is behind
+  it. With the note card draggable, that meant a drag begun on the text carried
+  the card away and dismissed the note: a long thought you could not scroll. One
+  prop fixes it, `onStartShouldSetResponder={() => true}` on the field, inert on
+  native and load-bearing on web. The general shape of this is already here
+  twice — the `transformOrigin` array and the frozen loop — and it is the same
+  lesson each time: the browser agreeing with itself is not the phone agreeing.
+- **`react-native-web` resets a `TextInput`'s border and never its outline**, so
+  a focused field wears the browser's own focus ring — a square-cornered
+  rectangle inset over the whole field, in a blue no theme here owns. The note
+  sheet opens with the field focused, so it was a box drawn round the note from
+  the moment the card arrived, by nothing in this codebase. `src/ui/fieldReset.ts`
+  / `.web.ts` is the split that takes it off, on the `webInsets` precedent.
+
+  **It takes two properties, and this is the part that costs an afternoon.**
+  `outlineWidth: 0` alone does nothing: the ring is `outline-style: auto`, and an
+  auto outline is the browser drawing a mark of its own rather than a line of the
+  width it was handed, so Chrome keeps painting it at any width. Naming a real
+  style is what takes the decision back — `outlineStyle: 'solid'` with
+  `outlineWidth: 0`, a solid outline no pixels wide. `outlineStyle: 'none'` is
+  the obvious answer and fails typecheck, because RN types the property
+  `'solid' | 'dotted' | 'dashed'`; the `outline` shorthand is refused by
+  `validate.js`, which asks for long-form properties. The two readings look
+  equally plausible written down, so it was measured in headless Chrome across
+  four variants with the ring put back as a control rather than reasoned about.
 
 `@react-native-community/datetimepicker` has no web build and degrades to `null`
 with a warning, so the reminder picker is inert in the browser. Nothing else is.
@@ -2082,5 +2222,33 @@ generous share stops fitting.
 
 It draws the keyboard, which the web preview cannot: `react-native-web`'s
 `Keyboard` is a stub, so `useKeyboardUp()` is permanently false there and
-`npm run web` only ever shows the keyboard-down half. As with the bench and the
-preview: decide here, confirm on the phone.
+`npm run web` only ever shows the keyboard-down half.
+
+**The card is draggable there, and that is now most of what the page is for.**
+It carries the demos' spring integrator and pointer-intent read inlined — a
+semi-implicit Euler at a fixed 240Hz substep, which is the one thing in it that
+must not be reduced to a per-frame step, or identical gestures come out
+different on a 60Hz and a 120Hz display. The `anim-lab.html` contract applies in
+full: the sliders' defaults **are** the shipped numbers, the page prints a
+paste-ready block for `src/ui/carry.ts`, nothing writes to the repo, and if the
+two ever disagree one of them has been hand-edited and the bench is the one to
+trust.
+
+The frame worth opening it for is **the two shadows, side by side** — the ramp
+the gesture wants, blur and all, against the one React Native can actually
+drive. Blur is not on the native driver, so the shipped shade is one pre-blurred
+box scaled and faded, and an approximation of that kind has to be *chosen by eye
+against the real thing* rather than argued about. The other frame that earns its
+place is the docked reader, because both card shapes share one threshold rule
+and the short card is where that rule's floor is doing the work.
+
+Three things it is honest about and one it cannot be. The readout prints travel,
+smoothed velocity, projected travel and whether this release would leave, which
+is what makes "is the threshold right" a question the page can answer rather
+than only demonstrate. The phone is drawn at its real dp and scaled only for the
+page, so every number inside it is the phone's. And its spring is the demos'
+integrator while the app's is `Animated.spring` — the same model, not the same
+frames. What it cannot tell you is **amount**: a browser is honest about
+proportion and about timing and overstates neither, so the shape of the gesture
+settles here and the threshold in millimetres of thumb settles in the hand. As
+with the bench and the preview: decide here, confirm on the phone.

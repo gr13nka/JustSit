@@ -16,8 +16,9 @@ export type Palette = {
   inkFaint: string;
   /**
    * The app's one signature colour: the primary fill, the wobbly button's
-   * border, the ring, and whichever marker is travelling. Ink in the quiet
-   * theme, brick in the two loud ones.
+   * border, the ring, and whichever marker is travelling. It is ink here, and
+   * ink is the whole of it — the two brick themes this line used to name were
+   * retired, and `ThemeId` has been a single id since.
    */
   accent: string;
   /** A warm sitting wash. Atmospheric only, never a signal or action colour. */
@@ -32,6 +33,22 @@ export type Palette = {
 
   /** Destructive actions only. Never the accent, or a warning stops being one. */
   danger: string;
+
+  /**
+   * The one thing in this app that is *held* casts one, and nothing else does.
+   *
+   * Holding is what earns a shadow — a card under a finger is off the page and
+   * has to say so — and the licence stops there. A card that merely sits on a
+   * page is still paper laid on paper: `Card`, `NoteCard` and the completion
+   * screen's offers have no shadow and are not getting one. What it says is
+   * "this is in your hand", never "this is important".
+   *
+   * A hair warmer and deeper than `ink` rather than the same value, because it
+   * is a different decision and should be able to move without dragging the
+   * text with it. Pure black is wrong on cream: it reads as a hole in the page
+   * rather than as an absence of light.
+   */
+  shadow: string;
 };
 
 export type ColorName = keyof Palette;
@@ -71,6 +88,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       amberVeil: '#8A5A24',
       ...CREAM_PENS,
       danger: '#B3402F',
+      shadow: '#2A251C',
     },
   },
 };

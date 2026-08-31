@@ -113,13 +113,14 @@ app/                 screens (expo-router)
   streak.tsx         your days — the week, the month, the run
   onboarding.tsx
 src/
-  theme/themes.ts    ← every colour in the app, in three palettes
+  theme/themes.ts    ← every colour in the app, in one palette
   theme/tokens.ts    space, radius, organic corners
   theme/typography.ts
   store/             the only module that touches persistence
   domain/            pure, tested: stages, tips, progression, plots, plants, stats, notes
   session/           timer, bells, notifications, reminder lines
   ui/                shared components
+  ui/carry.ts        the arithmetic of a card being held — pure, tested
 ```
 
 The visual language is Karakuli — warm paper, one round-nib pen, colour that is
@@ -130,11 +131,15 @@ before touching anything:
 - **No hex literal outside `src/theme/themes.ts`,** and colour is read through
   `useColor()` rather than imported — a `StyleSheet.create` is frozen at import
   and cannot repaint. Touchability is marked by shape and by the app's single
-  accent (ink, or brick in the two loud themes); everything else colourful is
-  the garden's green, plus a fixed pen-bright bloom per species.
-- **Two typefaces, hard boundary.** M PLUS Rounded 1c carries everything read
-  for information; Shantell Sans is a voice for one-line felt moments and never
-  carries a paragraph.
+  accent (ink); the plants are drawn in ink too, and green is kept for the marks
+  that report something grew — the sun on a day already sat, and a tally's
+  stroke — plus a fixed pen-bright bloom per species. The one mark that is not
+  about touchability is the note card's shadow, the app's only one: holding
+  earns it, sitting on a page does not.
+- **Two typefaces, and the boundary is who is speaking.** M PLUS Rounded 1c
+  carries what the app says — everything read for information. Shantell Sans is
+  a voice: the app's name, one-line felt moments, and every note, because what
+  you wrote is not the app talking.
 
 ## The art
 

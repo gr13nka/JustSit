@@ -51,7 +51,7 @@ export function NoteCard({
         { backgroundColor: color.paperDeep },
         pressed && styles.pressed,
       ]}>
-      <Text variant="body" numberOfLines={CARD_LINES}>
+      <Text variant="hand" numberOfLines={CARD_LINES}>
         {note.body}
       </Text>
       <View style={styles.meta}>

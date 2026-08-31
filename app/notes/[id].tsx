@@ -7,6 +7,7 @@ import { type } from '../../src/theme/typography';
 import { useColor } from '../../src/theme/useColor';
 import { deleteNote, updateNote, useNotes } from '../../src/store';
 import { BackHeader } from '../../src/ui/BackHeader';
+import { fieldReset } from '../../src/ui/fieldReset';
 import { Screen } from '../../src/ui/Screen';
 import { Text } from '../../src/ui/Text';
 import { formatDay } from '../../src/ui/time';
@@ -125,13 +126,15 @@ export default function NoteScreen() {
             </View>
 
             {/*
-              A TextInput cannot name a variant, so it reads the same row out of
-              the type scale by hand — the reading weight, set as it is
-              everywhere else. It fills the screen rather than sitting in a box:
-              the page is the paper, and a field drawn on it would be a second one.
+              A TextInput cannot name a variant, so it reads the row out of the
+              type scale by hand — `hand`, the same face the pile drew this note
+              in and the same one it was typed in. It fills the screen rather
+              than sitting in a box: the page is the paper, and a field drawn on
+              it would be a second one, which is also what `fieldReset` takes
+              off in a browser.
             */}
             <TextInput
-              style={[type.body, styles.input, { color: color.ink }]}
+              style={[type.hand, styles.input, fieldReset, { color: color.ink }]}
               value={body}
               onChangeText={setBody}
               multiline

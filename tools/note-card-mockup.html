@@ -5,14 +5,59 @@
 <title>JustSit — the note caught mid-sitting</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Shantell+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  The note caught mid-sitting — on toggles for its shape, and on sliders for its
+  physics. Open it straight off disk; there is no server, no build step and
+  nothing outside this file but the two fonts.
+
+  It is a COPY, twice over, on the anim-lab.html precedent.
+
+  From src/: the colours, the spacing, the type scale, the ring's knots, the
+  traced ArrowLeft, the device table and the card's two shapes. From
+  projects/TactileDesignDemos/engine/: the physics — motion.js's ticker, spring,
+  preset table and rubber band, and gesture.js's read of pointer intent. Both
+  are pasted in rather than imported, because importing anything into a file://
+  page means a build step, and a build step is the thing that would let this
+  rot.
+
+  What it deliberately does not take from src/ is anything that belongs to a
+  renderer. There is no react here, no Animated.Value, no store and no layout
+  engine: the card is a div, the veil is a div, and the keyboard is drawn. That
+  is not a shortcut — it is the only reason this page can show the keyboard at
+  all, which is the whole reason it exists rather than `npm run web`.
+  react-native-web's Keyboard is a stub, so useKeyboardUp() is permanently false
+  in a browser and the preview can only ever draw the keyboard-down half.
+
+  TWO CAVEATS ABOUT THE PAGE ITSELF, and neither is a disclaimer.
+
+  1. A browser is honest about proportion and about TIMING, and dishonest about
+     AMOUNT. A 411px frame on a desk is about half again as wide as a 411dp
+     phone and is read at arm's length rather than in the hand. CLAUDE.md's
+     cautionary case is the sway: 5 degrees chosen in a browser is 3pt of travel
+     at the tip, and on glass it was barely visible. So the SHAPE of the gesture
+     settles here — the asymmetry, the order the channels move in, whether the
+     spring rings — and the threshold in millimetres of thumb settles on the
+     phone. Judge amount conservatively upward from here.
+
+  2. The spring below is the demo's own semi-implicit Euler at a fixed 240Hz
+     substep. The app's is React Native's Animated.spring, which solves the same
+     physical model by a different route. At these stiffnesses the two agree to
+     within the eye, but they are not the same numbers frame for frame, and a
+     later reader should not assume a value transcribed from here lands
+     identically on a phone. The fixed substep is not a detail to simplify away:
+     integrate a stiff spring against a variable frame time and the same gesture
+     visibly differs on a 60Hz and a 120Hz display.
+
+  One more thing this page inherited rather than invented. NoteSheet.tsx says,
+  in as many words, that this app has no shadows and nothing on it is ever
+  darkened — the screen goes quiet by being washed out. A card you can pick up
+  needs one anyway, so the rule survives as a constraint on the REST frame: at
+  rest the shade must be indistinguishable from no shade at all, and everything
+  it does it does only while the card is off the page. Set the rest sliders
+  against that, not against what looks nice.
+-->
 <style>
-  /*
-    A copy, on the anim-lab.html precedent: colours, spacing, the type scale,
-    the ring's knots and the traced arrow are lifted from src/, and nothing here
-    ships. Judge proportion and arrangement in the browser; judge amount, and
-    anything about the keyboard, on the phone.
-  */
   :root {
     --paper:     #F7F3E9;
     --paperDeep: #EFE9DA;
@@ -20,77 +65,78 @@
     --inkSoft:   #6B665C;
     --inkFaint:  #A9A294;
     --amberVeil: #8A5A24;
-    --penGreen:  #4C7A3F;
+    --penGreen:  #2E7D46;
+    --danger:    #B3402F;
 
     --xs: 4px; --sm: 8px; --md: 16px; --lg: 24px; --xl: 32px; --xxl: 48px;
 
     --sans: 'M PLUS Rounded 1c', ui-rounded, 'Hiragino Maru Gothic ProN',
             'Segoe UI', system-ui, sans-serif;
+    --hand: 'Shantell Sans', 'Bradley Hand', 'Segoe Print', cursive;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* organicCorners(radius.lg = 20) — four unequal corners, ±20%, seeded. */
+    --corner: 17.4px 22.6px 18.9px 21.7px;
+
+    --panel: #35332f;
+    --edge:  #46433d;
+    --dim:   #9d978a;
+    --hot:   #d8b26a;
   }
 
   * { box-sizing: border-box; }
 
   body {
     margin: 0;
-    padding: 28px 32px 64px;
+    padding: 26px 30px 64px;
     background: #2A2723;
     color: #CFC8BA;
     font-family: var(--sans);
     font-size: 13px;
     line-height: 1.55;
-  }
-
-  h1 {
-    margin: 0 0 6px;
-    font-size: 19px;
-    font-weight: 700;
-    color: #F2EDE2;
-    letter-spacing: 0.2px;
-  }
-
-  .sub { margin: 0 0 22px; max-width: 74ch; color: #9A9285; }
-  .sub code { color: #C9BFA9; font-size: 12px; }
-
-  .controls {
     display: flex;
-    gap: 10px;
-    align-items: center;
-    margin: 0 0 26px;
-    flex-wrap: wrap;
+    gap: 26px;
+    align-items: flex-start;
   }
 
-  button {
+  .work { flex: 1 1 auto; min-width: 0; }
+  h1 { margin: 0 0 6px; font-size: 19px; font-weight: 700; color: #F2EDE2; letter-spacing: 0.2px; }
+  h2 {
+    margin: 30px 0 10px; font-size: 12px; font-weight: 700; color: #9A9285;
+    text-transform: uppercase; letter-spacing: 1.2px;
+  }
+  h2 span { text-transform: none; letter-spacing: 0; font-weight: 500; color: #7E776B; }
+
+  .sub { margin: 0 0 18px; max-width: 78ch; color: #9A9285; }
+  .sub code { color: #C9BFA9; font-size: 12px; }
+  .sub b { color: #D8D0C0; font-weight: 700; }
+
+  .controls { display: flex; gap: 9px; align-items: center; margin: 0 0 22px; flex-wrap: wrap; }
+
+  button, select {
     font-family: var(--sans);
-    font-size: 12px;
-    font-weight: 500;
-    color: #CFC8BA;
-    background: #3A362F;
-    border: 1px solid #4C473E;
-    border-radius: 7px;
-    padding: 7px 13px;
-    cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    color: #CFC8BA; background: #3A362F;
+    border: 1px solid #4C473E; border-radius: 7px;
+    padding: 6px 12px; cursor: pointer;
   }
   button:hover { background: #454038; }
   button.on { background: var(--paper); border-color: var(--paper); color: var(--ink); }
 
-  .spacer { width: 12px; }
+  .spacer { width: 10px; }
   .hint { color: #7E776B; font-size: 12px; }
 
-  .frames { display: flex; gap: 34px; align-items: flex-start; flex-wrap: wrap; }
+  .frames { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
 
   figure { margin: 0; }
-  figcaption {
-    margin: 0 0 9px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #9A9285;
-  }
+  figcaption { margin: 0 0 8px; font-size: 12px; font-weight: 500; color: #9A9285; max-width: 34ch; }
   figcaption b { color: #E4DCCB; font-weight: 700; }
 
   /*
     411 x 911 dp — the CMF Phone 1, this project's default preview shape. Scaled
     down only for the page; every number inside is dp, so the proportions are
-    the phone's.
+    the phone's, and every pointer delta is divided back by the same scale so a
+    drag is one dp per dp.
   */
   .phone {
     position: relative;
@@ -100,32 +146,21 @@
     transform-origin: top left;
     box-shadow: 0 0 0 1px #4C473E;
   }
-  .scaled .phone { transform: scale(0.85); }
+  .scaled { position: relative; }
+  .scaled .phone { transform: scale(var(--zoom, 0.72)); }
 
   .fill { position: absolute; inset: 0; }
 
   /* ---- the sitting, underneath ---------------------------------------- */
 
   .sitting { display: flex; flex-direction: column; align-items: center; }
-  .ringStage {
-    position: absolute;
-    top: 50%; left: 50%;
-    width: 286px; height: 286px;
-    margin: -190px 0 0 -143px;
-  }
+  .ringStage { position: absolute; top: 50%; left: 50%; width: 286px; height: 286px; margin: -190px 0 0 -143px; }
   .clock {
-    position: absolute;
-    top: 50%; left: 0; right: 0;
+    position: absolute; top: 50%; left: 0; right: 0;
     margin-top: 111px;                 /* ring half + space.xl */
-    text-align: center;
-    font-size: 56px;
-    color: var(--ink);
+    text-align: center; font-size: 56px; color: var(--ink);
   }
-  .foot {
-    position: absolute;
-    left: 24px; right: 24px; bottom: 48px;
-    display: flex; align-items: center; justify-content: center;
-  }
+  .foot { position: absolute; left: 24px; right: 24px; bottom: 48px; display: flex; align-items: center; justify-content: center; }
   .foot .end { font-size: 15px; font-weight: 700; color: var(--inkSoft); letter-spacing: 0.2px; }
   .foot .pencil { position: absolute; right: 0; top: 50%; margin-top: -13px; }
 
@@ -141,25 +176,35 @@
   .strip.grow { flex: 1 1 auto; }
 
   .dock { padding: 0 var(--md); display: flex; flex-direction: column; }
-  .dock.room { flex: 1 1 auto; min-height: 0; }
+
+  /*
+    The card and its shade are siblings under one carrier, and that ordering is
+    load-bearing rather than tidy. The shade is a transparent box the size of
+    the card whose only mark is a box-shadow, so it must sit UNDER an opaque
+    card: as a child it would paint its shadow over the card's own paper the
+    moment it was scaled below 1. The carrier is what the drag translates, so
+    the two can never part company.
+  */
+  .carry { position: relative; will-change: transform; touch-action: none; cursor: grab; }
+  .carry:active { cursor: grabbing; }
+  .carry.room { flex: 0 0 auto; aspect-ratio: 3 / 4; max-height: 100%; }
+
+  .shade {
+    position: absolute; inset: var(--shade-inset, 0px);
+    border-radius: var(--corner);
+    will-change: transform, opacity;
+    pointer-events: none;
+  }
 
   .card {
+    position: relative;
     background: var(--paperDeep);
     padding: var(--lg);
-    display: flex;
-    flex-direction: column;
-    /* organicCorners(radius.lg = 20) — four unequal corners, ±20%, seeded. */
-    border-radius: 17.4px 22.6px 18.9px 21.7px;
+    display: flex; flex-direction: column;
+    border-radius: var(--corner);
   }
-  /*
-    An index card: 3:4, and a good deal narrower than the screen. Both halves
-    are the point — a card the width of the page reads as a bar across it
-    however short it is, and the veil left either side is what says this is a
-    small thing being done on top of something else.
-  */
-  .card.room { flex: 0 0 auto; aspect-ratio: 3 / 4; max-height: 100%; }
+  .carry.room .card { width: 100%; height: 100%; }
 
-  /* BackHeader with no title: the arrow alone, positioned, not laid out. */
   /*
     The arrow alone, at the card's own top-left. Tighter than BackHeader's row:
     a screen can afford 16 above and below its heading, and a card this size
@@ -169,68 +214,104 @@
   .backhead svg { position: absolute; left: 0; top: 0; }
 
   .body {
-    font-size: 15px;
-    line-height: 23px;
-    font-weight: 500;
-    color: var(--ink);
-    white-space: pre-wrap;
+    font-size: 15px; line-height: 23px; font-weight: 500;
+    color: var(--ink); white-space: pre-wrap;
   }
+  /*
+    Shantell Sans on the note, which is the other half of what this page is for.
+    It is a departure from the standing rule that the hand is a voice and never a
+    reading face — and the note is the one paragraph in the app that is not the
+    app talking, so it is the one place the departure can be argued. Judge it
+    here at every length, empty included.
+  */
+  .body.hand { font-family: var(--hand); font-weight: 500; line-height: 25px; }
   .body.room { flex: 1 1 auto; min-height: 0; overflow: hidden; }
   .placeholder { color: var(--inkFaint); }
 
   .caret {
-    display: inline-block;
-    width: 1.5px; height: 18px;
-    background: var(--ink);
-    vertical-align: -3px;
+    display: inline-block; width: 1.5px; height: 18px;
+    background: var(--ink); vertical-align: -3px;
     animation: blink 1.06s step-end infinite;
   }
   @keyframes blink { 50% { opacity: 0; } }
 
-  /* today's single line, with its rule under it */
   .rule { border-bottom: 1.5px solid var(--inkFaint); padding-bottom: var(--sm); }
   .nowrap { white-space: nowrap; overflow: hidden; }
   .done {
-    align-self: flex-end;
-    padding: var(--md) 0 0 var(--md);
+    align-self: flex-end; padding: var(--md) 0 0 var(--md);
     font-size: 15px; font-weight: 700; color: var(--inkSoft); letter-spacing: 0.2px;
   }
+  .meta { display: flex; align-items: center; justify-content: space-between; padding-top: var(--md); }
+  .meta .day { font-size: 12px; font-weight: 500; color: var(--inkFaint); letter-spacing: 0.5px; }
+  .meta .acts { display: flex; gap: var(--lg); }
+  .meta .acts span { font-size: 15px; font-weight: 700; color: var(--inkSoft); letter-spacing: 0.2px; }
 
   /* ---- the keyboard ---------------------------------------------------- */
 
   .keyboard {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    background: #DCD6C8;
-    border-top: 1px solid #C9C2B2;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: #DCD6C8; border-top: 1px solid #C9C2B2;
     padding: 10px 5px 0;
     display: flex; flex-direction: column; gap: 8px;
   }
   .krow { display: flex; gap: 5px; justify-content: center; }
   .key {
-    flex: 1 1 0;
-    height: 42px;
-    background: var(--paper);
-    border-radius: 5px;
+    flex: 1 1 0; height: 42px; background: var(--paper); border-radius: 5px;
     display: flex; align-items: center; justify-content: center;
     font-size: 15px; color: #55504A;
   }
   .key.wide { flex: 1.6 1 0; }
   .key.space { flex: 5 1 0; }
   .key.dark { background: #C6BFAF; }
-  .knav { height: 24px; display: flex; align-items: center; justify-content: center; gap: 60px; }
+  .knav { height: 24px; display: flex; align-items: center; justify-content: center; }
   .knav i { display: block; width: 90px; height: 3px; border-radius: 2px; background: #8E8778; }
 
-  .measure {
-    position: absolute;
-    right: 6px;
-    display: flex; align-items: center; gap: 5px;
-    font-size: 10px; color: #B4402F; font-weight: 700;
-    pointer-events: none;
+  /* ---- the bench's own marks, over the phone --------------------------- */
+
+  .guide { position: absolute; left: 0; right: 0; display: flex; align-items: center; pointer-events: none; }
+  .guide i { flex: 1 1 auto; border-top: 1px dashed var(--danger); opacity: 0.6; }
+  .guide b { font-size: 9px; font-weight: 700; color: var(--danger); padding: 0 4px; letter-spacing: 0.3px; }
+  .guide.past i { border-top-style: solid; opacity: 0.95; }
+  .guide.past b { color: var(--penGreen); }
+  .guide.past i { border-top-color: var(--penGreen); }
+  .guide.flash i { border-top-color: var(--hot); border-top-width: 2px; opacity: 1; }
+  .guide.flash b { color: var(--hot); }
+  .guide.floorline i { border-top-style: dotted; border-top-color: var(--inkSoft); opacity: 0.5; }
+  .guide.floorline b { color: var(--inkSoft); }
+
+  /* ---- the panel ------------------------------------------------------- */
+
+  .panel {
+    width: 434px; flex: none;
+    position: sticky; top: 26px;
+    max-height: calc(100vh - 52px); overflow-y: auto;
+    display: flex; flex-direction: column; gap: 12px;
+    font-family: var(--mono); font-size: 12px;
   }
-  .measure::before {
-    content: ''; display: block; width: 22px; height: 0;
-    border-top: 1px dashed #B4402F;
+  fieldset {
+    border: 1px solid var(--edge); border-radius: 10px; margin: 0;
+    padding: 8px 12px 11px; background: var(--panel);
+  }
+  legend { padding: 0 6px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; font-size: 10.5px; }
+  .row { display: grid; grid-template-columns: 132px 1fr 52px; align-items: center; gap: 8px; margin: 4px 0; }
+  .row label { color: var(--dim); font-size: 11px; }
+  .row output { text-align: right; color: var(--hot); }
+  .row select { padding: 3px 6px; font-family: var(--mono); font-size: 11px; }
+  .note { margin: 2px 0 8px; color: var(--dim); font-size: 11px; line-height: 1.45; }
+  input[type=range] { width: 100%; accent-color: var(--hot); }
+
+  .read { display: grid; grid-template-columns: 118px 1fr 118px 1fr; gap: 3px 8px; }
+  .read span { color: var(--dim); font-size: 11px; }
+  .read b { color: var(--text, #e6e2d8); font-weight: 500; }
+  .read b.yes { color: var(--penGreen); }
+  .read b.no { color: var(--dim); }
+  .read b.fired { color: var(--hot); }
+
+  pre {
+    margin: 0; padding: 11px 13px;
+    background: #23211e; border: 1px solid var(--edge); border-radius: 10px;
+    color: #cfc8ba; font-family: var(--mono); font-size: 11px; line-height: 1.5;
+    white-space: pre; overflow-x: auto;
   }
 
   .hidden { display: none !important; }
@@ -238,17 +319,22 @@
 </head>
 <body>
 
+<div class="work">
+
 <h1>The note caught mid-sitting</h1>
 <p class="sub">
   Three screen shapes from the table in <code>CLAUDE.md</code>, insets and all.
-  Colours, spacing, the type scale, the ring's knots and the arrow are lifted
-  from <code>src/</code>; the keyboard is drawn at roughly what a phone that
-  size gives an IME plus its navigation bar. The card is an index card — 3:4,
-  its width a share of the screen — floated in whatever room the keyboard
-  leaves.
+  <b>The card is draggable.</b> Pull it down and it follows your pointer exactly;
+  push it up and it resists; let go past the threshold and it leaves on the
+  momentum you gave it, keeping the note. The keyboard is the floor — the card
+  slides down toward it, meets it, and goes behind it — which is why this page
+  is drawn rather than run through <code>npm run web</code>: <code>Keyboard</code>
+  is a stub on web, so the preview can only ever show the keyboard-down half.
   <b>Today</b> is what ships now: a single line that cannot wrap, and — with the
   keyboard up — a card underneath it, because edge-to-edge stopped
   <code>adjustResize</code> resizing anything.
+  A browser is honest about the <i>shape</i> of a gesture and not about its
+  <i>amount</i>; settle the threshold in millimetres of thumb on the phone.
 </p>
 
 <div class="controls">
@@ -268,17 +354,377 @@
   <button id="btnSe">375 &times; 667</button>
   <button id="btnI15">393 &times; 852</button>
   <span class="spacer"></span>
-  <span class="hint">the frames are keyboard-down and keyboard-up, side by side</span>
+  <button id="btnGuides" class="on">Guides</button>
+  <button id="btnHome">Bring them back</button>
 </div>
 
 <div class="frames" id="frames"></div>
 
+<h2>The two shadows <span>— the same drag, rendered twice</span></h2>
+<p class="sub" style="margin-bottom:14px">
+  Left is the shadow the gesture wants: blur ramping as the card lifts, and
+  getting <b>lighter and wider</b> on the way up, never darker. Right is the one
+  React Native can actually drive — blur cannot be animated on the native
+  driver, so it is one pre-blurred shade, faded and nudged. Drag either; both
+  move together, so the only difference on screen is the rendering.
+  <br><br>
+  <b>The right-hand shade's box is inset inside the card</b>, and that is the
+  whole trick rather than a detail. A box shadow is clipped to the outside of
+  the box casting it — it is a ring around a hole — so scaling the element moves
+  the ring outward instead of spreading it, and an offset opens a clean gap of
+  exactly that offset between a card and its own shadow. This page had it at
+  <code>inset: 0</code> and scaled to 1.45, and full lift drew a hard-edged
+  rounded rectangle 60pt out with bare paper between: a second, wrong-sized
+  card. Set the box in by more than the shadow can reach and the bright edge
+  hides under the paper.
+  <br><br>
+  Watch the rest frame hardest. This app had no shadows at all before this card,
+  and the rest state is where that rule has to survive — at
+  <code>at: 0</code> the card is lying on the page and whatever is drawn must
+  not be findable.
+</p>
+<div class="frames" id="shadowFrames"></div>
+
+</div>
+
+<aside class="panel">
+
+  <fieldset>
+    <legend>Readout</legend>
+    <div class="read" id="readout"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The threshold</legend>
+    <p class="note">
+      A share of the card's own height, floored and capped. The floor is what the
+      docked reader needs — a two-line note is a short card, and a share of it is
+      a flick — and the cap is what the 3:4 card on a tall phone needs. One rule,
+      two shapes: the same argument this page already makes about an iPhone SE
+      deciding the width share.
+    </p>
+    <div id="knobsThreshold"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The hand</legend>
+    <p class="note">
+      Intent, not events. A pointer that stopped before it lifted has no throw in
+      it, whatever the smoothed average still says — that is <code>STALE_MS</code>,
+      and it is the difference between a card put down and a card thrown.
+      <code>PROJECTION_MS</code> decides <i>whether</i> it leaves;
+      <code>THROW_DAMPING</code> decides <i>how</i>.
+    </p>
+    <div id="knobsHand"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The springs</legend>
+    <p class="note">
+      Return and exit are chosen separately on purpose. Motion is asymmetric — a
+      door thrown open rebounds off its own hinge and a door pushed shut meets a
+      frame and stops dead — and collapsing the two to one preset is the mistake
+      the source material warns about by name. Critical damping is 2·√(k·m);
+      the character of a preset is entirely in how far below it the damping sits.
+    </p>
+    <div id="knobsSpring"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The lift</legend>
+    <div id="knobsLift"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Shadow — the true one</legend>
+    <p class="note">Four channels, at rest and fully carried. Lighter and wider as it rises.</p>
+    <div id="knobsTrue"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Shadow — what the native driver can carry</legend>
+    <p class="note">
+      One shade baked at a fixed blur, inset inside the card, then faded and
+      nudged. Opacity is what stands in for ink; scale stays near 1 and does the
+      little spreading a rasterised blur gives it, because the inset is what
+      keeps the box's own edge hidden and a large scale is what broke this in
+      the first place. The bake cannot be at both ends at once — that is the
+      whole of the compromise, and it is what the two frames above are for.
+      <br><br>
+      <b>Keep <code>SHADE_INSET</code> above <code>SHADE_BLUR</code>.</b> Reach
+      is blur plus spread; below that line the rest state starts reaching past
+      the card, which is the one thing it may never do. Measured rather than
+      assumed: a 28pt blur stops reaching at an inset of 31, identically at
+      every card shape and every opacity in the table.
+    </p>
+    <div id="knobsShade"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Paste into src/ui/carry.ts</legend>
+    <pre id="out"></pre>
+  </fieldset>
+
+</aside>
+
 <script>
-/* --------------------------------------------------------------------------
-   The ring, copied from src/ui/ring.ts — seven knots nudged a couple of percent
-   off perfect, a fixed table rather than random, because the real one is on
-   screen unchanged for twenty minutes at a time.
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   TD — motion.js and gesture.js, copied in.
+
+   Trimmed to what one card needs: no pinch, no long press, no skin hooks, no
+   reparenting. Everything that is here is here verbatim in behaviour, and the
+   three things that must not be simplified are marked where they sit.
+   ========================================================================== */
+
+const TD = {};
+
+/* --- the ticker ---------------------------------------------------------
+   One rAF for the whole page, and it parks itself the moment nothing is
+   moving. A page at rest costs nothing. */
+(function () {
+  const jobs = [];
+  let running = false;
+  let last = 0;
+
+  function frame(now) {
+    let dt = (now - last) / 1000;
+    /* A backgrounded tab returns with a dt of several seconds. Clamping it
+       keeps the integrator stable instead of exploding every spring at once. */
+    if (dt > 0.032) dt = 0.032;
+    if (dt < 0) dt = 0;
+    last = now;
+    for (let i = jobs.length - 1; i >= 0; i--) jobs[i](dt, now);
+    if (jobs.length) requestAnimationFrame(frame);
+    else running = false;
+  }
+
+  TD.tick = {
+    add(fn) {
+      if (jobs.indexOf(fn) >= 0) return;
+      jobs.push(fn);
+      if (!running) { running = true; last = performance.now(); requestAnimationFrame(frame); }
+    },
+    remove(fn) {
+      const i = jobs.indexOf(fn);
+      if (i >= 0) jobs.splice(i, 1);
+    },
+  };
+})();
+
+/* --- presets ------------------------------------------------------------
+   Critical damping is 2*sqrt(k*m). Below it the spring overshoots and wobbles;
+   at or above it it eases in and stops. The character of each preset is
+   entirely in how far below critical its damping sits. */
+TD.P = {
+  SNAP:   { stiffness: 420, damping: 40,  mass: 1   },  /* 41 critical — arrives flat  */
+  SETTLE: { stiffness: 260, damping: 18,  mass: 1   },  /* 32 critical — overshoots     */
+  HEAVY:  { stiffness: 120, damping: 15,  mass: 1.4 },  /* 26 critical — wobbles, wood  */
+  DRIFT:  { stiffness:  90, damping: 20,  mass: 1   },  /* 19 critical — coasts to rest */
+  GLIDE:  { stiffness: 200, damping: 26,  mass: 1   },  /* 28 critical — a hair of give */
+  ENTER:  { stiffness: 150, damping: 21,  mass: 1   },  /* 24 critical — some weight    */
+  CAMERA: { stiffness: 130, damping: 24,  mass: 1   },  /* 23 critical — never rings    */
+  SHUT:   { stiffness: 140, damping: 30,  mass: 1.4 },  /* 28 critical — no overshoot   */
+  SOAK:   { stiffness:  26, damping: 15,  mass: 1   },  /* 10 critical — heavily damped */
+};
+
+/* --- reduced motion -----------------------------------------------------
+   Read as "no ringing", not "no movement". A card that teleports off the screen
+   is not a calmer gesture, it is an unreadable one — you lose that the note went
+   somewhere rather than being deleted. What provokes discomfort is overshoot, so
+   every preset is stiffened and pushed just past critical. Applied to the table
+   itself, before anything has read it, so nothing can opt out silently. */
+const REDUCED = window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (REDUCED) {
+  Object.keys(TD.P).forEach((name) => {
+    const p = TD.P[name];
+    const m = p.mass || 1;
+    const k = p.stiffness * 1.6;
+    TD.P[name] = { stiffness: k, damping: 2 * Math.sqrt(k * m) * 1.05, mass: m };
+  });
+}
+
+/* --- a spring ----------------------------------------------------------- */
+TD.spring = function (opts) {
+  opts = opts || {};
+  const preset = opts.preset || TD.P.GLIDE;
+  const start = opts.value || 0;
+
+  const s = {
+    value: start,
+    target: start,
+    velocity: 0,
+    stiffness: opts.stiffness != null ? opts.stiffness : preset.stiffness,
+    damping:   opts.damping   != null ? opts.damping   : preset.damping,
+    mass:      opts.mass      != null ? opts.mass      : (preset.mass || 1),
+    /* Rest threshold, in the spring's own units. A caller working in points
+       wants a looser one than a caller working in opacity. */
+    eps: opts.eps != null ? opts.eps : 0.002,
+  };
+
+  /* Semi-implicit Euler at a FIXED 240Hz substep. The fixed substep is the
+     reason identical gestures look identical on a 60Hz and a 120Hz display, and
+     it is the one thing here that must not be reduced to a per-frame step. */
+  s.step = function (dt) {
+    const steps = Math.ceil(dt * 240) || 1;
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      const force = -s.stiffness * (s.value - s.target) - s.damping * s.velocity;
+      s.velocity += (force / s.mass) * h;
+      s.value += s.velocity * h;
+    }
+    if (Math.abs(s.value - s.target) < s.eps && Math.abs(s.velocity) < s.eps * 8) {
+      s.value = s.target;
+      s.velocity = 0;
+      return true;
+    }
+    return false;
+  };
+
+  /* Teleport: no motion, no memory of motion. This is what a drag does on every
+     move — the finger IS the position, and a spring chasing it would lag. */
+  s.set = function (v) { s.value = v; s.target = v; s.velocity = 0; return s; };
+  s.to = function (v) { s.target = v; return s; };
+  s.use = function (p) { s.stiffness = p.stiffness; s.damping = p.damping; s.mass = p.mass || 1; return s; };
+  s.settled = function () { return s.value === s.target && s.velocity === 0; };
+  return s;
+};
+
+/* --- binding springs to pixels ------------------------------------------
+   One render function per view. It joins the ticker when something is pulled
+   and leaves as soon as everything has settled, so the cost of the page is
+   proportional to what is actually moving. */
+TD.animate = function (springs, render, onSettle) {
+  let joined = false;
+  function loop(dt) {
+    let moving = false;
+    for (let i = 0; i < springs.length; i++) if (!springs[i].step(dt)) moving = true;
+    render();
+    if (!moving) {
+      TD.tick.remove(loop);
+      joined = false;
+      if (onSettle) onSettle();
+    }
+  }
+  return {
+    /* The only verb: something was pulled, go and resolve it. Idempotent, so a
+       drag can say it on every frame without bookkeeping. */
+    kick() { if (joined) return; joined = true; TD.tick.add(loop); },
+  };
+};
+
+/* --- small maths --------------------------------------------------------- */
+TD.clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+TD.lerp = (a, b, t) => a + (b - a) * t;
+
+/* Resistance past a boundary. The further you pull, the less you get — the edge
+   is felt rather than announced. Note the ceiling this implies: however hard you
+   pull, you never get more than 0.55 of the dimension past the edge. */
+TD.rubber = (over, dimension) => {
+  const d = dimension || 260;
+  return (over * d * 0.55) / (d + Math.abs(over) * 0.55);
+};
+TD.rubberReach = (dimension) => (dimension || 260) * 0.55;
+
+/* --- pointer intent ------------------------------------------------------
+   Callers never see a raw event. They are told something was pressed, dragged
+   or released, and given the numbers that matter for those. Mouse, touch and
+   pen are one code path via Pointer Events.
+
+   Move and up are bound to the window for the life of the gesture rather than
+   using setPointerCapture: capture is dropped by a reparent in some browsers,
+   and a pair of listeners that exist only while a finger is down is immune. */
+TD.gesture = function (el, h) {
+  h = h || {};
+  let down = false;
+  let startX = 0, startY = 0, startT = 0;
+  let lastX = 0, lastY = 0, lastT = 0;
+  let vx = 0, vy = 0;
+  let moved = false;
+
+  /* Without this a touch-drag scrolls the page instead of moving the card. */
+  el.style.touchAction = 'none';
+
+  function info(e, now) {
+    return {
+      x: e.clientX, y: e.clientY,
+      dx: e.clientX - startX, dy: e.clientY - startY,
+      vx, vy,
+      dist: Math.hypot(e.clientX - startX, e.clientY - startY),
+      dur: now - startT,
+      moved,
+    };
+  }
+
+  function onDown(e) {
+    if (e.button != null && e.button > 0) return;   /* primary button only */
+    if (down) return;
+    down = true;
+    startX = lastX = e.clientX;
+    startY = lastY = e.clientY;
+    startT = lastT = e.timeStamp || performance.now();
+    vx = vy = 0;
+    moved = false;
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', onUp, true);
+    window.addEventListener('pointercancel', onUp, true);
+    if (h.onPress) h.onPress(info(e, startT));
+  }
+
+  function onMove(e) {
+    if (!down) return;
+    const now = e.timeStamp || performance.now();
+    const dt = (now - lastT) / 1000;
+    /* An exponential moving average, not a raw last-sample delta: one jittery
+       frame at release must not throw the card across the screen, and a real
+       flick still has to survive intact. */
+    if (dt > 0.0005) {
+      const k = SMOOTHING();
+      vx = vx * (1 - k) + ((e.clientX - lastX) / dt) * k;
+      vy = vy * (1 - k) + ((e.clientY - lastY) / dt) * k;
+    }
+    const d = info(e, now);
+    if (!moved && d.dist > GRAB_SLOP()) { moved = true; d.moved = true; }
+    lastX = e.clientX; lastY = e.clientY; lastT = now;
+    if (h.onDrag) h.onDrag(d);
+  }
+
+  function onUp(e) {
+    if (!down) return;
+    down = false;
+    window.removeEventListener('pointermove', onMove, true);
+    window.removeEventListener('pointerup', onUp, true);
+    window.removeEventListener('pointercancel', onUp, true);
+    const now = e.timeStamp || performance.now();
+    /* A pointer that stopped before it lifted has no throw in it, whatever the
+       smoothed average still says. */
+    if (now - lastT > STALE_MS()) { vx = 0; vy = 0; }
+    const d = info(e, now);
+    if (h.onRelease) h.onRelease(d);
+    if (!moved && h.onTap) h.onTap(d);
+  }
+
+  el.addEventListener('pointerdown', onDown);
+  return {
+    /* Tearing down mid-gesture must not fire onRelease at a carry that is about
+       to be replaced: unbind, say nothing. */
+    destroy() {
+      down = false;
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+      window.removeEventListener('pointercancel', onUp, true);
+    },
+  };
+};
+
+/* ==========================================================================
+   Copied from src/ — drawings and arithmetic, nothing that renders.
+   ========================================================================== */
+
+/* The ring, from src/ui/ring.ts — seven knots nudged a couple of percent off
+   perfect, a fixed table rather than random, because the real one is on screen
+   unchanged for twenty minutes at a time. */
 const KNOT_RADIUS = [1.008, 0.978, 1.021, 0.984, 1.026, 0.974, 1.014];
 const KNOT_ANGLE  = [0, 0.036, -0.028, 0.02, -0.034, 0.026, -0.018];
 
@@ -289,7 +735,6 @@ function ringPath(cx, cy, r) {
   const rad = (i) => KNOT_RADIUS[i % n];
   const pt = (i) => ({ x: Math.cos(angle(i)) * rad(i), y: Math.sin(angle(i)) * rad(i) });
   const tan = (i) => ({ x: -Math.sin(angle(i)) * rad(i), y: Math.cos(angle(i)) * rad(i) });
-
   const S = (p) => `${(cx + p.x * r).toFixed(2)},${(cy + p.y * r).toFixed(2)}`;
   let d = 'M' + S(pt(0));
   for (let i = 0; i < n; i++) {
@@ -303,17 +748,17 @@ function ringPath(cx, cy, r) {
 }
 
 /* The run screen's pencil, four cubics on PEN_DOODLE — the one icon still
-   stroked in code. Copied from src/ui/icons.tsx. */
+   stroked in code. From src/ui/icons.tsx. */
 const PEN_DOODLE = 2.8;
 
 /* ArrowLeft, traced from a real drawing — filled outline, not a stroke. */
 const ARROW_LEFT = ["M34.7,21.9C33.8,21.9 32.9,22.0 32.7,22.0C32.5,22.0 31.7,22.1 31.1,22.1C30.4,22.1 29.5,22.2 29.0,22.2C27.5,22.4 26.1,22.5 24.8,22.6C20.9,22.8 19.6,22.9 18.1,23.2C17.2,23.4 15.8,23.8 15.1,24.1C14.4,24.4 14.2,24.4 14.1,23.8C14.0,23.2 13.9,23.0 13.5,22.7C12.5,21.9 12.3,21.9 11.5,22.7C11.2,23.0 10.8,23.4 10.6,23.5C10.3,23.7 10.0,23.9 9.8,24.1C9.6,24.3 8.9,24.8 8.2,25.2C6.7,26.2 6.6,26.3 6.8,27.2C7.0,28.3 7.2,28.4 8.9,28.6C10.0,28.7 11.2,28.8 12.5,29.0C14.9,29.4 15.9,28.5 15.3,26.8C15.1,26.2 15.1,26.1 15.9,25.8C17.7,25.1 19.8,24.7 23.0,24.5C24.5,24.4 26.3,24.3 27.5,24.2C28.0,24.2 29.2,24.1 30.1,24.0C31.1,24.0 32.2,23.9 32.6,23.8C33.8,23.7 42.5,23.6 42.8,23.7C44.1,24.3 44.8,22.6 43.5,22.0C43.2,21.8 38.4,21.8 34.7,21.9Z"];
 
 /**
- * The shapes this app is judged on, from CLAUDE.md's table. `kb` is what a
- * phone that size gives an IME plus its navigation bar — the shortest screen is
- * where a centred card and a keyboard compete for room, so it is the one that
- * decides whether the share is too generous.
+ * The shapes this app is judged on, from CLAUDE.md's table. `kb` is what a phone
+ * that size gives an IME plus its navigation bar — the shortest screen is where
+ * a centred card and a keyboard compete for room, so it is the one that decides
+ * whether the share is too generous.
  */
 const DEVICES = {
   cmf: { name: 'CMF Phone 1', w: 411, h: 911, top: 46, bottom: 24, kb: 300 },
@@ -334,6 +779,73 @@ const CONTENT = {
     'minutes being annoyed about that rather than doing it',
 };
 const PLACEHOLDER = 'catch it, then let it go';
+
+/* NoteSheet's veil: paper over paper rather than ink over paper. */
+const VEIL_REST = 0.55;
+
+/* ==========================================================================
+   The constants under test. These defaults ARE the shipped numbers: the bench
+   must reproduce src/ui/carry.ts line for line, and if the two ever disagree it
+   is the bench that is right and the file that has been hand-edited.
+   ========================================================================== */
+
+const C = {
+  /* The threshold, as a share of the card's own height with a floor and a cap. */
+  THRESHOLD_SHARE: 0.28,
+  THRESHOLD_MIN: 48,
+  THRESHOLD_MAX: 120,
+
+  /* The hand. */
+  GRAB_SLOP: 8,
+  RUBBER: 260,
+  PROJECTION_MS: 120,
+  THROW_DAMPING: 0.7,
+  SMOOTHING: 0.32,
+  STALE_MS: 90,
+
+  /* The springs, by preset name. */
+  SPRING_PRESS: 'SNAP',
+  SPRING_RETURN: 'SETTLE',
+  SPRING_EXIT: 'GLIDE',
+
+  /* How far off the page the card sits, in points of apparent elevation. */
+  LIFT_PRESS: 3,
+  LIFT_CARRY: 14,
+
+  /* The shadow the gesture wants — lighter and wider as it rises. */
+  SHADOW_BLUR_REST: 3,   SHADOW_BLUR_LIFT: 25,
+  SHADOW_INK_REST: 0.22, SHADOW_INK_LIFT: 0.13,
+  SHADOW_DY_REST: 1,     SHADOW_DY_LIFT: 16,
+  SHADOW_SPREAD_REST: -1, SHADOW_SPREAD_LIFT: -4,
+
+  /* The shadow the native driver can carry: one bake, inset, then opacity and
+     a transform. SHADE_INSET must stay above SHADE_BLUR or the rest state
+     starts reaching past the card, which is the one thing it may never do. */
+  SHADE_INSET: 32,
+  SHADE_BLUR: 28,
+  SHADE_SCALE_REST: 1,    SHADE_SCALE_LIFT: 1.05,
+  SHADE_OP_REST: 0.6,     SHADE_OP_LIFT: 0.44,
+  SHADE_DY_REST: 0,       SHADE_DY_LIFT: 14,
+};
+
+/* The latch's hysteresis, mirroring `armed()` in carry.ts. A share of the
+   threshold, floored against GRAB_SLOP — because the threshold is itself
+   floored on a short docked reader, and a share alone leaves a band there of
+   only twice the distance this app already calls a hand not meaning anything by
+   it. Not on a slider: it is a correctness rule rather than a taste one. */
+const ARM_KEEP = 0.82;
+const ARM_KEEP_SLOPS = 3.5;
+
+/* The gesture reads these live, so a slider moved mid-drag is felt in the drag. */
+const SMOOTHING = () => C.SMOOTHING;
+const GRAB_SLOP = () => C.GRAB_SLOP;
+const STALE_MS = () => C.STALE_MS;
+
+const PRESET = (name) => TD.P[name] || TD.P.GLIDE;
+
+/* ==========================================================================
+   The frames.
+   ========================================================================== */
 
 function sitting() {
   return `
@@ -367,74 +879,89 @@ function arrowSvg() {
     </svg>`;
 }
 
+const CARET = '<span class="caret"></span>';
+
+function written(text) {
+  return text === '' ? CARET + `<span class="placeholder">${PLACEHOLDER}</span>` : text + CARET;
+}
+
 /**
  * One frame.
  *
- * `mode` is 'today' or 'room'; `kb` is whether the keyboard is up. Every number
- * below is the one the component would compute — the strip is
- * insets.top + VEIL_STRIP, the dock's floor is (kb ? 0 : insets.bottom) +
- * space.md — so what is drawn is the arrangement and not an impression of it.
+ * `shape` is 'write' (the index card, centred in whatever the keyboard leaves),
+ * 'today' (what ships now: a one-line bar docked at the foot) or 'read' (the
+ * garden's reader, hugging its content at the foot). Every number below is the
+ * one the component would compute — the dock's floor is (kb ? 0 : insets.bottom)
+ * + space.md — so what is drawn is the arrangement and not an impression of it.
  */
-function frame(mode, kb, content, share, device) {
+function frame(shape, kb, content, share, device, shadeMode) {
   const { w: W, h: H, top: INSET_TOP, bottom: INSET_BOTTOM, kb: KB } = DEVICES[device];
   const floor = (kb ? 0 : INSET_BOTTOM) + 16;
-  const room = mode === 'room';
-
   const text = CONTENT[content];
-  const CARET_EMPTY = '<span class="caret"></span>';
-  const CARET = '<span class="caret"></span>';
-  const written = text === ''
-    ? CARET + `<span class="placeholder">${PLACEHOLDER}</span>`
-    : text + CARET;
 
-  /* Today's field is one line: everything past the card's edge is simply not
-     on the screen, which is what the ellipsis stands for. */
+  /* Today's field is one line: everything past the card's edge is simply not on
+     the screen, which is what the ellipsis stands for. */
   const oneLine = text === ''
-    ? CARET_EMPTY + `<span class="placeholder">${PLACEHOLDER}</span>`
-    : text.slice(0, 34) + (text.length > 34 ? '\u2026' : '') + CARET_EMPTY;
+    ? CARET + `<span class="placeholder">${PLACEHOLDER}</span>`
+    : text.slice(0, 34) + (text.length > 34 ? '…' : '') + CARET;
 
   /*
     The width is a share of the screen and the height follows from the ratio, so
-    a narrow phone gets a proportionally narrower card rather than a clipped
-    one, and however many lines fit is however many fit. The card is the same
-    size the whole time it is open — past the last line the field scrolls inside
-    it, the same as the notes screen — because a card that grew line by line
-    would be movement, and movement under the thumb doing the typing.
+    a narrow phone gets a proportionally narrower card rather than a clipped one,
+    and however many lines fit is however many fit. The card is the same size the
+    whole time it is open — past the last line the field scrolls inside it —
+    because a card that grew line by line would be movement, and movement under
+    the thumb doing the typing.
   */
   const cardWidth = Math.round(W * share);
-  const card = room
-    ? `<div class="card room" style="width:${cardWidth}px">
-         <div class="backhead">${arrowSvg()}</div>
-         <div class="body room">${written}</div>
-       </div>`
-    : `<div class="card">
-         <div class="body rule nowrap">${oneLine}</div>
-         <div class="done">done</div>
+  const shade = `<div class="shade" data-mode="${shadeMode}"></div>`;
+
+  let carry;
+  if (shape === 'write') {
+    carry = `<div class="carry room" style="width:${cardWidth}px">${shade}
+         <div class="card">
+           <div class="backhead">${arrowSvg()}</div>
+           <div class="body room hand">${written(text)}</div>
+         </div>
        </div>`;
+  } else if (shape === 'today') {
+    carry = `<div class="carry">${shade}
+         <div class="card">
+           <div class="body rule nowrap hand">${oneLine}</div>
+           <div class="done">done</div>
+         </div>
+       </div>`;
+  } else {
+    /* The reader: the size of the thought on it, the width of the page, docked
+       at the foot. Short is the case that matters — it is where the threshold's
+       floor stops a share of the height being a flick. */
+    const body = text === '' ? 'nothing was caught' : text;
+    carry = `<div class="carry">${shade}
+         <div class="card">
+           <div class="body hand">${body}</div>
+           <div class="meta">
+             <span class="day">6 MAY</span>
+             <span class="acts"><span>open</span><span>close</span></span>
+           </div>
+         </div>
+       </div>`;
+  }
 
-  /* Today's sheet has no idea the keyboard is there — it docks at the bottom of
-     the screen and the IME is painted over the top of it. That is the bug. */
   /*
-    Centred in whatever room is left. The keyboard takes its share off the
-    bottom — that is KeyboardAvoidingView's padding, drawn here as the sheet's
-    own bottom edge — and the card sits in the middle of the rest, so it lands
-    about where the ring was rather than climbing the screen.
-
     Everything that is not the card is veil, and touching veil puts the note
-    away. Today only the strip *above* the card does that; a centred card has
-    room below it too, and a dead patch of veil would be the one part of the
-    screen that answers nothing.
+    away. A centred card has veil below it too, and a dead patch of veil would be
+    the one part of the screen that answers nothing.
   */
-  const sheet = room
+  const sheet = shape === 'write'
     ? `<div class="fill veil"></div>
        <div class="fill sheet centred"
             style="padding:${INSET_TOP}px 0 ${floor}px; bottom:${kb ? KB : 0}px">
-         ${card}
+         ${carry}
        </div>`
     : `<div class="fill veil"></div>
        <div class="fill sheet">
          <div class="strip grow"></div>
-         <div class="dock" style="padding-bottom:${floor}px">${card}</div>
+         <div class="dock" style="padding-bottom:${floor}px">${carry}</div>
        </div>`;
 
   const keyboard = kb ? `
@@ -446,40 +973,574 @@ function frame(mode, kb, content, share, device) {
       <div class="knav"><i></i></div>
     </div>` : '';
 
-  const measure = '';
+  const guides = `
+    <div class="guide floorline"><i></i><b>floor</b><i></i></div>
+    <div class="guide threshold"><i></i><b>threshold</b><i></i></div>`;
 
-  return `<div class="phone" style="width:${W}px;height:${H}px">${sitting()}${sheet}${keyboard}${measure}</div>`;
+  return `<div class="phone" style="width:${W}px;height:${H}px">${sitting()}${sheet}${keyboard}${guides}</div>`;
 }
 
-/* The hash preselects a mode, so a screenshot can be taken of either. */
+/* ==========================================================================
+   The carry — one gesture, one or more views of it.
+
+   A view is a phone with a card in it. The shadow pair is two views under one
+   carry, so the drag is literally the same numbers and the only difference on
+   screen is how the shade is drawn.
+   ========================================================================== */
+
+let carries = [];
+let active = null;
+
+function makeCarry(views) {
+  /*
+    Both springs are in the card's own points. `y` is where the card is; while a
+    finger is down it is assigned rather than sprung, because the finger IS the
+    position and a spring chasing it would lag by exactly its own settle time.
+  */
+  const y = TD.spring({ preset: PRESET(C.SPRING_RETURN), eps: 0.05 });
+  const lift = TD.spring({ preset: PRESET(C.SPRING_PRESS), eps: 0.02 });
+
+  const first = views[0];
+  const zoom = first.phone.getBoundingClientRect().width / first.phone.offsetWidth;
+  const pr = first.phone.getBoundingClientRect();
+  const cr = first.carry.getBoundingClientRect();
+  const dev = DEVICES[device];
+
+  const geo = {
+    zoom,
+    cardTop: (cr.top - pr.top) / zoom,
+    cardH: cr.height / zoom,
+    cardW: cr.width / zoom,
+    /* The keyboard is the floor. With it down the floor is the bottom of the
+       screen, which is the same statement about a different surface. */
+    floorY: dev.h - (first.kb ? dev.kb : 0),
+  };
+  /* Free downward travel before the card meets the floor. */
+  geo.slack = Math.max(0, geo.floorY - (geo.cardTop + geo.cardH));
+  /* Far enough that the card is wholly off the bottom of the screen. */
+  geo.gone = dev.h - geo.cardTop + 8;
+
+  const state = { travel: 0, raw: 0, v: 0, projected: 0, leaves: false, ticked: false, held: false };
+
+  function threshold() {
+    return TD.clamp(geo.cardH * C.THRESHOLD_SHARE, C.THRESHOLD_MIN, C.THRESHOLD_MAX);
+  }
+
+  /*
+    What the finger asked for, and what the card is allowed to do about it.
+
+    Up is resisted because up is not on offer: the card is already as far up as
+    it goes. Down is one dp per dp until the card meets the floor, and resisted
+    past it — the same rubber, because it is the same statement about an edge.
+    Both are the source material's band, so both share the ceiling it implies:
+    however hard you pull, you never get more than 0.55 of RUBBER past an edge.
+  */
+  function resist(d) {
+    if (d < 0) return -TD.rubber(-d, C.RUBBER);
+    if (d <= geo.slack) return d;
+    return geo.slack + TD.rubber(d - geo.slack, C.RUBBER);
+  }
+
+  /* `color.shadow` from themes.ts — #2A251C, a hair warmer and deeper than ink.
+     Drawn at full strength, with SHADE's opacity carrying the ink, so no colour
+     is ever mixed outside the palette. */
+  const SHADOW_INK = 'rgb(42,37,28)';
+
+  function paintShade(view, L) {
+    const el = view.shade;
+    if (view.mode === 'true') {
+      const blur = TD.lerp(C.SHADOW_BLUR_REST, C.SHADOW_BLUR_LIFT, L);
+      const ink = TD.lerp(C.SHADOW_INK_REST, C.SHADOW_INK_LIFT, L);
+      const dy = TD.lerp(C.SHADOW_DY_REST, C.SHADOW_DY_LIFT, L);
+      const spread = TD.lerp(C.SHADOW_SPREAD_REST, C.SHADOW_SPREAD_LIFT, L);
+      el.style.setProperty('--shade-inset', '0px');
+      el.style.boxShadow = `0 ${dy.toFixed(2)}px ${blur.toFixed(2)}px ${spread.toFixed(2)}px rgba(42,37,28,${ink.toFixed(3)})`;
+      el.style.transform = 'none';
+      el.style.opacity = '1';
+    } else {
+      /* One bake, then the two channels the native driver can carry: opacity
+         and a transform.
+
+         The box sits INSET inside the card, and that is not a refinement — it
+         is what makes this renderable at all. A box shadow is clipped to the
+         outside of the box casting it, so it is a ring around a hole: scaling
+         the element moves the ring outward rather than spreading it, and any
+         offset opens a clean gap of exactly that offset between the card and
+         its own shadow. Left at `inset: 0` and scaled the way this page first
+         had it, full lift drew a hard-edged rounded rectangle some 60pt out
+         with bare paper between — a second, wrong-sized card. Set the box in by
+         more than the shadow can reach and the bright edge hides under the
+         paper, leaving only the reach.
+
+         The inset is a distance and never a share: the two cards are 263 x 351
+         and about 379 x 186, and a share that hid one haloed the other. In
+         points it hides both, and it goes on hiding a card shorter still,
+         because the box loses a point for every point the card does and the
+         clearance grows.
+
+         Scale therefore stays near 1 and does the little of the spreading that
+         a rasterised blur gives it; opacity is the ink. */
+      el.style.setProperty('--shade-inset', C.SHADE_INSET + 'px');
+      el.style.boxShadow = `0 0 ${C.SHADE_BLUR}px 0 ${SHADOW_INK}`;
+      const sc = TD.lerp(C.SHADE_SCALE_REST, C.SHADE_SCALE_LIFT, L);
+      const dy = TD.lerp(C.SHADE_DY_REST, C.SHADE_DY_LIFT, L);
+      el.style.transform = `translateY(${dy.toFixed(2)}px) scale(${sc.toFixed(3)})`;
+      el.style.opacity = TD.lerp(C.SHADE_OP_REST, C.SHADE_OP_LIFT, L).toFixed(3);
+    }
+  }
+
+  function paint() {
+    /* While a finger is down `y` is assigned, not sprung; the headless hold
+       writes `state.travel` and comes through here, so this is the one place
+       that decides where the card is drawn. */
+    if (state.held) y.set(state.travel);
+    const t = y.value;
+    const L = TD.clamp(lift.value / Math.max(C.LIFT_CARRY, 0.001), 0, 1);
+    /* The veil is half the feedback and cannot be judged from the card alone:
+       it lightens as the card goes, so the sitting is coming back up under it
+       before the note has finished leaving. */
+    const p = TD.clamp(t / geo.gone, 0, 1);
+    for (const v of views) {
+      v.carry.style.transform = `translateY(${t.toFixed(2)}px)`;
+      v.veil.style.opacity = (VEIL_REST * (1 - p)).toFixed(3);
+      paintShade(v, L);
+      v.thresholdLine.classList.toggle('past', t >= threshold());
+    }
+    if (active === api) readout(api);
+  }
+
+  const anim = TD.animate([y, lift], paint);
+
+  function placeGuides() {
+    const th = threshold();
+    for (const v of views) {
+      v.thresholdLine.style.top = (geo.cardTop + th) + 'px';
+      v.thresholdLine.querySelector('b').textContent = `threshold ${th.toFixed(0)}`;
+      v.floorLine.style.top = geo.floorY + 'px';
+      v.floorLine.querySelector('b').textContent = `floor · ${geo.slack.toFixed(0)} free`;
+    }
+  }
+
+  function home() {
+    y.set(0);
+    lift.set(0);
+    state.travel = state.raw = state.v = state.projected = 0;
+    state.leaves = false; state.ticked = false; state.held = false;
+    paint();
+  }
+
+  const api = { views, geo, state, threshold, home, placeGuides, repaint: paint, lift, destroy: null };
+
+  const detach = views.map((v) => TD.gesture(v.carry, {
+    onPress() {
+      active = api;
+      state.held = true;
+      state.ticked = false;
+      /* A press on a card still in flight must not teleport it: the drag has not
+         said anything yet, so the card stays where the spring left it until the
+         first move does. */
+      state.travel = y.value;
+      state.raw = 0;
+      lift.use(PRESET(C.SPRING_PRESS)).to(C.LIFT_PRESS);
+      anim.kick();
+    },
+    onDrag(d) {
+      active = api;
+      const raw = d.dy / geo.zoom;
+      state.raw = raw;
+      state.v = d.vy / geo.zoom;
+      state.travel = resist(raw);
+      /* The projection is taken in the same space the card is drawn in: a throw
+         is added to the finger's raw travel and then put through the same
+         resistance, so what the readout predicts is a place the card could
+         actually be. Comparing a raw projection against a resisted threshold
+         would be two different rulers. */
+      state.projected = resist(raw + state.v * (C.PROJECTION_MS / 1000));
+      state.leaves = state.projected >= threshold();
+      if (d.moved) lift.use(PRESET(C.SPRING_PRESS)).to(C.LIFT_CARRY);
+      /*
+        The tick fires on POSITION, not on the projection: you cannot feel a
+        prediction.
+
+        And it latches. Disarming the moment the card comes back under the mark
+        is what chatters — a finger resting on the line crosses it many times a
+        second and every crossing would be a buzz — so the card has to come back
+        a real distance before the tick is available again. `carry.ts`'s
+        `armed()` is the shipped version of this and the two must agree, or the
+        threshold gets tuned here against a flicker the app does not have.
+      */
+      const far = threshold();
+      const band = Math.max(far * (1 - ARM_KEEP), C.GRAB_SLOP * ARM_KEEP_SLOPS);
+      const past = state.ticked
+        ? state.travel >= far - band
+        : state.travel >= far;
+      if (past && !state.ticked) { state.ticked = true; flash(views); }
+      if (!past) state.ticked = false;
+      y.set(state.travel);
+      anim.kick();
+      paint();
+    },
+    onRelease() {
+      state.held = false;
+      const v = state.v;
+      /* One throw, two destinations. The exit keeps the momentum you gave it,
+         damped; the return keeps it too, because a spring that discards the
+         velocity it was handed stutters at the moment of release. */
+      if (state.leaves) y.use(PRESET(C.SPRING_EXIT)).to(geo.gone);
+      else y.use(PRESET(C.SPRING_RETURN)).to(0);
+      y.velocity = v * C.THROW_DAMPING;
+      lift.use(PRESET(C.SPRING_PRESS)).to(0);
+      anim.kick();
+    },
+    onTap() {
+      /* A tap on a card that has left brings it back — there is nothing else on
+         this page that could, and an exit you cannot undo is an exit you get to
+         watch once. */
+      if (y.target !== 0) home();
+    },
+  }));
+
+  api.destroy = () => detach.forEach((g) => g.destroy());
+
+  placeGuides();
+  home();
+  return api;
+}
+
+/*
+  Standing in for the haptic. The readout is the honest channel — a phone answers
+  a crossing in the hand and a page cannot — but a mark that blinks is what makes
+  the crossing visible in a screenshot, which is the only way this page can be
+  read back by anything but a person.
+*/
+function flash(views) {
+  views.forEach((v) => {
+    v.thresholdLine.classList.add('flash');
+    clearTimeout(v.flashTimer);
+    v.flashTimer = setTimeout(() => v.thresholdLine.classList.remove('flash'), 140);
+  });
+}
+
+/* ==========================================================================
+   The readout. The question this page is asking is "is the threshold right",
+   and a page that only does the thing cannot answer it.
+   ========================================================================== */
+
+const READ = [
+  ['travel', (a) => a.state.travel.toFixed(1) + ' pt'],
+  ['velocity', (a) => a.state.v.toFixed(0) + ' pt/s'],
+  ['projected', (a) => a.state.projected.toFixed(1) + ' pt'],
+  ['threshold', (a) => a.threshold().toFixed(0) + ' pt'],
+  ['would leave', (a) => (a.state.leaves ? 'YES' : 'no'), (a) => (a.state.leaves ? 'yes' : 'no')],
+  ['tick', (a) => (a.state.ticked ? 'FIRED' : 'not fired'), (a) => (a.state.ticked ? 'fired' : 'no')],
+  ['card', (a) => `${a.geo.cardW.toFixed(0)} x ${a.geo.cardH.toFixed(0)}`],
+  ['free to floor', (a) => a.geo.slack.toFixed(0) + ' pt'],
+  ['reach', (a) => (a.geo.slack + TD.rubberReach(C.RUBBER)).toFixed(0) + ' pt'],
+  ['off screen at', (a) => a.geo.gone.toFixed(0) + ' pt'],
+  ['held', (a) => (a.state.held ? 'yes' : 'no')],
+  ['lift', (a) => a.lift.value.toFixed(1) + ' pt'],
+];
+
+function readout(a) {
+  const el = document.getElementById('readout');
+  if (!a) { el.innerHTML = '<span>nothing held</span><b>drag a card</b>'; return; }
+  el.innerHTML = READ.map(([k, f, cls]) =>
+    `<span>${k}</span><b class="${cls ? cls(a) : ''}">${f(a)}</b>`).join('');
+}
+
+/* ==========================================================================
+   The knobs.
+   ========================================================================== */
+
+const KNOBS = {
+  knobsThreshold: [
+    ['THRESHOLD_SHARE', 0.05, 0.6, 0.01],
+    ['THRESHOLD_MIN', 12, 140, 1],
+    ['THRESHOLD_MAX', 40, 280, 1],
+  ],
+  knobsHand: [
+    ['GRAB_SLOP', 0, 24, 1],
+    ['RUBBER', 60, 700, 10],
+    ['PROJECTION_MS', 0, 400, 5],
+    ['THROW_DAMPING', 0, 1.2, 0.01],
+    ['SMOOTHING', 0.05, 1, 0.01],
+    ['STALE_MS', 0, 300, 5],
+  ],
+  knobsLift: [
+    ['LIFT_PRESS', 0, 16, 0.5],
+    ['LIFT_CARRY', 1, 40, 0.5],
+  ],
+  knobsTrue: [
+    ['SHADOW_BLUR_REST', 0, 40, 0.5],
+    ['SHADOW_BLUR_LIFT', 0, 70, 0.5],
+    ['SHADOW_INK_REST', 0, 0.5, 0.005],
+    ['SHADOW_INK_LIFT', 0, 0.5, 0.005],
+    ['SHADOW_DY_REST', 0, 30, 0.5],
+    ['SHADOW_DY_LIFT', 0, 50, 0.5],
+    ['SHADOW_SPREAD_REST', -20, 10, 0.5],
+    ['SHADOW_SPREAD_LIFT', -20, 10, 0.5],
+  ],
+  knobsShade: [
+    ['SHADE_INSET', 0, 80, 1],
+    ['SHADE_BLUR', 0, 70, 0.5],
+    ['SHADE_SCALE_REST', 0.8, 1.3, 0.005],
+    ['SHADE_SCALE_LIFT', 0.8, 1.3, 0.005],
+    ['SHADE_OP_REST', 0, 1, 0.01],
+    ['SHADE_OP_LIFT', 0, 1, 0.01],
+    ['SHADE_DY_REST', 0, 30, 0.5],
+    ['SHADE_DY_LIFT', 0, 50, 0.5],
+  ],
+};
+
+const PRESET_NAMES = Object.keys(TD.P);
+const SPRING_KNOBS = [
+  ['SPRING_PRESS', 'the lift under a finger'],
+  ['SPRING_RETURN', 'not far enough — it comes home'],
+  ['SPRING_EXIT', 'far enough — it goes'],
+];
+
+function buildKnobs() {
+  Object.entries(KNOBS).forEach(([id, rows]) => {
+    document.getElementById(id).innerHTML = rows.map(([k, lo, hi, st]) => `
+      <div class="row">
+        <label for="k_${k}">${k.replace(/_/g, ' ').toLowerCase()}</label>
+        <input type="range" id="k_${k}" min="${lo}" max="${hi}" step="${st}" value="${C[k]}">
+        <output id="o_${k}">${C[k]}</output>
+      </div>`).join('');
+    rows.forEach(([k]) => {
+      const input = document.getElementById('k_' + k);
+      input.addEventListener('input', () => {
+        C[k] = Number(input.value);
+        document.getElementById('o_' + k).textContent = input.value;
+        repaintAll();
+        emit();
+      });
+    });
+  });
+
+  document.getElementById('knobsSpring').innerHTML = SPRING_KNOBS.map(([k, why]) => `
+    <div class="row">
+      <label for="k_${k}">${k.replace('SPRING_', '').toLowerCase()}</label>
+      <select id="k_${k}">${PRESET_NAMES.map((n) =>
+        `<option value="${n}"${C[k] === n ? ' selected' : ''}>${n}</option>`).join('')}</select>
+      <output></output>
+    </div>
+    <p class="note" style="margin:-2px 0 6px 140px">${why}</p>`).join('');
+  SPRING_KNOBS.forEach(([k]) => {
+    const sel = document.getElementById('k_' + k);
+    sel.addEventListener('change', () => { C[k] = sel.value; emit(); });
+  });
+}
+
+/*
+  A slider moved while nothing is in flight has nobody to tell: the ticker parks
+  itself the moment every spring has settled, which is the whole point of it. So
+  a knob repaints through the same paint path the ticker would have used, rather
+  than by starting an animation that has nowhere to go.
+*/
+function repaintAll() {
+  carries.forEach((a) => { a.placeGuides(); a.repaint(); });
+}
+
+/* ==========================================================================
+   The output block, matched to src/ui/carry.ts.
+   ========================================================================== */
+
+function emit() {
+  const p = (n) => TD.P[n];
+  const spring = (k) => {
+    const q = p(C[k]);
+    return `{ stiffness: ${q.stiffness}, damping: ${q.damping}, mass: ${q.mass} }`;
+  };
+  const n = (v) => (Number.isInteger(v) ? String(v) : String(Number(v.toFixed(3))));
+
+  document.getElementById('out').textContent =
+`/* Tuned in tools/note-card-mockup.html. The bench's defaults ARE these
+   numbers; if the two ever disagree, one of them has been hand-edited and the
+   bench is the one to trust. Its spring is a semi-implicit Euler integrator and
+   Animated.spring is not — the same model, not the same frames. */
+
+/** Travel before a release lets the card go, as a share of its own height. */
+export const THRESHOLD_SHARE = ${n(C.THRESHOLD_SHARE)};
+/** The floor the docked reader needs, and the cap the 3:4 card needs. */
+export const THRESHOLD_MIN = ${n(C.THRESHOLD_MIN)};
+export const THRESHOLD_MAX = ${n(C.THRESHOLD_MAX)};
+
+/** Travel before a press becomes a drag. */
+export const GRAB_SLOP = ${n(C.GRAB_SLOP)};
+/** Resistance past an edge: up from rest, and down past the keyboard. */
+const RUBBER_DIMENSION = ${n(C.RUBBER)};
+/** How far ahead a release is projected before it is judged. */
+export const PROJECTION_MS = ${n(C.PROJECTION_MS)};
+/** How much of the throw the exit spring is handed. */
+export const THROW_DAMPING = ${n(C.THROW_DAMPING)};
+/** Weight of the *previous* value in the velocity average. The slider above is
+    the newest sample's share, which is the end that is intuitive to tune; this
+    is its complement, which is the end carry.ts is written against. */
+export const SMOOTHING = ${n(1 - C.SMOOTHING)};
+/** Stillness that zeroes the throw: a pointer that stopped has none in it. */
+export const STALE_MS = ${n(C.STALE_MS)};
+
+/** Points off the page, pressed and carried. */
+export const LIFT_PRESS = ${n(C.LIFT_PRESS)};
+export const LIFT_CARRY = ${n(C.LIFT_CARRY)};
+
+/* Which preset each role spends. SPRING itself is the demos' vocabulary, taken
+   whole and NOT tuned here — regenerating it would drop the three presets this
+   card does not spend and break SpringName with them. Return and exit stay
+   separate on purpose: motion is asymmetric, and collapsing the pair is the
+   mistake the source material warns about by name.
+
+     press   SPRING.${C.SPRING_PRESS}     ${spring('SPRING_PRESS')}
+     return  SPRING.${C.SPRING_RETURN}    ${spring('SPRING_RETURN')}
+     exit    SPRING.${C.SPRING_EXIT}      ${spring('SPRING_EXIT')}  */
+
+/** How far inside the card the shade's own box sits. A box shadow is clipped
+    to the outside of the box casting it, so the box has to hide under the paper
+    and let only its reach out; a distance rather than a share, because the two
+    card shapes are nothing like each other. Must stay above SHADE_BLUR. */
+export const SHADE_INSET = ${n(C.SHADE_INSET)};
+/** One bake — blur is not on the native driver, and no spread, because the
+    inset is doing that job. Reach is blur plus spread, and it is measured. */
+export const SHADE_BLUR = ${n(C.SHADE_BLUR)};
+
+/**
+ * What the shade does as the card comes off the page, frame by frame: \`at\` is
+ * how far it is lifted, and the rest is what the shade looks like there.
+ *
+ * Opacity is the ink, and the box is inset far enough inside the card that its
+ * own edge never comes out from under the paper — see SHADE_INSET, which is
+ * what makes this drawable at all. Scale stays near 1 and does only the little
+ * spreading a rasterised blur gives it; a large scale is what broke the first
+ * attempt, because a box shadow is a ring around a hole and scaling moves the
+ * ring rather than spreading it.
+ *
+ * A shadow that rises gets lighter and wider, never darker — that direction is
+ * the invariant and there is a test on it. The rest row has to read as no
+ * shadow at all: before this card, this app had none.
+ */
+export const SHADE: readonly Shade[] = [
+  { at: 0, opacity: ${n(C.SHADE_OP_REST)}, scale: ${n(C.SHADE_SCALE_REST)}, rise: ${n(C.SHADE_DY_REST)} },
+  { at: 1, opacity: ${n(C.SHADE_OP_LIFT)}, scale: ${n(C.SHADE_SCALE_LIFT)}, rise: ${n(C.SHADE_DY_LIFT)} },
+];
+/* The two ends, which is the whole of what this page models: it ramps them
+   linearly. carry.ts holds intermediate rows between the same endpoints, and
+   they are not a smoothing — the table exists so the channels can disagree, and
+   there the drop leads while the lightening and the spread follow. Take the
+   endpoints from here; leave the shape of the middle alone. */
+
+/* Not shipped — the reference the approximation above was chosen against.
+   blur ${n(C.SHADOW_BLUR_REST)} -> ${n(C.SHADOW_BLUR_LIFT)}, ink ${n(C.SHADOW_INK_REST)} -> ${n(C.SHADOW_INK_LIFT)},
+   offsetY ${n(C.SHADOW_DY_REST)} -> ${n(C.SHADOW_DY_LIFT)}, spread ${n(C.SHADOW_SPREAD_REST)} -> ${n(C.SHADOW_SPREAD_LIFT)}. */
+`;
+}
+
+/* ==========================================================================
+   Toggles, the hash, and wiring the frames up.
+   ========================================================================== */
+
 let mode = location.hash.startsWith('#today') ? 'today' : 'room';
 let content = location.hash.includes('empty') ? 'empty'
             : location.hash.includes('short') ? 'short' : 'long';
 let share = (Number((location.hash.match(/W(\d+)/) || [])[1]) || 64) / 100;
 let device = location.hash.includes('-se') ? 'se'
            : location.hash.includes('-i15') ? 'i15' : 'cmf';
+let guides = true;
+
+const MAIN = [
+  { kb: false, cap: '<b>Keyboard down</b> — dismissed with the back key' },
+  { kb: true,  cap: '<b>Keyboard up</b> — writing' },
+];
+
+/*
+  The phone is drawn at its real dp and scaled down only for the page, so every
+  number inside it is the phone's. The wrapper has to be told the scaled size:
+  a transform does not affect layout, so without it each frame would reserve a
+  full 411 x 911 of the row and paint 72% of it in the corner.
+*/
+function figure(cap, zoom, html) {
+  const d = DEVICES[device];
+  return `<figure><figcaption>${cap}</figcaption>
+    <div class="scaled" style="--zoom:${zoom};width:${Math.round(d.w * zoom)}px;height:${Math.round(d.h * zoom)}px">${html}</div></figure>`;
+}
 
 function render() {
-  document.getElementById('frames').innerHTML = [false, true]
-    .map((kb) => `
-      <figure>
-        <figcaption>${kb ? '<b>Keyboard up</b> — writing' : '<b>Keyboard down</b> — dismissed with the back key'}
-          &nbsp;·&nbsp; ${DEVICES[device].name}, card ${Math.round(DEVICES[device].w * share)} × ${Math.round(DEVICES[device].w * share / 0.75)}</figcaption>
-        <div class="scaled" style="width:${Math.round(DEVICES[device].w * 0.85)}px; height:${Math.round(DEVICES[device].h * 0.85)}px">${frame(mode, kb, content, share, device)}</div>
-      </figure>`)
-    .join('');
+  carries.forEach((a) => a.destroy());
+  carries = [];
+  active = null;
+
+  const d = DEVICES[device];
+  const zoom = 0.72;
+  const shape = mode === 'today' ? 'today' : 'write';
+  const cardW = Math.round(d.w * share);
+
+  const main = MAIN.map((f) => figure(
+    `${f.cap} &nbsp;·&nbsp; ${d.name}${shape === 'write' ? `, card ${cardW} × ${Math.round(cardW / 0.75)}` : ''}`,
+    zoom,
+    frame(shape, f.kb, content, share, device, 'shade')));
+
+  const reader = figure(
+    `<b>Reading</b> — the garden's reader: the size of the thought on it, the width of the page, docked at the foot. The short card is where the threshold's floor earns its place.`,
+    zoom,
+    frame('read', false, content, share, device, 'shade'));
+
+  document.getElementById('frames').innerHTML = main.join('') + reader;
+
+  /* The pair always draws the index card, whatever Today/Proposed says: a shade
+     compared underneath a drawn keyboard is a shade nobody can see. */
+  document.getElementById('shadowFrames').innerHTML =
+    figure('<b>True</b> — four channels ramping, blur included', 0.72,
+           frame('write', true, content, share, device, 'true')) +
+    figure('<b>Native-drivable</b> — one pre-blurred shade, scaled and faded', 0.72,
+           frame('write', true, content, share, device, 'shade'));
+
+  /* Every card gets its own carry, except the shadow pair, which share one so
+     the two renderings are driven by literally the same numbers. */
+  const mainPhones = [...document.querySelectorAll('#frames .phone')];
+  mainPhones.forEach((phone, i) => {
+    const kb = i === 1;
+    carries.push(makeCarry([view(phone, kb)]));
+  });
+  const shadowPhones = [...document.querySelectorAll('#shadowFrames .phone')];
+  if (shadowPhones.length === 2) {
+    carries.push(makeCarry(shadowPhones.map((phone) => view(phone, true))));
+  }
+
+  applyGuides();
+  readout(null);
+  syncButtons();
+  emit();
+}
+
+function view(phone, kb) {
+  return {
+    phone, kb,
+    carry: phone.querySelector('.carry'),
+    veil: phone.querySelector('.veil'),
+    shade: phone.querySelector('.shade'),
+    mode: phone.querySelector('.shade').dataset.mode,
+    thresholdLine: phone.querySelector('.guide.threshold'),
+    floorLine: phone.querySelector('.guide.floorline'),
+  };
+}
+
+function applyGuides() {
+  document.querySelectorAll('.guide').forEach((g) => g.classList.toggle('hidden', !guides));
+}
+
+function syncButtons() {
   document.getElementById('btnToday').className = mode === 'today' ? 'on' : '';
   document.getElementById('btnRoom').className = mode === 'room' ? 'on' : '';
   document.getElementById('btnEmpty').className = content === 'empty' ? 'on' : '';
   document.getElementById('btnShort').className = content === 'short' ? 'on' : '';
   document.getElementById('btnLong').className = content === 'long' ? 'on' : '';
   [56, 64, 72, 80].forEach((w) => {
-    document.getElementById('btn' + w).className =
-      Math.round(share * 100) === w ? 'on' : '';
+    document.getElementById('btn' + w).className = Math.round(share * 100) === w ? 'on' : '';
   });
   Object.entries({ cmf: 'btnCmf', se: 'btnSe', i15: 'btnI15' }).forEach(([k, id]) => {
     document.getElementById(id).className = device === k ? 'on' : '';
   });
+  document.getElementById('btnGuides').className = guides ? 'on' : '';
 }
 
 const pick = (k, v) => () => {
@@ -487,8 +1548,7 @@ const pick = (k, v) => () => {
   else if (k === 'content') content = v;
   else if (k === 'share') share = v;
   else device = v;
-  location.hash =
-    mode + '-' + content + '-W' + Math.round(share * 100) + '-' + device;
+  location.hash = mode + '-' + content + '-W' + Math.round(share * 100) + '-' + device;
   render();
 };
 document.getElementById('btnToday').onclick = pick('mode', 'today');
@@ -502,7 +1562,44 @@ document.getElementById('btnLong').onclick  = pick('content', 'long');
 document.getElementById('btnCmf').onclick = pick('device', 'cmf');
 document.getElementById('btnSe').onclick  = pick('device', 'se');
 document.getElementById('btnI15').onclick = pick('device', 'i15');
+document.getElementById('btnGuides').onclick = () => { guides = !guides; applyGuides(); syncButtons(); };
+document.getElementById('btnHome').onclick = () => carries.forEach((a) => a.home());
+
+buildKnobs();
 render();
+
+/* The fonts arrive after the first layout, and the card's height is what the
+   threshold is a share of — so measure again once they have. */
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+
+/* Exposed for the headless driver: it has no pointer, and a screenshot of a
+   card being dragged is the only way to see the shade at full lift. */
+window.__bench = {
+  C,
+  carries: () => carries,
+  /* A headless driver has no pointer, and a screenshot of a card at rest cannot
+     show what the shade does at full lift — which is the one thing the two
+     shadow frames exist to be looked at for. This holds a carry at a travel and
+     paints it through the same path a finger would. */
+  hold: (i, dy) => {
+    const a = carries[i];
+    if (!a) return null;
+    const slack = a.geo.slack;
+    const travel = dy <= slack ? dy : slack + TD.rubber(dy - slack, C.RUBBER);
+    a.state.held = true;
+    a.state.raw = dy;
+    a.state.v = 0;
+    a.state.travel = travel;
+    a.state.projected = travel;
+    a.state.leaves = travel >= a.threshold();
+    a.state.ticked = a.state.leaves;
+    a.lift.set(C.LIFT_CARRY);
+    a.repaint();
+    active = a;
+    readout(a);
+    return a.state;
+  },
+};
 </script>
 </body>
 </html>

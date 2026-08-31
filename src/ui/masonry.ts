@@ -23,11 +23,28 @@
 export const CARD_LINES = 6;
 
 /**
- * Roughly how many characters of the body face fit across a half-width card on
- * a phone. A rough number is the right kind of number here: it decides which of
- * two columns a card starts in, and nothing else depends on it.
+ * How many characters of a note's own face fit across a full line of a
+ * half-width card.
+ *
+ * A rough number is the right kind of number here — it decides which of two
+ * columns a card starts in and nothing else — but it is measured rather than
+ * guessed, because the clamp above is only honest if the estimate fills a card
+ * where the drawing does. `Math.ceil` is what accounts for the ragged last
+ * line, so what this wants is a *full* line, word breaks and all.
+ *
+ * Shantell at 18px wraps at about 10.7 characters to the line in an iPhone SE's
+ * column, 12.2 in an iPhone 15's and 12.9 in the phone this app is judged on —
+ * text widths of 123.5, 132.5 and 141.5pt once `Screen`'s margin, the gutter
+ * between the columns and the card's own padding are taken off 375, 393 and
+ * 411. Twelve is the middle of those, and low is the safer side of the three to
+ * land on: an estimate that fills a card slightly early deals it to the shorter
+ * column, while one that runs past the clamp counts a long note short and puts
+ * every card after it on the wrong side.
+ *
+ * It was 22 while the pile was set in the body face, which was the same
+ * arithmetic without the word breaks and against a column a little too wide.
  */
-const LINE_CHARS = 22;
+const LINE_CHARS = 12;
 
 /** What the meta line under the body is worth, in lines of body. */
 const META = 1.4;
