@@ -113,6 +113,34 @@ describe('the track handed to the renderer', () => {
   });
 
   /**
+   * The track is remembered, which is what makes a field that comes down and
+   * goes back up cost nothing to put back. Asserted as identity rather than as
+   * equality on purpose: the same numbers built twice would pass an equality
+   * test and would be exactly the work the cache exists to skip.
+   *
+   * It is also the whole of the contract the other way round. Callers share
+   * these arrays and none of them owns one, so a track has to be treated as
+   * frozen — this is the test that says why.
+   */
+  it('hands back the same track every time, so a field that returns pays once', () => {
+    expect(swayTrack(7, 7, 0)).toBe(swayTrack(7, 7, 0));
+  });
+
+  /**
+   * And the knots are shared further still: only the leans differ from plant to
+   * plant, so every track in every garden points at one array of positions.
+   */
+  it('shares one set of knot positions, at even steps through the clock', () => {
+    const one = swayTrack(1, 1, 0);
+    const other = swayTrack(2, 2, 0);
+
+    expect(one.at).toBe(other.at);
+
+    const knots = one.at.length - 1;
+    for (let i = 0; i <= knots; i++) expect(one.at[i]).toBe(i / knots);
+  });
+
+  /**
    * The two channels lean the same way. With the origin at the root the plant's
    * ink is at negative y, so a positive shear carries the tip opposite to a
    * positive rotation — and getting that wrong makes them cancel instead of add,

@@ -113,26 +113,79 @@ type Channel = 'opacity' | 'scaleY' | 'scaleX';
  * is the one with teeth: a loop left running past the last `Sway` reading it is
  * a loop React Native stops and cannot restart. `PlantGrid` has the account.
  */
+/**
+ * How long the wind holds off after a field arrives.
+ *
+ * The burst and the sway used to begin together, which is two things happening
+ * at once to a drawing at the moment it is least readable — and, on a garden of
+ * a hundred plants, both of the app's largest per-frame costs landing in the
+ * same frames. Held back, the plants grow, the garden stands still long enough
+ * to be looked at, and then the wind comes up. The sprout gets the whole frame
+ * to itself, which is the one moment in the app worth spending it on.
+ *
+ * It costs nothing to look right, which is worth writing down because it easily
+ * might not have. A `Sway` reads its clock at rest as well as in motion, so a
+ * plant grows already carrying its own phase-nought lean rather than standing
+ * to attention, and when the loop finally starts it starts from exactly the
+ * angle that plant is already drawn at. There is no discontinuity to hide, so
+ * there is no fade-in to write and no amplitude to ramp.
+ *
+ * Measured from the arrival rather than from the last plant, so it is the whole
+ * burst plus a beat: the beat is what makes it read as the wind arriving rather
+ * than as the tail of the same animation.
+ */
+const SWAY_HOLD_MS = BURST_MS + 350;
+
 export function useSway(active: boolean) {
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!active) return;
 
-    const loop = Animated.loop(
-      Animated.timing(progress, {
-        toValue: 1,
-        duration: SWAY_CYCLE_MS,
-        // Linear on purpose, exactly as the burst's is: the shape of the sway
-        // is in the table, and easing the shared clock would bend every
-        // plant's phase along with it.
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
+    /*
+     * Wound back to the beginning first, because `Animated.loop` will not do it
+     * for you. Only the JavaScript branch of `start()` honours
+     * `resetBeforeIteration`; the native branch hands the whole loop to
+     * `_startNativeLoop` and calls `reset()` nowhere, and an `AnimatedValue`
+     * keeps its value across `stopAnimation()`. A clock gated on a tab's focus
+     * is stopped and started for a living, so without this a sway stopped at
+     * 0.63 came back running 0.63 → 1 over the full cycle and repeating that
+     * for ever: every plant sweeping the tail third of its own table at a third
+     * of the rate, with a jump at each wrap. It is the quiet kind of failure —
+     * the garden still moves, so nothing looks broken, and the wind is simply
+     * not the wind that was tuned. `useBurst` has always done this.
+     *
+     * It happens here, on arrival, rather than beside the loop it belongs to,
+     * and the gap between those two is now a second and a half. That is the
+     * point: a rewind is the one moment the wind genuinely does jump, and the
+     * only place to put it is under the burst, where every plant is still too
+     * small to see. Moved down to where the loop starts it would land on a
+     * garden standing still and be the most visible thing on the screen.
+     */
+    progress.setValue(0);
 
-    loop.start();
-    return () => loop.stop();
+    let loop: Animated.CompositeAnimation | undefined;
+
+    const held = setTimeout(() => {
+      loop = Animated.loop(
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: SWAY_CYCLE_MS,
+          // Linear on purpose, exactly as the burst's is: the shape of the sway
+          // is in the table, and easing the shared clock would bend every
+          // plant's phase along with it.
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+
+      loop.start();
+    }, SWAY_HOLD_MS);
+
+    return () => {
+      clearTimeout(held);
+      loop?.stop();
+    };
   }, [progress, active]);
 
   return progress;
@@ -167,15 +220,29 @@ export function Sway({
 }) {
   const track = useMemo(() => swayTrack(slot, col, row), [slot, col, row]);
 
+  /*
+   * Interpolated once and kept, which is worth more than it looks. React Native
+   * keys an `AnimatedProps` on the *identity* of the nodes inside `style`, so
+   * interpolating in the middle of the render mints two new ones every time
+   * anything above this re-renders — and a new node is detached, re-attached
+   * and, on the native driver, built again on the far side of the bridge with
+   * this plant's whole three-hundred-and-twenty-two-number config in tow. Held,
+   * the garden uploads its wind when the wind changes and not before.
+   */
+  const lean = useMemo(
+    () => ({
+      skew: progress.interpolate({ inputRange: track.at, outputRange: track.skew }),
+      spin: progress.interpolate({ inputRange: track.at, outputRange: track.spin }),
+    }),
+    [progress, track]
+  );
+
   return (
     <Animated.View
       style={{
         // The root, as everywhere else a plant is transformed.
         transformOrigin: ROOT_ORIGIN,
-        transform: [
-          { skewX: progress.interpolate({ inputRange: track.at, outputRange: track.skew }) },
-          { rotate: progress.interpolate({ inputRange: track.at, outputRange: track.spin }) },
-        ],
+        transform: [{ skewX: lean.skew }, { rotate: lean.spin }],
       }}>
       {children}
     </Animated.View>
@@ -241,14 +308,27 @@ export function Sprout({
   // The clock is shared, so this doodle's window is a slice of it. Clamped at
   // both ends: before its turn it sits squat and invisible, after it it is
   // simply grown.
-  const frames = GROWTH.map((frame) => (delayMs + frame.at * SPROUT_MS) / BURST_MS);
+  const frames = useMemo(
+    () => GROWTH.map((frame) => (delayMs + frame.at * SPROUT_MS) / BURST_MS),
+    [delayMs]
+  );
 
-  const track = (channel: Channel) =>
-    progress.interpolate({
-      inputRange: frames,
-      outputRange: GROWTH.map((frame) => frame[channel]),
-      extrapolate: 'clamp',
-    });
+  /*
+   * Kept for `Sway`'s reason, and here it is three nodes rather than two and a
+   * hundred and eight plants at a time: a curve that cannot have changed unless
+   * the delay did should not be handed to the native driver again because
+   * something further up the screen drew itself.
+   */
+  const growth = useMemo(() => {
+    const track = (channel: Channel) =>
+      progress.interpolate({
+        inputRange: frames,
+        outputRange: GROWTH.map((frame) => frame[channel]),
+        extrapolate: 'clamp',
+      });
+
+    return { opacity: track('opacity'), scaleY: track('scaleY'), scaleX: track('scaleX') };
+  }, [progress, frames]);
 
   return (
     <Animated.View
@@ -258,8 +338,8 @@ export function Sprout({
         // which is a nib's margin lower — pivoting there lifted every root a
         // couple of points at the peak and set it back down again.
         transformOrigin: ROOT_ORIGIN,
-        opacity: track('opacity'),
-        transform: [{ scaleY: track('scaleY') }, { scaleX: track('scaleX') }],
+        opacity: growth.opacity,
+        transform: [{ scaleY: growth.scaleY }, { scaleX: growth.scaleX }],
       }}>
       {children}
     </Animated.View>

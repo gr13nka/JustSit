@@ -190,7 +190,14 @@ export function swayLeans(slot: number, col: number, row: number): number[] {
   return raw.map((v) => v * scale);
 }
 
-/** One plant's loop as an `Animated.interpolate` config, in degrees. */
+/**
+ * One plant's loop as an `Animated.interpolate` config, in degrees.
+ *
+ * Every array in it is **shared and must be treated as frozen** — see the cache
+ * below. Two plants holding the same knot positions and one plant holding the
+ * same track twice are both normal here, so a caller that wrote into one would
+ * be rewriting somebody else's wind.
+ */
 export type SwayTrack = {
   /** Knot positions on the shared 0..1 clock. */
   at: number[];
@@ -201,6 +208,35 @@ export type SwayTrack = {
 };
 
 /**
+ * Where the knots fall, which is the same answer for every plant in every
+ * garden: `SWAY_KNOTS` even steps from 0 to 1.
+ *
+ * Only the leans differ from plant to plant, so a hundred and eight private
+ * copies of one hundred and sixty-one numbers were a hundred and seven copies
+ * of a fact. There is one, and every track points at it.
+ */
+const KNOTS_AT = Array.from({ length: SWAY_KNOTS + 1 }, (_, i) => i / SWAY_KNOTS);
+
+/**
+ * Every track asked for so far, by the plant and where it stands.
+ *
+ * A cache is honest here because there is nothing to invalidate: `swayTrack` is
+ * a pure function of its three arguments, so a remembered answer and a freshly
+ * built one are the same numbers, and remembering it costs the module none of
+ * its independence — this is still a file that imports no react and can be
+ * checked without a renderer standing by.
+ *
+ * What it buys is the case this module cannot see from here: a field that comes
+ * down and goes back up. `PlantGrid` no longer takes its plants apart when the
+ * tab loses focus, but the bed growing and the full-bed wrapper flipping still
+ * replace the whole grid, and each of those used to re-sample a hundred and
+ * eight loops from nothing — 161 knots across three warped layers, then 34,776
+ * numbers formatted into strings — to arrive at the numbers already in hand.
+ * Belt and braces beside the structural fix rather than a substitute for it.
+ */
+const TRACKS = new Map<string, SwayTrack>();
+
+/**
  * What the renderer needs, so nothing above this line has to know about knots,
  * degrees or how the lean is split.
  *
@@ -208,11 +244,18 @@ export type SwayTrack = {
  * a positive rotation lean opposite ways: with the origin at the root, CSS and
  * React Native both put the plant's ink at negative y, so `skewX` carries the
  * tip the other way from `rotate`.
+ *
+ * The track handed back is the same object every time it is asked for, and the
+ * caller does not own it.
  */
 export function swayTrack(slot: number, col: number, row: number): SwayTrack {
+  const key = `${slot}:${col}:${row}`;
+  const known = TRACKS.get(key);
+  if (known) return known;
+
   const leans = swayLeans(slot, col, row);
-  return {
-    at: leans.map((_, i) => i / SWAY_KNOTS),
+  const track: SwayTrack = {
+    at: KNOTS_AT,
     /* Rounded, because the full double prints twenty-odd characters of which
        about five carry meaning: a thousandth of a degree is six ten-thousandths
        of a point at the tip. 216 of these are built per plant and 108 plants
@@ -220,4 +263,7 @@ export function swayTrack(slot: number, col: number, row: number): SwayTrack {
     skew: leans.map((deg) => `${(-deg * SWAY_BEND).toFixed(3)}deg`),
     spin: leans.map((deg) => `${(deg * (1 - SWAY_BEND)).toFixed(3)}deg`),
   };
+
+  TRACKS.set(key, track);
+  return track;
 }

@@ -181,6 +181,27 @@ export function PlantGrid({
    */
   const { progress: burstClock, restart } = useBurst(burst !== undefined);
 
+  /**
+   * Whether this field is in the wind at all, and whether the wind is blowing.
+   *
+   * Two questions rather than one, because the first decides *structure* and
+   * only the second decides whether a clock turns. Whether a caller takes part
+   * in the wind is a fact about the caller and never changes under it; whether
+   * anyone is looking changes twice on every visit to the tab.
+   *
+   * The wrapper is therefore rendered on the answer that does not move. A
+   * `<Sway>` that came and went with the focus changes the element type at that
+   * position, and React does not reconcile across a change of type — it tears
+   * the whole subtree down and builds it again. That is six hundred native
+   * views, a hundred and eight sampled loops and two hundred and sixteen
+   * interpolation configs, twice per visit, which is most of the pause you feel
+   * arriving at the garden. Rendered unconditionally it is the same element
+   * throughout, nothing beneath it is touched, and all that stops is the clock.
+   *
+   * A bed that is only being looked at passes no `sway` at all and gets no
+   * wrapper and no tables — the grow screen's, which has no wind to be in.
+   */
+  const windy = sway !== undefined;
   const swaying = ready && sway === true;
   const swayClock = useSway(swaying);
 
@@ -256,7 +277,7 @@ export function PlantGrid({
                     round its lean is unscaled and a squashed plant swings as
                     wide as a full one.
                   */}
-                  {swaying ? (
+                  {windy ? (
                     // Where in the bed the plant stands: the wind crosses the
                     // bed you are looking at, and a bed six wide has six columns
                     // for it to cross. This is also why the bed's width is
