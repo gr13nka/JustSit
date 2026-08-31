@@ -184,14 +184,22 @@ export function Ripple({ size, children }: { size: number; children: ReactNode }
 
   useEffect(() => {
     const loop = Animated.loop(
-      // The sequence is not decoration and must not be unwrapped. `Animated.loop`
-      // handed a bare `timing` takes the `_startNativeLoop` path, which no-ops
-      // wherever the native animated module is missing — the web preview would
-      // draw the first frame and then stop, and a still screenshot of a frozen
-      // loop looks perfectly correct. A sequence reports itself as not natively
-      // driven, so the loop restarts it from JavaScript and the beat runs on
-      // both targets. `Pulse` breathes in the web preview for exactly this
-      // reason; `useSway`, which loops a bare one, is frozen there.
+      // The sequence is not decoration and must not be unwrapped. A bare `timing`
+      // reports `_isUsingNativeDriver` off the raw config flag rather than off
+      // whether a driver exists, so wherever the native animated module is
+      // missing `Animated.loop` still hands the loop to `_startNativeLoop` —
+      // which starts one plain rAF pass with nothing to restart it. The beat
+      // would run once and stop, and a still screenshot of a stopped loop looks
+      // perfectly correct. A sequence reports itself as not natively driven
+      // whatever the config says, so the loop restarts it from JavaScript and
+      // the beat runs on both targets. `Pulse` breathes in the web preview for
+      // exactly this reason.
+      //
+      // One dot is what makes that affordable. The JS loop costs a React render
+      // per animated view per frame, which is nothing here and would be a couple
+      // of hundred a frame across the garden — so the sway must NOT be "fixed"
+      // this way; see the web-preview note in CLAUDE.md for what it takes
+      // instead.
       Animated.sequence([
         Animated.timing(wave, {
           toValue: 1,

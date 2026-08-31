@@ -1398,6 +1398,23 @@ The fix is ownership rather than care: `PlantGrid` makes both clocks itself and
 takes a token and a boolean instead. A clock cannot then outlive its views,
 whatever any screen above does.
 
+**`Animated.loop` never rewinds the value it loops, so a stopped loop restarts
+from wherever it stopped.** Only the JS branch of `loop.start()` honours
+`resetBeforeIteration`; the native branch hands the whole thing to
+`_startNativeLoop` and calls `reset()` nowhere, and an `AnimatedValue` keeps its
+`_value` across `stopAnimation()`. A loop that is stopped and started again —
+which is exactly what a clock gated on a tab's focus does — therefore runs from
+the value it was stopped at to its target, over the *full* duration, for ever
+after.
+
+This shipped in the sway. Stopped at 0.63 on the way to the other tab, it came
+back running 0.63 → 1 over forty seconds and repeating that, so every plant
+swept the tail third of its own table at a third of the rate with a jump at each
+wrap. It is a quiet failure of the worst kind: the garden still moves, so
+nothing looks broken, and the wind is simply not the wind that was tuned.
+Whatever starts a loop has to set the value first, which is what `useBurst`
+already does and what `useSway` now does too.
+
 **Do not add `babel.config.js`.** SDK 57 applies `babel-preset-expo` by default.
 Adding the config file the docs show makes Metro demand `babel-preset-expo` as a
 top-level dependency, which isn't hoisted — bundling fails immediately.
@@ -1706,16 +1723,25 @@ it to tell the truth:
   without either knowing. `?top=24&bottom=24` overrides them per frame. The native
   file is a pass-through; Metro picks by extension, so no part of the web one
   reaches a device.
-- **The garden's sway does not animate on web at all** — the browser draws a
-  frozen field and gives no hint that it is frozen. `Animated.loop` on a bare
-  `timing` takes the `_startNativeLoop` path, which no-ops when the native
-  animated module is missing; `Pulse` and `Ripple` both wrap a `sequence`, which
-  has no such path and falls back to the JS loop, so the next-dot ring breathes
-  and ripples there and nothing else moves — which is also why any new loop here
-  is written as a sequence whether or not it needs the steps. A single screenshot
-  looks perfectly correct, which is the trap: it cost a whole round of diagnosis
-  to notice the difference between a still frame and a still garden. Judge the sway on a device, or in `anim-lab.html`, which
-  runs its own RAF loop and is unaffected.
+- **The garden's sway runs for exactly one turn on web and then freezes**, which
+  is not the same thing as never animating and is why the earlier reading here
+  was wrong. `Animated.timing`'s composite reports `_isUsingNativeDriver` off the
+  **raw config flag** rather than off whether a driver exists, so on web it
+  answers true even though `TurboModuleRegistry.get` returns null for everything;
+  `Animated.loop` therefore hands the whole loop to `_startNativeLoop`, and that
+  does not no-op — it starts a plain rAF timing carrying an `iterations` nobody
+  reads, with no callback to restart it. Forty seconds of wind, then a still
+  garden. `Pulse` and `Ripple` wrap a `sequence`, whose `_isUsingNativeDriver` is
+  hard-coded false, so they take the JS restart path and loop for ever — which is
+  also why any new loop here is written as a sequence whether or not it needs the
+  steps. The sway is the one place that rule must **not** be applied: the JS loop
+  costs a React render per `Animated.View` per frame, which for a full garden is
+  a couple of hundred a frame for as long as it runs, so wrapping it would trade
+  a cost that stops for one that never does. A single screenshot looks perfectly
+  correct either way, which is the trap: it cost a whole round of diagnosis to
+  notice the difference between a still frame and a still garden. Judge the sway
+  on a device, or in `anim-lab.html`, which runs its own RAF loop and is
+  unaffected.
 - **`expo-notifications` is not loaded on web**, added to the same `UNSUPPORTED`
   guard that keeps it out of Expo Go on Android.
 - **`react-dom`, `react-native-web` and `@expo/metro-runtime`** are in
