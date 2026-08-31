@@ -1,20 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
-import { hash32 } from '../domain/hash';
 import { Grown, nextDot, Plot, slotOffset } from '../domain/plots';
 import { field, shapeFor } from './field';
-import {
-  BURST_SPREAD_MS,
-  Pulse,
-  Sprout,
-  SPROUT_PEAK,
-  Sway,
-  useBurst,
-  useSway,
-} from './motion';
+import { Pulse } from './motion';
 import { EmptySlot, Plant } from './Plant';
+import { PlantMotion, useGardenMotion } from './plantMotion';
 import { Ripple } from './Ripple';
+import { SPROUT_PEAK } from './sprout';
 
 /**
  * A plot: what has grown, then the empty slots still ahead.
@@ -23,18 +16,6 @@ import { Ripple } from './Ripple';
  * promise as much as a record, and a grid that only showed what you had already
  * done would lose half of what makes it worth opening.
  */
-/**
- * Where in the burst one slot's plant starts growing.
- *
- * Seeded rather than random, for the same reason the dot's offset is: this
- * garden should scatter the same way every time it is shown. A field that
- * re-rolled its timings on every visit would be a different drawing each time,
- * and nothing in this app is generated at runtime.
- */
-function burstDelay(slot: number): number {
-  return hash32(`burst-${slot}`) % BURST_SPREAD_MS;
-}
-
 export function PlantGrid({
   plot,
   onBegin,
@@ -153,68 +134,28 @@ export function PlantGrid({
    * Whether there is a field to animate at all.
    *
    * The width arrives on a layout pass, so the first render of any grid draws
-   * no cells whatever it was asked for. Both clocks below wait for this and
-   * stop with it, which is what keeps each of them running only while the views
-   * reading it are on the screen — see the note under them for why that is a
-   * correctness rule rather than an economy.
+   * no cells whatever it was asked for. The motion below waits for this and
+   * stops with it, which is what keeps a clock turning only while the views
+   * reading it are on the screen — a correctness rule on a phone rather than an
+   * economy, for the reason `useGardenMotion` sets out.
    */
   const ready = cell > 0;
 
   /**
-   * The two clocks, and they live here rather than in the screen that asked for
-   * the motion. That is load-bearing.
+   * How the plants move, and it is asked for here rather than in the screen
+   * that wanted the motion. That is load-bearing on a phone: an
+   * `Animated.Value` belongs to whatever owns the views reading it, or React
+   * Native stops it and drops its native node the moment the last one detaches.
+   * Called from here, the clocks live in this component's fiber and die with
+   * it. `useGardenMotion` carries the whole account, along with what it costs
+   * to get wrong.
    *
-   * React Native ties an `Animated.Value`'s *native* node to the views reading
-   * it. When the last one unmounts, `AnimatedValue.__detach` stops whatever
-   * animation is running on the value and drops the node; the node is rebuilt
-   * from the stale JavaScript value the next time anything attaches, and
-   * nothing restarts the animation. A clock owned by a screen therefore
-   * outlives the field it drives, and the garden replaces its whole field on
-   * exactly the transition that also restarts the burst — the bed growing. The
-   * burst was started, the old field came down, the animation was stopped
-   * underneath it, and every plant was left pinned at the first frame of a
-   * sprout, which is opacity 0: a garden of empty dots with the plants gone.
-   *
-   * Owned here, a clock cannot outlive its views. They are made together, they
-   * are thrown away together, and no arrangement of screens above can part
-   * them.
+   * What comes back is opaque and stays that way. A phone gets clocks and a
+   * browser gets CSS keyframes, and the difference is `plantMotion.tsx`'s
+   * business against its `.web.tsx` twin's — the grid states what is happening
+   * to the field and never how.
    */
-  const { progress: burstClock, restart } = useBurst(burst !== undefined);
-
-  /**
-   * Whether this field is in the wind at all, and whether the wind is blowing.
-   *
-   * Two questions rather than one, because the first decides *structure* and
-   * only the second decides whether a clock turns. Whether a caller takes part
-   * in the wind is a fact about the caller and never changes under it; whether
-   * anyone is looking changes twice on every visit to the tab.
-   *
-   * The wrapper is therefore rendered on the answer that does not move. A
-   * `<Sway>` that came and went with the focus changes the element type at that
-   * position, and React does not reconcile across a change of type — it tears
-   * the whole subtree down and builds it again. That is six hundred native
-   * views, a hundred and eight sampled loops and two hundred and sixteen
-   * interpolation configs, twice per visit, which is most of the pause you feel
-   * arriving at the garden. Rendered unconditionally it is the same element
-   * throughout, nothing beneath it is touched, and all that stops is the clock.
-   *
-   * A bed that is only being looked at passes no `sway` at all and gets no
-   * wrapper and no tables — the grow screen's, which has no wind to be in.
-   */
-  const windy = sway !== undefined;
-  const swaying = ready && sway === true;
-  const swayClock = useSway(swaying);
-
-  /**
-   * The entrance: played when the field first has something to draw, and again
-   * whenever the caller asks. Both are the same event — the garden appearing —
-   * and running it from an effect is what guarantees the plants are already
-   * attached to the clock when it starts.
-   */
-  useEffect(() => {
-    if (burst === undefined || !ready) return;
-    restart();
-  }, [burst, ready, restart]);
+  const motion = useGardenMotion({ burst, sway, ready });
 
   // Which dot to circle. There is none to circle at all in a garden that is
   // only being looked at.
@@ -254,45 +195,25 @@ export function PlantGrid({
             // What a plant may answer is a *hold*, and only if the sitting that
             // grew it left a note — see `noted` above.
             if (planted) {
-              // The scatter, the lift, the sway and the sprout all want
+              // The scatter, the lift and the two motions all want
               // `transform`, so they get a view each: the cell holds its offset
               // and never animates, the lift is static and belongs to the
-              // drawing, and neither animation has to carry any of it.
-              const drawn = <Plant plant={planted.key} size={plant} />;
-
-              const grown =
-                burst === undefined ? (
-                  drawn
-                ) : (
-                  <Sprout progress={burstClock} delayMs={burstDelay(slot)}>
-                    {drawn}
-                  </Sprout>
-                );
-
+              // drawing, and nothing inside `PlantMotion` has to carry either
+              // of them.
               const standing = (
                 <View style={{ transform: [{ translateY: -lift }] }}>
                   {/*
-                    Outside the sprout, so a plant still growing leans by the
-                    same angle and therefore a smaller distance. The other way
-                    round its lean is unscaled and a squashed plant swings as
-                    wide as a full one.
+                    Where in the bed the plant stands, which is what the wind is
+                    read against: it crosses the bed you are looking at, and a
+                    bed six wide has six columns for it to cross.
                   */}
-                  {windy ? (
-                    // Where in the bed the plant stands: the wind crosses the
-                    // bed you are looking at, and a bed six wide has six columns
-                    // for it to cross. This is also why the bed's width is
-                    // frozen above one row — a re-flow would move a plant into
-                    // a different cell and a different gust.
-                    <Sway
-                      progress={swayClock}
-                      slot={slot}
-                      col={slot % cols}
-                      row={Math.floor(slot / cols)}>
-                      {grown}
-                    </Sway>
-                  ) : (
-                    grown
-                  )}
+                  <PlantMotion
+                    motion={motion}
+                    slot={slot}
+                    col={slot % cols}
+                    row={Math.floor(slot / cols)}>
+                    <Plant plant={planted.key} size={plant} />
+                  </PlantMotion>
                 </View>
               );
 

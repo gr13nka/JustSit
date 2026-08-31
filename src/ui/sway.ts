@@ -12,6 +12,7 @@
  */
 
 import { hash32, scramble } from '../domain/hash';
+import { BURST_MS } from './sprout';
 
 /*
  * `scramble` — murmur3's finalizer over `hash32` — lives in `domain/hash.ts`,
@@ -30,6 +31,63 @@ import { hash32, scramble } from '../domain/hash';
  * only moment they all line up again is the end of the turn.
  */
 export const SWAY_CYCLE_MS = 40000;
+
+/**
+ * How long the wind holds off after a field arrives.
+ *
+ * The burst and the sway used to begin together, which is two things happening
+ * at once to a drawing at the moment it is least readable — and, on a garden of
+ * a hundred plants, both of the app's largest per-frame costs landing in the
+ * same frames. Held back, the plants grow, the garden stands still long enough
+ * to be looked at, and then the wind comes up.
+ *
+ * Measured from the arrival rather than from the last plant, so it is the whole
+ * burst plus a beat: the beat is what makes it read as the wind arriving rather
+ * than as the tail of the same animation. It lives here rather than beside
+ * `BURST_MS` because when the wind gets up is a fact about the wind; that it is
+ * counted off the entrance is the only part the burst owns.
+ */
+export const SWAY_HOLD_MS = BURST_MS + 350;
+
+/**
+ * How long the wind then takes to pick a plant up.
+ *
+ * This exists because of what the hold turned out to look like. A plant reads
+ * its loop at rest as well as in motion, so holding the clock at 0 stands every
+ * plant at its own phase-nought lean — and the wind is 0.88 coherent, so that
+ * is not a scatter of small angles but most of the field tilted the same way.
+ * Measured across a full bed: a median of 7.8° and 87 of 109 plants leaning
+ * left. The garden grew crooked and then began to blow, which reads as a
+ * drawing error rather than as weather.
+ *
+ * Standing upright through the hold and simply starting the loop is worse, not
+ * better: it trades a lean nobody asked for against that same median 7.8°
+ * arriving in one frame. So the plants grow straight, stand for the beat, and
+ * are then *picked up* — the lead-in ramps each from upright to the exact angle
+ * its loop begins at, which is why there is no seam to hide at the handover
+ * rather than a small one that had to be made unnoticeable.
+ *
+ * An ease-out, because that is what a gust does to a stem: it takes it quickly
+ * and lets it settle. It is a little over a second, which is long enough to be
+ * a movement and short enough that nobody arriving at the garden waits for it.
+ */
+export const SWAY_LEAD_MS = 1200;
+
+/**
+ * The lead-in as a share of the clock, which is how the track carries it.
+ *
+ * On a phone the whole arrival is one interpolation: `at` runs from
+ * `-SWAY_LEAD_SHARE` to 1, and the clock is driven from the negative end to 0
+ * and then loops 0 to 1 for ever. A negative knot is legal because
+ * `interpolate` asks only that the input be monotonic, and it is what lets one
+ * table hold both the ramp and the loop — a second table would be a second
+ * thing to keep in step with the first at exactly the moment they have to agree
+ * to the degree.
+ *
+ * A browser cannot loop part of an animation, so it spends `SWAY_LEAD_MS`
+ * directly and never reads this. It is a phone's share of a phone's clock.
+ */
+export const SWAY_LEAD_SHARE = SWAY_LEAD_MS / SWAY_CYCLE_MS;
 
 /**
  * How far the tip leans at its furthest.
@@ -116,8 +174,12 @@ const SWAY_SHAPE = 0.36;
  * what a stem in wind does. 0 turns the plant rigidly about its root. They
  * displace the tip equally at these angles, so this is a true blend, and half
  * of each reads better than either alone.
+ *
+ * Exported for `keyframes.ts`, which spends the lean the same way into a CSS
+ * transform. It is one number splitting one lean, and two files each holding
+ * half of that decision would be two winds that happened to agree today.
  */
-const SWAY_BEND = 0.5;
+export const SWAY_BEND = 0.5;
 
 /**
  * How much of each layer's phase comes from where a plant stands rather than
@@ -199,7 +261,16 @@ export function swayLeans(slot: number, col: number, row: number): number[] {
  * be rewriting somebody else's wind.
  */
 export type SwayTrack = {
-  /** Knot positions on the shared 0..1 clock. */
+  /**
+   * Knot positions on the shared clock, which runs from `-SWAY_LEAD_SHARE` to
+   * 1 rather than from 0.
+   *
+   * The **first** entry is the lead-in and is not part of the loop: it sits at
+   * the negative end with no lean at all, so a clock driven from there to 0 is
+   * a plant being picked up out of upright. Everything after it is the loop's
+   * own knots at even steps from 0 to 1. Anything walking `swayLeans` beside
+   * these arrays is therefore off by one.
+   */
   at: number[];
   /** The shear, which leaves the root where it is. */
   skew: string[];
@@ -209,13 +280,16 @@ export type SwayTrack = {
 
 /**
  * Where the knots fall, which is the same answer for every plant in every
- * garden: `SWAY_KNOTS` even steps from 0 to 1.
+ * garden: the lead-in, then `SWAY_KNOTS` even steps from 0 to 1.
  *
  * Only the leans differ from plant to plant, so a hundred and eight private
- * copies of one hundred and sixty-one numbers were a hundred and seven copies
+ * copies of one hundred and sixty-two numbers were a hundred and seven copies
  * of a fact. There is one, and every track points at it.
  */
-const KNOTS_AT = Array.from({ length: SWAY_KNOTS + 1 }, (_, i) => i / SWAY_KNOTS);
+const KNOTS_AT = [
+  -SWAY_LEAD_SHARE,
+  ...Array.from({ length: SWAY_KNOTS + 1 }, (_, i) => i / SWAY_KNOTS),
+];
 
 /**
  * Every track asked for so far, by the plant and where it stands.
@@ -238,12 +312,19 @@ const TRACKS = new Map<string, SwayTrack>();
 
 /**
  * What the renderer needs, so nothing above this line has to know about knots,
- * degrees or how the lean is split.
+ * degrees, how the lean is split or how the wind arrives.
  *
  * The two channels are signed against each other because a positive shear and
  * a positive rotation lean opposite ways: with the origin at the root, CSS and
  * React Native both put the plant's ink at negative y, so `skewX` carries the
  * tip the other way from `rotate`.
+ *
+ * The lead-in is nailed to `0deg` on both channels rather than being computed,
+ * because upright is the one angle in this file that is not a fact about the
+ * wind: it is where a plant finishes growing. What makes the arrival seamless
+ * is the other end of it — the ramp stops at `leans[0]`, which is the same
+ * number the loop starts from, so the handover is two animations agreeing on a
+ * knot rather than two animations meeting near one.
  *
  * The track handed back is the same object every time it is asked for, and the
  * caller does not own it.
@@ -254,14 +335,17 @@ export function swayTrack(slot: number, col: number, row: number): SwayTrack {
   if (known) return known;
 
   const leans = swayLeans(slot, col, row);
+  /* Rounded, because the full double prints twenty-odd characters of which
+     about five carry meaning: a thousandth of a degree is six ten-thousandths
+     of a point at the tip. 216 of these are built per plant and 108 plants per
+     garden, so the formatting is a real share of the mount. */
+  const shear = (deg: number) => `${(-deg * SWAY_BEND).toFixed(3)}deg`;
+  const turn = (deg: number) => `${(deg * (1 - SWAY_BEND)).toFixed(3)}deg`;
+
   const track: SwayTrack = {
     at: KNOTS_AT,
-    /* Rounded, because the full double prints twenty-odd characters of which
-       about five carry meaning: a thousandth of a degree is six ten-thousandths
-       of a point at the tip. 216 of these are built per plant and 108 plants
-       per garden, so the formatting is a real share of the mount. */
-    skew: leans.map((deg) => `${(-deg * SWAY_BEND).toFixed(3)}deg`),
-    spin: leans.map((deg) => `${(deg * (1 - SWAY_BEND)).toFixed(3)}deg`),
+    skew: [shear(0), ...leans.map(shear)],
+    spin: [turn(0), ...leans.map(turn)],
   };
 
   TRACKS.set(key, track);

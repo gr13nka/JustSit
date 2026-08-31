@@ -1,5 +1,15 @@
 import { COLUMNS } from '../field';
-import { SWAY_LEAN_DEG, swayLeans, swayTrack } from '../sway';
+import { SWAY_LEAD_SHARE, SWAY_LEAN_DEG, swayLeans, swayTrack } from '../sway';
+
+/**
+ * Where the loop's own knots begin in a track.
+ *
+ * The first entry is the lead-in — the wind picking a plant up out of upright —
+ * so everything walking `swayLeans` beside a track is off by one. Named rather
+ * than written as a bare 1, because a silent off-by-one here would compare a
+ * plant's first lean against the arrival's nought and pass.
+ */
+const LOOP = 1;
 
 const PLOT = 108;
 const col = (slot: number) => slot % COLUMNS;
@@ -107,9 +117,46 @@ describe('the track handed to the renderer', () => {
     const track = swayTrack(0, 0, 0);
     expect(track.at.length).toBe(track.skew.length);
     expect(track.at.length).toBe(track.spin.length);
-    expect(track.at[0]).toBe(0);
+    expect(track.at[LOOP]).toBe(0);
     expect(track.at[track.at.length - 1]).toBe(1);
     for (let i = 1; i < track.at.length; i++) expect(track.at[i]).toBeGreaterThan(track.at[i - 1]);
+  });
+
+  /**
+   * The lead-in, which is the whole of how the wind arrives.
+   *
+   * A clock held at 0 stands every plant at its own phase-nought lean, and the
+   * wind is coherent enough that most of the field leans the same way — so a
+   * garden grew crooked and then began to blow. The fix is a stretch of clock
+   * *before* the loop where the answer is upright, so the renderers can drive
+   * from there to 0 and pick the plants up.
+   *
+   * Both halves are asserted because either alone would pass while being
+   * useless: a knot that sits before the loop but carries a lean would tilt the
+   * garden through the whole entrance, and a nought lean sitting at 0 would
+   * simply overwrite the loop's first knot.
+   */
+  it('holds a plant upright before the loop begins', () => {
+    const track = swayTrack(3, 3, 0);
+
+    expect(track.at[0]).toBe(-SWAY_LEAD_SHARE);
+    expect(track.at[0]).toBeLessThan(0);
+    expect(Number(track.skew[0].replace('deg', ''))).toBe(0);
+    expect(Number(track.spin[0].replace('deg', ''))).toBe(0);
+  });
+
+  /**
+   * And it ramps to exactly where the loop starts, which is what makes the
+   * handover seamless rather than nearly so. The renderers each drive the two
+   * stretches separately — a phone as one clock crossing 0, a browser as two
+   * animations meeting at a delay — so this is the number they have to agree on.
+   */
+  it('ends the lead-in on the angle the loop begins at', () => {
+    const track = swayTrack(3, 3, 0);
+    const leans = swayLeans(3, 3, 0);
+
+    expect(track.skew[LOOP]).toBe(`${(-leans[0] * 0.5).toFixed(3)}deg`);
+    expect(track.spin[LOOP]).toBe(`${(leans[0] * 0.5).toFixed(3)}deg`);
   });
 
   /**
@@ -136,8 +183,10 @@ describe('the track handed to the renderer', () => {
 
     expect(one.at).toBe(other.at);
 
-    const knots = one.at.length - 1;
-    for (let i = 0; i <= knots; i++) expect(one.at[i]).toBe(i / knots);
+    // The loop's own knots, past the lead-in: even steps from 0 to 1, which is
+    // what lets one linear clock read every plant's table at the same rate.
+    const knots = one.at.length - 1 - LOOP;
+    for (let i = 0; i <= knots; i++) expect(one.at[LOOP + i]).toBe(i / knots);
   });
 
   /**
@@ -153,6 +202,8 @@ describe('the track handed to the renderer', () => {
     const leaning = leans.findIndex((d) => Math.abs(d) > SWAY_LEAN_DEG / 2);
 
     expect(leaning).toBeGreaterThanOrEqual(0);
-    expect(Math.sign(deg(track.skew[leaning]))).toBe(-Math.sign(deg(track.spin[leaning])));
+    expect(Math.sign(deg(track.skew[LOOP + leaning]))).toBe(
+      -Math.sign(deg(track.spin[LOOP + leaning]))
+    );
   });
 });

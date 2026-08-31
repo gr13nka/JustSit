@@ -9,32 +9,34 @@ import {
 } from 'react-native';
 
 import { ROOT_ORIGIN } from './field';
-import { SWAY_CYCLE_MS, swayTrack } from './sway';
+import { BURST_MS, Channel, GROWTH, SPROUT_MS } from './sprout';
 
 /**
  * The app's motion, in one file.
  *
- * Two layers, and they mean different things. An *entrance* marks a first
- * appearance — a screen arriving, a garden being shown — and plays once.
- * A *settle* is feedback for a touch. Neither repeats. Four things in the app
- * do loop and all four are deliberate: the sitting's breath, `Pulse` and `Sway`
- * below, and `Ripple`, which lives in its own file because it belongs to one
- * dot on one screen. In each the loop is the point rather than a transition —
- * the first says a sitting is running, the second says the garden carries on
- * here, the third says the garden is a living thing rather than a chart of one,
- * and the fourth says which dot to touch on a garden nobody has touched yet.
+ * What belongs here is **vocabulary the app speaks more than once**. Two layers,
+ * and they mean different things. An *entrance* marks a first appearance — a
+ * screen arriving, a garden being shown — and plays once. A *settle* is feedback
+ * for a touch. Neither repeats. Four things in the app do loop and all four are
+ * deliberate: the sitting's breath, `Pulse` below, the garden's lean, and
+ * `Ripple`. In each the loop is the point rather than a transition — the first
+ * says a sitting is running, the second says the garden carries on here, the
+ * third says the garden is a living thing rather than a chart of one, and the
+ * fourth says which dot to touch on a garden nobody has touched yet.
  *
  * That fourth is the only one that ever stops for good, and that is what buys
  * it: it runs on an empty garden and never again once a plant is in the ground.
  * An instruction that deletes itself once obeyed is the opposite of the thing a
  * loop is usually put on a screen to do.
  *
- * `Sway` is the one that had to argue hardest for itself, being a whole screen
- * that never stops moving in an app whose case is that it is quiet. What earns
- * it is that it reports nothing and asks for nothing: it does not accumulate,
- * congratulate or keep score, it is the same whether you sat today or not, and
- * it is gone the moment you leave the tab. A garden moves in wind. That is all
- * it says.
+ * Two of those four are not in this file, for one reason. `Ripple` belongs to a
+ * single dot on a single screen, and the lean belongs to the garden — the app
+ * speaks each of them exactly once, so putting either here would be offering
+ * every other screen a wind to blow through it. The lean now also has to be
+ * said twice over in two languages, one per platform, which is `plantMotion.tsx`
+ * and its `.web.tsx` twin. `Sprout` and `useBurst` stay, because an entrance
+ * that plays once is a word: the garden, the days screen and the welcome screen
+ * all use them.
  *
  * Everything animates transform and opacity only, so every driver here is
  * native and none of it competes with the wall clock a sitting runs on.
@@ -43,211 +45,14 @@ import { SWAY_CYCLE_MS, swayTrack } from './sway';
 /** Overshoot-and-settle, for anything that moves or scales. */
 export const BOUNCE = Easing.bezier(0.34, 1.56, 0.64, 1);
 
-/** How long one doodle takes to grow and stop wobbling. */
-const SPROUT_MS = 1000;
-/** The window the whole field's delays are scattered across. */
-export const BURST_SPREAD_MS = 450;
-const BURST_MS = BURST_SPREAD_MS + SPROUT_MS;
-
 /**
- * The shape of one sprout, frame by frame: `at` is how far through the growth
- * this frame sits, and the rest is what the doodle looks like there.
- *
- * Written as frames rather than three parallel arrays because the character is
- * in how the channels disagree at a given moment, and that is unreadable when
- * they are spelled out separately.
- *
- * It is squash and stretch, which is why `scaleX` and `scaleY` are never at
- * their extremes together: the doodle shoots past full height while still
- * pinched narrow, then swings back under it as it widens, then settles. A pop
- * where both go fat at once reads as a bubble rather than as something growing.
- *
- * What keeps that true however loud it gets is the *area*: every row below
- * multiplies out to within a few percent of 1, so the doodle only ever changes
- * shape, never mass. Widen `scaleX` to agree with the stretch and the character
- * is gone whatever the numbers say.
- *
- * The shoot up is fast and everything after it is the plant wobbling to a stop
- * — an overshoot of nearly two thirds, then a third, then a sixth, each swing
- * about half the one before, which is what a damped spring does and what makes
- * it read as jelly rather than as a bounce. The rise takes an eighth of the
- * window and the six swings share the rest, so the wobble slows as it dies.
- *
- * Tuned in `tools/anim-lab.html`, which is where the next pass should happen
- * too: the settle is the hard part of a curve to judge, and at this size it is
- * invisible in the app until you have already committed it.
+ * The burst's own arithmetic lives in `sprout.ts`, which is pure and is read by
+ * both renderers. These two are passed straight through because their callers —
+ * `field.ts` reserving room, `GrowingBed` and `app/streak.tsx` timing an
+ * arrival — are asking this file about the app's motion and have no business
+ * knowing which module happens to hold the table.
  */
-const GROWTH = [
-  { at: 0, opacity: 0, scaleY: 0.05, scaleX: 0.7 },
-  { at: 0.12, opacity: 1, scaleY: 1.63, scaleX: 0.64 },
-  { at: 0.27, opacity: 1, scaleY: 0.69, scaleX: 1.53 },
-  { at: 0.41, opacity: 1, scaleY: 1.16, scaleX: 0.91 },
-  { at: 0.56, opacity: 1, scaleY: 0.92, scaleX: 1.14 },
-  { at: 0.71, opacity: 1, scaleY: 1.04, scaleX: 1.01 },
-  { at: 0.85, opacity: 1, scaleY: 0.98, scaleX: 1.07 },
-  { at: 1, opacity: 1, scaleY: 1, scaleX: 1 },
-] as const;
-
-/**
- * The tallest a sprout ever gets, for whoever has to leave room for it. Read
- * off the curve rather than written down twice: a louder pop that quietly
- * outgrew the space reserved for it is exactly the bug this prevents.
- */
-export const SPROUT_PEAK = Math.max(...GROWTH.map((frame) => frame.scaleY));
-
-type Channel = 'opacity' | 'scaleY' | 'scaleX';
-
-/**
- * The garden's idle sway: one clock for the whole field.
- *
- * A hundred and eight looping drivers is not a thing to do, so there is one
- * linear 0..1 ramp and each `Sway` reads its own window out of it — the same
- * arrangement as the burst, for the same reason. It restarts at 0 without a
- * jump because every plant's table ends exactly where it began.
- *
- * `active` is asked for rather than assumed because the tab stays mounted when
- * you are on the other one: stopping on unmount, which is enough for `Pulse`,
- * would leave this turning for the life of the app. It is also what puts the
- * loop under the caller's control at the two moments that matter — a field
- * nobody is looking at, and a field that is not on the screen yet. The second
- * is the one with teeth: a loop left running past the last `Sway` reading it is
- * a loop React Native stops and cannot restart. `PlantGrid` has the account.
- */
-/**
- * How long the wind holds off after a field arrives.
- *
- * The burst and the sway used to begin together, which is two things happening
- * at once to a drawing at the moment it is least readable — and, on a garden of
- * a hundred plants, both of the app's largest per-frame costs landing in the
- * same frames. Held back, the plants grow, the garden stands still long enough
- * to be looked at, and then the wind comes up. The sprout gets the whole frame
- * to itself, which is the one moment in the app worth spending it on.
- *
- * It costs nothing to look right, which is worth writing down because it easily
- * might not have. A `Sway` reads its clock at rest as well as in motion, so a
- * plant grows already carrying its own phase-nought lean rather than standing
- * to attention, and when the loop finally starts it starts from exactly the
- * angle that plant is already drawn at. There is no discontinuity to hide, so
- * there is no fade-in to write and no amplitude to ramp.
- *
- * Measured from the arrival rather than from the last plant, so it is the whole
- * burst plus a beat: the beat is what makes it read as the wind arriving rather
- * than as the tail of the same animation.
- */
-const SWAY_HOLD_MS = BURST_MS + 350;
-
-export function useSway(active: boolean) {
-  const progress = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!active) return;
-
-    /*
-     * Wound back to the beginning first, because `Animated.loop` will not do it
-     * for you. Only the JavaScript branch of `start()` honours
-     * `resetBeforeIteration`; the native branch hands the whole loop to
-     * `_startNativeLoop` and calls `reset()` nowhere, and an `AnimatedValue`
-     * keeps its value across `stopAnimation()`. A clock gated on a tab's focus
-     * is stopped and started for a living, so without this a sway stopped at
-     * 0.63 came back running 0.63 → 1 over the full cycle and repeating that
-     * for ever: every plant sweeping the tail third of its own table at a third
-     * of the rate, with a jump at each wrap. It is the quiet kind of failure —
-     * the garden still moves, so nothing looks broken, and the wind is simply
-     * not the wind that was tuned. `useBurst` has always done this.
-     *
-     * It happens here, on arrival, rather than beside the loop it belongs to,
-     * and the gap between those two is now a second and a half. That is the
-     * point: a rewind is the one moment the wind genuinely does jump, and the
-     * only place to put it is under the burst, where every plant is still too
-     * small to see. Moved down to where the loop starts it would land on a
-     * garden standing still and be the most visible thing on the screen.
-     */
-    progress.setValue(0);
-
-    let loop: Animated.CompositeAnimation | undefined;
-
-    const held = setTimeout(() => {
-      loop = Animated.loop(
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: SWAY_CYCLE_MS,
-          // Linear on purpose, exactly as the burst's is: the shape of the sway
-          // is in the table, and easing the shared clock would bend every
-          // plant's phase along with it.
-          easing: Easing.linear,
-          useNativeDriver: true,
-        })
-      );
-
-      loop.start();
-    }, SWAY_HOLD_MS);
-
-    return () => {
-      clearTimeout(held);
-      loop?.stop();
-    };
-  }, [progress, active]);
-
-  return progress;
-}
-
-/**
- * One plant leaning, read off the shared clock.
- *
- * This sits OUTSIDE `Sprout`, which is not arbitrary. Outside, the composite is
- * `skewX · scaleY`, so a half-grown plant leans half as far in pixels at the
- * same angle. Inside, the lean is applied before the growth and is therefore
- * unscaled — a plant squashed to a fifth of its height swings as wide as a full
- * one, which reads as a glitch rather than as wind.
- *
- * The lean is a shear and a turn, never a scale, so it cannot break the rule
- * `GROWTH` above works so hard to keep: a shear's determinant is exactly 1, and
- * a doodle that only shears changes shape and never mass.
- */
-export function Sway({
-  progress,
-  slot,
-  col,
-  row,
-  children,
-}: {
-  /** The shared 0..1 clock from `useSway`. */
-  progress: Animated.Value;
-  slot: number;
-  col: number;
-  row: number;
-  children: ReactNode;
-}) {
-  const track = useMemo(() => swayTrack(slot, col, row), [slot, col, row]);
-
-  /*
-   * Interpolated once and kept, which is worth more than it looks. React Native
-   * keys an `AnimatedProps` on the *identity* of the nodes inside `style`, so
-   * interpolating in the middle of the render mints two new ones every time
-   * anything above this re-renders — and a new node is detached, re-attached
-   * and, on the native driver, built again on the far side of the bridge with
-   * this plant's whole three-hundred-and-twenty-two-number config in tow. Held,
-   * the garden uploads its wind when the wind changes and not before.
-   */
-  const lean = useMemo(
-    () => ({
-      skew: progress.interpolate({ inputRange: track.at, outputRange: track.skew }),
-      spin: progress.interpolate({ inputRange: track.at, outputRange: track.spin }),
-    }),
-    [progress, track]
-  );
-
-  return (
-    <Animated.View
-      style={{
-        // The root, as everywhere else a plant is transformed.
-        transformOrigin: ROOT_ORIGIN,
-        transform: [{ skewX: lean.skew }, { rotate: lean.spin }],
-      }}>
-      {children}
-    </Animated.View>
-  );
-}
+export { BURST_SPREAD_MS, SPROUT_PEAK } from './sprout';
 
 /**
  * One clock for a whole field of sprouting doodles.
@@ -269,7 +74,8 @@ export function Sway({
  * The value belongs to whatever owns the views reading it, and that is not
  * negotiable: React Native stops a running animation and drops the native node
  * the moment the last view detaches, and rebuilds it from a stale value
- * afterwards with nothing driving it. `PlantGrid` carries the full account.
+ * afterwards with nothing driving it. `useGardenMotion` in `plantMotion.tsx`
+ * carries the full account, and it is the rule this hook is easiest to break.
  */
 export function useBurst(waiting: boolean = false) {
   const progress = useRef(new Animated.Value(waiting ? 0 : 1)).current;
@@ -290,11 +96,15 @@ export function useBurst(waiting: boolean = false) {
 }
 
 /**
- * One doodle growing up out of the ground, on the curve in `GROWTH` above.
+ * One doodle growing up out of the ground, on `sprout.ts`'s curve.
+ *
+ * The curve is kept out of this file because a browser needs the same rows as
+ * CSS keyframes, and a table transcribed into two places is two animations. See
+ * `keyframes.ts` for the other reading of it.
  *
  * `delayMs` is where in the burst this one starts, and it is the caller's
- * business — a garden seeds it from the slot so the same plot scatters the same
- * way every time rather than re-rolling on each visit.
+ * business — a garden seeds it from the slot with `burstDelay` so the same plot
+ * scatters the same way every time rather than re-rolling on each visit.
  */
 export function Sprout({
   progress,
@@ -314,10 +124,13 @@ export function Sprout({
   );
 
   /*
-   * Kept for `Sway`'s reason, and here it is three nodes rather than two and a
-   * hundred and eight plants at a time: a curve that cannot have changed unless
-   * the delay did should not be handed to the native driver again because
-   * something further up the screen drew itself.
+   * Interpolated once and kept, which is worth more than it looks. React Native
+   * keys an `AnimatedProps` on the *identity* of the nodes inside `style`, so
+   * interpolating mid-render mints new ones every time anything above this
+   * draws itself — three of them here, and a hundred and eight plants at a
+   * time. A curve that cannot have changed unless the delay did should not be
+   * handed to the native driver again because something further up the screen
+   * moved.
    */
   const growth = useMemo(() => {
     const track = (channel: Channel) =>
